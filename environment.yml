@@ -13,26 +13,28 @@ channels:
 dependencies:
   # --- Interpreter + installer ---
   - python=3.12
-  - pip
 
-  # --- Numerical / data stack ---
-  - numpy
-  - pandas
-  - scipy
-  - scikit-learn
-
-  # --- Audio + feature extraction ---
-  - librosa
-  - pysoundfile      # conda-forge name for the `soundfile` module (audio I/O)
-  - audioread        # fallback decoder for formats libsndfile can't open
-
-  # --- Plotting ---
-  - matplotlib
-
-  # --- Notebook / interactive work ---
-  - jupyterlab
-  - notebook
-  - ipykernel
-  - ipython
-  - ipywidgets
-  - requests
+# KEEP ONLY heavy C/C++ or system binaries here. Let UV manage the rest.
+#  - pip
+#
+#  # --- Numerical / data stack ---
+#  - numpy
+#  - pandas
+#  - scipy
+#  - scikit-learn
+#
+#  # --- Audio + feature extraction ---
+#  - librosa
+#  - pysoundfile      # conda-forge name for the `soundfile` module (audio I/O)
+#  - audioread        # fallback decoder for formats libsndfile can't open
+#
+#  # --- Plotting ---
+#  - matplotlib
+#
+#  # --- Notebook / interactive work ---
+#  - jupyterlab
+#  - notebook
+#  - ipykernel
+#  - ipython
+#  - ipywidgets
+#  - requests
