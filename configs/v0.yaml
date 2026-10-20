@@ -11,7 +11,7 @@ features:
   kind: chroma_cqt
   hop_length: 512      # 512 / 22050 = 23.2 ms per frame
   threshold: 0.25      # chroma_cqt threshold, as in the librosa example
-  tuning: 0.0          # fixed A440; tuning estimation is a V2 change
+  tuning: null         # null = librosa estimates it per file, as in the notebook and the librosa example
   norm: inf            # per-frame max normalization (librosa default)
 
 templates:
