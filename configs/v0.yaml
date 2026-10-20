@@ -1,0 +1,29 @@
+# V0: frame-level reference (ROADMAP.md section 4).
+# Mirrors the librosa `viterbi_discriminative` example so it stays a fixed yardstick.
+version: v0
+
+audio:
+  sr: 22050            # every file is resampled to this rate (librosa.load, soxr_hq)
+  mono: true
+  harmonic_margin: 4.0 # librosa.effects.harmonic margin; null disables HPSS
+
+features:
+  kind: chroma_cqt
+  hop_length: 512      # 512 / 22050 = 23.2 ms per frame
+  threshold: 0.25      # chroma_cqt threshold, as in the librosa example
+  tuning: 0.0          # fixed A440; tuning estimation is a V2 change
+  norm: inf            # per-frame max normalization (librosa default)
+
+templates:
+  vocab: majmin        # 12 major + 12 minor + N = 25 states
+  no_chord_value: 0.25 # N template = all ones / 4, as in the librosa example
+
+emission:
+  beta: 1.0            # softmax sharpness: P(X | e) ∝ exp(beta * weights @ chroma)
+
+decoder:
+  p_self: 0.9          # default; the value used on test is chosen on validation songs
+  p_self_grid: [0.04, 0.5, 0.9, 0.95, 0.99, 0.995, 0.999]  # 0.04 = 1/25, must equal argmax
+
+evaluation:
+  metric: majmin       # mir_eval.chord.majmin, duration-weighted (WCSR)
