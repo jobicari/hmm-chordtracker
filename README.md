@@ -18,6 +18,7 @@ version's report has the question, the method, the val analysis and the limitati
 | Version | What it tests | test WCSR, framewise | test WCSR, HMM | Report |
 |---|---|---|---|---|
 | V0 | Viterbi smoothing vs frame-by-frame argmax, same template emission | 41.8 % | 53.7 % (p_self 0.95) | [reports/v0.md](reports/v0.md) |
+| V1 | Beat-synchronous chroma (mean per beat) vs V0's frames, same emission and decoders | 48.8 % | 53.3 % (p_self 0.05) | [reports/v1.md](reports/v1.md) |
 
 ## Layout
 
@@ -34,6 +35,9 @@ version's report has the question, the method, the val analysis and the limitati
 | `src/chordtracker/report.py` | `v0_figures` (all V0 figures, val only), `save_figures`, `results_tables` (report tables) |
 | `scripts/run_v0.py` | command line for a V0 run on one split |
 | `notebooks/V0_figures.ipynb`, `scripts/plot_v0.py` | the V0 figures and tables, inline in a notebook or saved from the command line |
+| `src/chordtracker/beats.py` | V1: beat tracking, per-beat pooling, beat-edge segments, beat-level p_self sweep |
+| `scripts/run_v1.py` | command line for a V1 run on one split (same protocol as run_v0.py) |
+| `notebooks/V1_val_chroma_check.ipynb` | the G#/A investigation behind V1 (val only) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `data/` | GuitarSet and everything generated from it (git-ignored) |
 | `results/<version>/<split>/` | `summary.json` and `per_song.csv` of each run |
@@ -94,7 +98,7 @@ val and test, with every take of a progression in the same split.
    and with Viterbi at every p_self of `decoder.p_self_grid`, and picks the p_self with the best
    pooled WCSR (a tie goes to the smaller p_self).
 2. **Freeze.** Commit the code and the config. From here on, nothing about the version changes.
-3. **Test once.** `python scripts/run_v0.py --split test --p-self <chosen>` runs framewise and
+3. **Test once.** `python scripts/run_v<N>.py --split test --p-self <chosen>` runs framewise and
    Viterbi at that single p_self. The script refuses `--split test` without `--p-self`, so test
    cannot be swept.
 4. **Investigate on val only.** Every figure and every "why does it fail" question uses val takes.

@@ -1,0 +1,35 @@
+# V1: beat-synchronous chroma (ROADMAP.md section 4). One change from v0: the frame chroma is averaged
+# per beat before the templates, so one HMM step is one beat. Everything else is v0.yaml unchanged.
+version: v1
+
+audio:
+  sr: 22050            # every file is resampled to this rate (librosa.load, soxr_hq)
+  mono: true
+  harmonic_margin: 4.0 # librosa.effects.harmonic margin for the chroma; beats use the full signal
+
+features:
+  kind: chroma_cqt
+  hop_length: 512      # 512 / 22050 = 23.2 ms per frame
+  threshold: 0.25      # chroma_cqt threshold, as in the librosa example
+  tuning: null         # null = librosa estimates it per file
+  norm: inf            # per-frame max normalization (librosa default)
+
+beats:
+  source: full         # beat_track on the full mono audio (on val: beat F 0.53 vs 0.19 on the harmonic part)
+  aggregate: mean      # mean of the frames of each beat (on val: 61.3% vs 59.5% for median)
+
+templates:
+  vocab: majmin        # 12 major + 12 minor + N = 25 states
+  no_chord_value: 0.25
+
+emission:
+  beta: 1.0            # unchanged from v0, so the only change is the pooling
+
+decoder:
+  p_self: 0.05         # chosen on val (proposals/v1/beat_sync_val.md); one step is a beat now
+  # 0.04 = 1/25 must equal argmax. A beat mean carries about 1/20 of the evidence V0's Viterbi summed
+  # over the frames of a beat, so the useful range is just above 1/25 (0.5 gives 30% on val).
+  p_self_grid: [0.04, 0.05, 0.06, 0.07, 0.08, 0.1, 0.2, 0.5, 0.9]
+
+evaluation:
+  metric: majmin       # mir_eval.chord.majmin, duration-weighted (WCSR)
