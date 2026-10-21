@@ -1,0 +1,166 @@
+{
+  "version": "v2",
+  "split": "val",
+  "config": {
+    "version": "v2",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "p_self": 0.06,
+      "p_self_grid": [
+        0.04,
+        0.045,
+        0.05,
+        0.055,
+        0.06,
+        0.07,
+        0.08,
+        0.1,
+        0.15,
+        0.2
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    }
+  },
+  "rows": [
+    {
+      "system": "framewise",
+      "wcsr": 0.5957046378861354,
+      "mean_changes_per_min": 60.045665219536275,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.04,
+      "wcsr": 0.5957046378861354,
+      "mean_changes_per_min": 60.045665219536275,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.045,
+      "wcsr": 0.6449566492329345,
+      "mean_changes_per_min": 40.773393326631506,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.05,
+      "wcsr": 0.6661841203567641,
+      "mean_changes_per_min": 33.409188473156824,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.055,
+      "wcsr": 0.6672458506026505,
+      "mean_changes_per_min": 29.229866880026922,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.06,
+      "wcsr": 0.6728273351626125,
+      "mean_changes_per_min": 27.001383282117907,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.07,
+      "wcsr": 0.6670682220908855,
+      "mean_changes_per_min": 24.77628209896387,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.08,
+      "wcsr": 0.6572736443702629,
+      "mean_changes_per_min": 23.238008360805697,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.1,
+      "wcsr": 0.6429187236388348,
+      "mean_changes_per_min": 21.39969409495513,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.15,
+      "wcsr": 0.5748159510311798,
+      "mean_changes_per_min": 17.095367630132,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.2,
+      "wcsr": 0.515134661042031,
+      "mean_changes_per_min": 13.235114282602812,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    }
+  ],
+  "chosen_p_self": 0.06
+}

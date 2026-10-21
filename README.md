@@ -19,12 +19,14 @@ version's report has the question, the method, the val analysis and the limitati
 |---|---|---|---|---|
 | V0 | Viterbi smoothing vs frame-by-frame argmax, same template emission | 41.8 % | 53.7 % (p_self 0.95) | [reports/v0.md](reports/v0.md) |
 | V1 | Beat-synchronous chroma (mean per beat) vs V0's frames, same emission and decoders | 48.8 % | 53.3 % (p_self 0.05) | [reports/v1.md](reports/v1.md) |
+| V2 | Better chroma on V1's beats: low-band floor (body resonance), log compression, bass chroma (E1..B3) in the template score | 50.1 % | 57.5 % (p_self 0.06) | [reports/v2.md](reports/v2.md) |
 
 ## Layout
 
 | Path | What it holds |
 |---|---|
 | `configs/v0.yaml` | every V0 setting: audio, chroma, templates, emission, decoder grid, metric |
+| `configs/v1.yaml`, `configs/v2.yaml` | the V1 and V2 settings, each choice next to its val numbers |
 | `src/chordtracker/data/` | `ChordAnnotation`, the GuitarSet adapter, manifest and split handling |
 | `src/chordtracker/features.py` | audio loading and `ChromaCQTExtractor` |
 | `src/chordtracker/templates.py`, `emission.py` | 25 maj/min/N templates, `TemplateEmission` (softmax posteriors) |
@@ -38,6 +40,9 @@ version's report has the question, the method, the val analysis and the limitati
 | `src/chordtracker/beats.py` | V1: beat tracking, per-beat pooling, beat-edge segments, beat-level p_self sweep |
 | `scripts/run_v1.py` | command line for a V1 run on one split (same protocol as run_v0.py) |
 | `notebooks/V1_val_chroma_check.ipynb` | the G#/A investigation behind V1 (val only) |
+| `src/chordtracker/features_v2.py` | V2: own CQT, per-bin floor, log compression, treble and bass chroma |
+| `src/chordtracker/bass.py` | V2: bass term of the emission (root of each chord), V2 take evidence |
+| `scripts/run_v2.py` | command line for a V2 run on one split (same protocol as run_v1.py) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `data/` | GuitarSet and everything generated from it (git-ignored) |
 | `results/<version>/<split>/` | `summary.json` and `per_song.csv` of each run |

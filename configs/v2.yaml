@@ -1,0 +1,51 @@
+# V2: better features (ROADMAP.md). On top of V1 (beat-synchronous chroma), three changes to the
+# chroma, each chosen on val one at a time (proposals/v2/ablation_*.md): a resonance floor, log
+# compression, and a bass chroma added to the template score. Everything else is v1.yaml.
+version: v2
+
+audio:
+  sr: 22050
+  mono: true
+  harmonic_margin: 4.0
+
+features:
+  kind: chroma_cqt
+  hop_length: 512
+  threshold: null      # V1 used 0.25, an absolute value before normalization: it depends on the
+                       # recording level (on val V1 it zeroes ~60% of the values). Same score without it after log.
+  tuning: null         # estimated per file, as V1
+  norm: inf
+
+floor:                 # remove the stationary part of every CQT bin (the ~106 Hz guitar body resonance)
+  enabled: true
+  percentile: 50       # median over the take (on val: 63.73%; 20th percentile 62.82%)
+  alpha: 1.0
+  fmax: 200.0          # only bins below 200 Hz (over every bin: 63.25%, and 7% of the note energy removed)
+
+compression:
+  enabled: true
+  level_percentile: 99 # divide by the take's level first, so gamma does not depend on the recording level
+  gamma: 10            # log(1 + 10 C); on val 65.07% (gamma 100: 63.51%, 1000: 59.53%)
+
+bass:                  # low register of any band, not the guitar's: bass guitar low E = E1
+  fmin: E1             # 41.2 Hz
+  fmax: B3             # 247 Hz
+  weight: 0.2          # w in template . treble + w * root . bass; on val flat from 0.15 to 0.35, hurts from 0.5
+
+beats:
+  source: full
+  aggregate: mean
+
+templates:
+  vocab: majmin
+  no_chord_value: 0.25
+
+emission:
+  beta: 1.0
+
+decoder:
+  p_self: 0.06         # chosen on val with every V2 change in (V1: 0.05); the bass term adds evidence per beat
+  p_self_grid: [0.04, 0.045, 0.05, 0.055, 0.06, 0.07, 0.08, 0.1, 0.15, 0.2]
+
+evaluation:
+  metric: majmin

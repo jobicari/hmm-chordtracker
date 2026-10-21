@@ -1,0 +1,84 @@
+{
+  "version": "v2",
+  "split": "test",
+  "config": {
+    "version": "v2",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "p_self": 0.06,
+      "p_self_grid": [
+        0.04,
+        0.045,
+        0.05,
+        0.055,
+        0.06,
+        0.07,
+        0.08,
+        0.1,
+        0.15,
+        0.2
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    }
+  },
+  "rows": [
+    {
+      "system": "framewise",
+      "wcsr": 0.5010198764038608,
+      "mean_changes_per_min": 62.993328342983155,
+      "scored_s": 1723.279476,
+      "reduced_s": 306.282648,
+      "excluded_s": 153.14132400000017,
+      "n_takes": 60
+    },
+    {
+      "system": 0.06,
+      "wcsr": 0.575264202766355,
+      "mean_changes_per_min": 24.814100259494044,
+      "scored_s": 1723.279476,
+      "reduced_s": 306.282648,
+      "excluded_s": 153.14132400000017,
+      "n_takes": 60
+    }
+  ]
+}
