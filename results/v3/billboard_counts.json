@@ -1,0 +1,70 @@
+{
+ "source": "McGill Billboard via ChoCo v1.0.0 (zenodo.org/records/7706751), partitions/billboard/choco/jams; 730 songs after de-duplication",
+ "axes": [
+  "quality_from (maj, min)",
+  "quality_to (maj, min)",
+  "root interval in semitones (0..11)"
+ ],
+ "counts": [
+  [
+   [
+    0,
+    268,
+    5386,
+    791,
+    268,
+    11732,
+    55,
+    10762,
+    389,
+    634,
+    4152,
+    524
+   ],
+   [
+    399,
+    102,
+    2651,
+    50,
+    1046,
+    1141,
+    33,
+    1451,
+    10,
+    2462,
+    56,
+    699
+   ]
+  ],
+  [
+   [
+    100,
+    752,
+    167,
+    1624,
+    14,
+    2550,
+    76,
+    546,
+    1834,
+    8,
+    2130,
+    65
+   ],
+   [
+    0,
+    58,
+    576,
+    75,
+    23,
+    1484,
+    18,
+    858,
+    29,
+    69,
+    582,
+    95
+   ]
+  ]
+ ]
+}
