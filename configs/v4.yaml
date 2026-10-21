@@ -1,0 +1,25 @@
+# V4: learned emission (ROADMAP.md). Features and beats are V2 (configs/v2.yaml) unchanged; the template
+# score is replaced by logistic regression fitted on the train split, and the decoder uses the V3 change
+# prior at full strength (proposals/v4/ablation_*.md). Val chose every number below.
+version: v4
+base_config: v2.yaml   # audio, features, floor, compression, bass range, beats
+
+emission:
+  kind: logistic_regression
+  inputs: [treble, bass]   # 24 numbers per beat, the V2 beat means
+  transpositions: 12       # every train beat in all 12 keys
+  C: 10                    # L2 strength 1 / C; on val 0.1: 65.28%, 1: 67.72%, 10: 68.37%, 100: 67.96% (flat loop)
+  divide_by_prior: true    # p_state = train class frequencies; on val 68.37% with, 59.13% without
+
+transitions:
+  counts: results/v3/billboard_counts.json   # 730 Billboard songs, labels only
+  alpha: 1.0
+  tau: 1.0                 # full strength; on val 0.5: 70.21%, 1: 70.72%, 1.5: 70.57%
+
+decoder:
+  states: 24               # no N: GuitarSet has no N labels to learn it from
+  p_self: 0.5          # chosen by the Mac val run (70.49%; 0.4: 70.42%, 0.6: 70.45%: a flat plateau)
+  p_self_grid: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+
+evaluation:
+  metric: majmin

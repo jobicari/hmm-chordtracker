@@ -1,0 +1,141 @@
+{
+  "version": "v4",
+  "split": "val",
+  "config": {
+    "version": "v4",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "kind": "logistic_regression",
+      "inputs": [
+        "treble",
+        "bass"
+      ],
+      "transpositions": 12,
+      "C": 10,
+      "divide_by_prior": true
+    },
+    "decoder": {
+      "states": 24,
+      "p_self": 0.4,
+      "p_self_grid": [
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    },
+    "base_config": "v2.yaml",
+    "transitions": {
+      "counts": "results/v3/billboard_counts.json",
+      "alpha": 1.0,
+      "tau": 1.0
+    }
+  },
+  "rows": [
+    {
+      "system": 0.2,
+      "wcsr": 0.6868526184143018,
+      "mean_changes_per_min": 37.50852826591767,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.3,
+      "wcsr": 0.6989228679222818,
+      "mean_changes_per_min": 31.852426000011118,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.4,
+      "wcsr": 0.7041696661332159,
+      "mean_changes_per_min": 29.890382566823707,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.5,
+      "wcsr": 0.7048764122927066,
+      "mean_changes_per_min": 28.43362019596245,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.6,
+      "wcsr": 0.70454983425577,
+      "mean_changes_per_min": 27.272246371333114,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.7,
+      "wcsr": 0.6974014379753186,
+      "mean_changes_per_min": 25.960846502232357,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "system": 0.8,
+      "wcsr": 0.6946795549004049,
+      "mean_changes_per_min": 25.085178040042813,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    }
+  ],
+  "chosen_p_self": 0.5
+}
