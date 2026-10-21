@@ -5,6 +5,20 @@ independent frame-by-frame classification when the features, chord vocabulary an
 constant? Built version by version (V0, V1, ...); each version changes one thing and is compared
 with the previous one on the same split and metric.
 
+**Rule for every version: test is scored, never inspected.** Choices and investigations (which
+p_self, why a take fails, what the next version should fix) are made on the validation songs only.
+The test songs are decoded once per version to report a score, and no figure or error analysis is
+ever made from them. See [Evaluation protocol](#evaluation-protocol).
+
+## Results
+
+Test WCSR (majmin, pooled over the 60 test takes), run once with the setting chosen on val. Each
+version's report has the question, the method, the val analysis and the limitations.
+
+| Version | What it tests | test WCSR, framewise | test WCSR, HMM | Report |
+|---|---|---|---|---|
+| V0 | Viterbi smoothing vs frame-by-frame argmax, same template emission | 41.8 % | 53.7 % (p_self 0.95) | [reports/v0.md](reports/v0.md) |
+
 ## Layout
 
 | Path | What it holds |
@@ -16,10 +30,15 @@ with the previous one on the same split and metric.
 | `src/chordtracker/decode.py` | `FramewiseDecoder` (argmax) and `ViterbiDecoder(p_self)` |
 | `src/chordtracker/evaluate.py` | frames to segments, duration-weighted WCSR, label policy |
 | `src/chordtracker/experiment.py` | per-take evidence, p_self sweep, choice, result files |
+| `src/chordtracker/visualize.py` | plotting functions: data in, matplotlib Figure out; nothing decodes or scores |
+| `src/chordtracker/report.py` | `v0_figures` (all V0 figures, val only), `save_figures`, `results_tables` (report tables) |
 | `scripts/run_v0.py` | command line for a V0 run on one split |
+| `notebooks/V0_figures.ipynb`, `scripts/plot_v0.py` | the V0 figures and tables, inline in a notebook or saved from the command line |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `data/` | GuitarSet and everything generated from it (git-ignored) |
 | `results/<version>/<split>/` | `summary.json` and `per_song.csv` of each run |
+| `figures/<version>/val/` | the saved report figures (val only) |
+| `reports/<version>.md` | each version's write-up: question, setup, val analysis, test score, findings |
 
 ## Setup
 
@@ -78,6 +97,9 @@ val and test, with every take of a progression in the same split.
 3. **Test once.** `python scripts/run_v0.py --split test --p-self <chosen>` runs framewise and
    Viterbi at that single p_self. The script refuses `--split test` without `--p-self`, so test
    cannot be swept.
+4. **Investigate on val only.** Every figure and every "why does it fail" question uses val takes.
+   From test only the pooled numbers are reported. `report.v0_figures` refuses a test take and
+   writes only to `figures/<version>/val/`.
 
 **Why test is run only once.** The test score is meant to estimate how the model does on
 progressions it was never tuned on. That only holds while no decision has been made by looking at
@@ -86,3 +108,29 @@ the test set would have become a second validation set, the reported score would
 and no untouched data would be left to say by how much. Re-running test with nothing changed is
 harmless (the run is deterministic and gives the same numbers). Each new version (V1, ...) makes
 its own choices on val and then runs test once in the same way.
+
+**Why test is never inspected either.** Looking at where a version fails on test, then designing
+the next version to fix it, tunes that next version to the test songs just as surely as choosing
+p_self on them would, only indirectly. So the error analysis that motivates V1 is done on val, and
+test stays a set of songs nothing was ever decided from.
+
+## Figures
+
+All V0 figures come from the val split, as the rule above requires.
+
+- **Notebook:** open `notebooks/V0_figures.ipynb` with the `hmm-chordtracker` interpreter and run
+  all cells. The figures show inline, the next cell prints the report tables, the last one saves
+  the PNGs.
+- **Command line:**
+
+  ```bash
+  python scripts/plot_v0.py --p-self 0.95 --take 00_SS3-84-Bb_comp --take 04_Funk2-119-G_comp
+  ```
+
+  writes `figures/v0/val/{sweep, per_take, groups, durations, take_<song_id>}.png` and prints the
+  tables.
+
+The sweep, per-take and style figures read `results/v0/val/`; the take and duration figures
+recompute the val posteriors from the audio (about 80 s). Nothing is rescored, and `--p-self` must
+be the value already chosen on val. The `chordtracker` package must be importable: installed in
+the env (`pip install -e .`) or with `PYTHONPATH=src`.

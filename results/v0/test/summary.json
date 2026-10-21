@@ -1,0 +1,61 @@
+{
+  "version": "v0",
+  "split": "test",
+  "config": {
+    "version": "v0",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": 0.25,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "p_self": 0.9,
+      "p_self_grid": [
+        0.04,
+        0.5,
+        0.9,
+        0.95,
+        0.99,
+        0.995,
+        0.999
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    }
+  },
+  "rows": [
+    {
+      "system": "framewise",
+      "wcsr": 0.418263538922153,
+      "mean_changes_per_min": 287.96328475103087,
+      "scored_s": 1723.279476,
+      "reduced_s": 306.282648,
+      "excluded_s": 153.14132400000017,
+      "n_takes": 60
+    },
+    {
+      "system": 0.95,
+      "wcsr": 0.5365180723388514,
+      "mean_changes_per_min": 31.460618891516628,
+      "scored_s": 1723.279476,
+      "reduced_s": 306.282648,
+      "excluded_s": 153.14132400000017,
+      "n_takes": 60
+    }
+  ]
+}
