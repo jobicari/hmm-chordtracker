@@ -81,7 +81,7 @@ label policy), not numbers copied from a notebook.
 | Audio | mono, 22050 Hz, harmonic part only (`librosa.effects.harmonic`, margin 4) |
 | Chroma | `chroma_cqt`, hop 512 (23.2 ms), threshold 0.25, tuning estimated per file, per-frame max norm |
 | Templates | 12 major + 12 minor triads (1 on the chord's pitch classes) + N (all 0.25) |
-| Emission | P(chord \| frame) = softmax over the 25 states of beta * (templates @ chroma), beta = 1 |
+| Emission (posterior) | P(chord \| frame) = softmax over the 25 states of beta * (templates @ chroma), beta = 1 |
 | Framewise | argmax of each frame's posteriors |
 | Viterbi | `librosa.sequence.viterbi_discriminative` with `transition_loop(25, p_self)` |
 | Metric | `mir_eval.chord.majmin`, duration-weighted (WCSR), per take and pooled over the split |
