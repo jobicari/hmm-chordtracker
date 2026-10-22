@@ -1,9 +1,11 @@
-"""Component 3b: emission models, from frame features to chord posteriors.
+"""Component 3b: emission models, the HMM's evidence term, from frame features to chord posteriors.
 
-An emission model answers, for every frame t and chord state i: how likely is chord i given the
-features of frame t? The result is a (n_states, n_frames) matrix P(state | frame) whose columns
-sum to 1. That is the input librosa.sequence.viterbi_discriminative expects, and its argmax per
-column is the framewise decision.
+The textbook HMM emission is the likelihood P(frame | state). The models here output the other
+direction, the posterior P(state | frame): a (n_states, n_frames) matrix whose columns sum to 1,
+whose argmax per column is the framewise decision. librosa.sequence.viterbi_discriminative turns
+it back into an emission by dividing by a state prior p_state (Bayes: P(frame | state) is
+proportional to P(state | frame) / P(state)) before running Viterbi. V0 to V3 use a uniform
+p_state, so the division changes nothing; V4 divides by the train class frequencies.
 
 V0 has one model, TemplateEmission. Learned models (V4, V5) will be further subclasses.
 """

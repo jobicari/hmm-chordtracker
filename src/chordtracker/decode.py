@@ -1,6 +1,7 @@
 """Component 4: decoders, from chord posteriors to one chord state per frame.
 
-A decoder takes the (n_states, n_frames) posteriors of an emission model and returns a state path
+A decoder takes the (n_states, n_frames) posteriors P(state | frame) output by an emission model
+(see emission.py: the posterior, not the textbook likelihood) and returns a state path
 of shape (n_frames,): path[t] is the index of the chord chosen at frame t, so the labels are
 [model.labels[i] for i in path]. The two V0 decoders are the two systems the project compares:
 

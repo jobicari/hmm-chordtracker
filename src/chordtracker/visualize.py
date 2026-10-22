@@ -106,7 +106,7 @@ def plot_take(chroma: np.ndarray, posteriors: np.ndarray, labels: list[str], fra
     """Three panels sharing the time axis, top to bottom:
 
         chroma       (12, n_frames)  pitch class energy, C at the bottom
-        posteriors   (n_states, n_frames)  P(chord | frame) of the emission model, every row labelled
+        posteriors   (n_states, n_frames)  P(chord | frame) output by the emission model, every row labelled
         chords       one row per chord that appears anywhere; reference as a wide aqua band,
                      each decoded path as a thin bar on top (framewise blue, Viterbi orange)
 

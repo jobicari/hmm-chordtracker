@@ -132,6 +132,12 @@ the next version to fix it, tunes that next version to the test songs just as su
 p_self on them would, only indirectly. So the error analysis that motivates V1 is done on val, and
 test stays a set of songs nothing was ever decided from.
 
+**Terminology.** In the textbook HMM the emission is the likelihood P(evidence | chord). The
+emission models in this repo output the posterior P(chord | evidence) instead; the decoder
+(`viterbi_discriminative`) divides it by a state prior P(chord) to get a scaled likelihood,
+P(evidence | chord) / P(evidence), the standard hybrid neural-network/HMM convention. V0 to V3 use
+a uniform prior (the division changes nothing), V4 the train class frequencies.
+
 ## Figures
 
 All V0 figures come from the val split, as the rule above requires.

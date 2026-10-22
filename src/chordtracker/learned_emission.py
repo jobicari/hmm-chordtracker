@@ -10,7 +10,8 @@ be used at its counted strength. V4 learns P(chord | beat) from the train split 
 Training rows are the train beats, each in all 12 transpositions (chroma and label rolled together),
 so the model cannot learn train's keys. The decoder divides by the train class frequencies
 (viterbi_discriminative's p_state): train is 92% major, and without the division the model's
-"say major" habit costs 9 points on val (proposals/v4/ablation_1_emissions.md).
+"say major" habit costs 9 points on val (proposals/v4/ablation_1_emissions.md). The division is
+what turns the posterior P(c | x) into the scaled likelihood P(x | c) / P(x) that Viterbi needs.
 GuitarSet has no N labels, so there is no N class: V4 decodes 24 states.
 
     beat_features(treble, bass)            (12, n) + (12, n) -> (24, n)
