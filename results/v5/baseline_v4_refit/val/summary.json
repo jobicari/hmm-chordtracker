@@ -1,0 +1,126 @@
+{
+  "system": "v4 refit on v5 train",
+  "split": "val",
+  "rows": [
+    {
+      "dataset": "rwc",
+      "system": 0.2,
+      "wcsr": 0.6930207534856568,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.3,
+      "wcsr": 0.7014787684276106,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.4,
+      "wcsr": 0.6990933362215506,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.5,
+      "wcsr": 0.695742564686465,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.6,
+      "wcsr": 0.692580870722172,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.7,
+      "wcsr": 0.687984814977585,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.8,
+      "wcsr": 0.6854283712890832,
+      "n_takes": 20
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.2,
+      "wcsr": 0.7059011509386444,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.3,
+      "wcsr": 0.708832428277327,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.4,
+      "wcsr": 0.7153490411276441,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.5,
+      "wcsr": 0.7162808281113221,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.6,
+      "wcsr": 0.7175336091283819,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.7,
+      "wcsr": 0.7161200539965409,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.8,
+      "wcsr": 0.7109649058615507,
+      "n_takes": 60
+    },
+    {
+      "dataset": "mean",
+      "system": 0.2,
+      "wcsr": 0.6994609522121507
+    },
+    {
+      "dataset": "mean",
+      "system": 0.3,
+      "wcsr": 0.7051555983524688
+    },
+    {
+      "dataset": "mean",
+      "system": 0.4,
+      "wcsr": 0.7072211886745974
+    },
+    {
+      "dataset": "mean",
+      "system": 0.5,
+      "wcsr": 0.7060116963988936
+    },
+    {
+      "dataset": "mean",
+      "system": 0.6,
+      "wcsr": 0.705057239925277
+    },
+    {
+      "dataset": "mean",
+      "system": 0.7,
+      "wcsr": 0.7020524344870629
+    },
+    {
+      "dataset": "mean",
+      "system": 0.8,
+      "wcsr": 0.6981966385753169
+    }
+  ],
+  "chosen_p_self": 0.4
+}

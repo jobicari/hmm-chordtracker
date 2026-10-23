@@ -1,0 +1,29 @@
+# V5: CNN acoustic model on the log-CQT + V4's decoder (Billboard change prior, p_self from val).
+# On top of v2.yaml: audio (22,050 Hz, harmonic part), compression (99th pct + log1p(10 C)),
+# features.hop_length 512 and beats (V1 tracker on the full signal), used here for the beat edges only.
+version: v5
+base_config: v2.yaml
+
+cqt:                      # the CNN's input, features_v5
+  hop_length: 2048        # 93 ms, 10.8 frames/s
+  fmin: F#0               # 6 semitones below C1: room for the pitch-shift crop
+  bins_per_octave: 24
+  n_bins: 168             # 7 octaves; the network sees 144 (C1..B6)
+
+train:                    # train_v5.train
+  seed: 0
+  lr: 0.001               # Adam
+  batch: 256
+  max_epochs: 50
+  patience: 5             # stop after 5 epochs without a better mean val frame accuracy
+  dropout: 0.5
+
+transitions:              # V3 Billboard change prior, as V4
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  states: 24
+  p_self: 0.4             # chosen on val (mean of RWC-P and GuitarSet WCSR)
+  p_self_grid: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]

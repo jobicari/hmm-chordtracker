@@ -22,6 +22,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V2 | Better chroma on V1's beats: low-band floor (body resonance), log compression, bass chroma (E1..B3) in the template score | 50.1 % | 57.5 % (p_self 0.06) | [reports/v2.md](reports/v2.md) |
 | V3 | Learned chord-change prior (train labels, or 730 Billboard songs) vs V2's flat self-loop; null result on val, so V3 keeps the V2 decoder | 50.1 % | 57.5 % (V2 decoder, not rerun) | [reports/v3.md](reports/v3.md) |
 | V4 | Learned emission (logistic regression on V2 beat chroma, fitted on train, divided by the train class prior) with V3's Billboard change prior at full strength | n/a (Viterbi only) | 62.3 % (p_self 0.5) | [reports/v4.md](reports/v4.md) |
+| V5 | CNN acoustic model on log-CQT patches (pitch-shift augmentation, trained on RWC-P + GuitarSet train), V4's decoder | n/a (Viterbi only) | 72.9 % (p_self 0.4); RWC-P test 79.0 % | [reports/v5.md](reports/v5.md) |
 
 ## Layout
 
@@ -52,8 +53,17 @@ version's report has the question, the method, the val analysis and the limitati
 | `configs/v4.yaml` | V4: extends v2.yaml; emission C, prior division, Billboard tau, p_self |
 | `scripts/run_v4.py` | V4: fit on train + val sweep, or test once with the saved model |
 | `scripts/v4_cache_beats.py`, `scripts/v4_ablate_emissions.py`, `scripts/v4_ablate_priors.py` | V4: the val ablations behind reports/v4.md |
+| `src/chordtracker/features_v5.py` | V5: log-CQT (168 bins, hop 2048) and its cache in data/processed/v5_logcqt/ |
+| `src/chordtracker/data_v5.py` | V5: RWC-P and GuitarSet songs, maj/min targets, pitch-shifted patches |
+| `src/chordtracker/model_v5.py` | V5: the CNN acoustic model |
+| `src/chordtracker/train_v5.py` | V5: training loop, early stopping, save/load |
+| `src/chordtracker/acoustic_hmm.py` | V5: frame posteriors to beats, training prior, V4 decoder |
+| `configs/v5.yaml` | V5: extends v2.yaml; CQT, training, Billboard prior, p_self |
+| `scripts/run_v5.py` | V5: train + val sweep, or test once with the saved model |
+| `scripts/run_v5_baseline.py` | V5: V4 refitted on V5's training data (val baseline) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
-| `data/` | GuitarSet and everything generated from it (git-ignored) |
+| `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
+| `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |
 | `results/<version>/<split>/` | `summary.json` and `per_song.csv` of each run |
 | `figures/<version>/val/` | the saved report figures (val only) |
 | `reports/<version>.md` | each version's write-up: question, setup, val analysis, test score, findings |
@@ -63,6 +73,10 @@ version's report has the question, the method, the val analysis and the limitati
 Python 3.12 in the conda env `hmm-chordtracker`; dependencies are in `pyproject.toml` / `uv.lock`.
 GuitarSet goes in `data/guitarset/` (`annotation/` and `audio_mono-mic_comp/`). The manifest and
 `.lab` files in `data/processed/guitarset/` are generated from it by `chordtracker.data.data.prepare`.
+
+RWC Popular Music (RWC-P), 100 songs, audio and chord labels under CC BY-NC 4.0 (Zenodo 18656623,
+rwc-music/rwc-annotations), placed in `data/rwc/` (git-ignored). Used from V5; split by artist:
+`splits/rwc_p.json`.
 
 ## Tests
 
