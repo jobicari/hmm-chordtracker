@@ -1,0 +1,27 @@
+# V5.1: V5 with a 25th class, N (no chord), in the network, the prior and the change prior.
+# Everything else is configs/v5.yaml: same log-CQT (and cache), training, Billboard counts, p_self grid.
+version: v5.1
+base_config: v2.yaml
+
+cqt:                      # the CNN's input, features_v5; unchanged, so data/processed/v5_logcqt/ is reused
+  hop_length: 2048
+  fmin: F#0
+  bins_per_octave: 24
+  n_bins: 168
+
+train:                    # train_v5_1.train, same settings as V5
+  seed: 0
+  lr: 0.001
+  batch: 256
+  max_epochs: 50
+  patience: 5
+  dropout: 0.5
+
+transitions:              # V3 Billboard change prior, now with its N row and column
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  states: 25
+  p_self_grid: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]

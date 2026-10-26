@@ -23,6 +23,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V3 | Learned chord-change prior (train labels, or 730 Billboard songs) vs V2's flat self-loop; null result on val, so V3 keeps the V2 decoder | 50.1 % | 57.5 % (V2 decoder, not rerun) | [reports/v3.md](reports/v3.md) |
 | V4 | Learned emission (logistic regression on V2 beat chroma, fitted on train, divided by the train class prior) with V3's Billboard change prior at full strength | n/a (Viterbi only) | 62.3 % (p_self 0.5) | [reports/v4.md](reports/v4.md) |
 | V5 | CNN acoustic model on log-CQT patches (pitch-shift augmentation, trained on RWC-P + GuitarSet train), V4's decoder | n/a (Viterbi only) | 72.9 % (p_self 0.4); RWC-P test 79.0 % | [reports/v5.md](reports/v5.md) |
+| V5.1 | No-chord (N) class on V5 (25 states); null result on val (76.6% vs 76.98% mean, best decoder 76.7%), so V5.1 keeps V5 | n/a | 72.9 % (V5, not rerun); RWC-P 79.0 % | [reports/v5_1.md](reports/v5_1.md) |
 
 ## Layout
 
@@ -61,6 +62,13 @@ version's report has the question, the method, the val analysis and the limitati
 | `configs/v5.yaml` | V5: extends v2.yaml; CQT, training, Billboard prior, p_self |
 | `scripts/run_v5.py` | V5: train + val sweep, or test once with the saved model |
 | `scripts/run_v5_baseline.py` | V5: V4 refitted on V5's training data (val baseline) |
+| `src/chordtracker/data_v5_1.py` | V5.1: 25-class targets (N = 24), pitch shift keeps N |
+| `src/chordtracker/model_v5_1.py` | V5.1: V5's CNN with a 25th output |
+| `src/chordtracker/train_v5_1.py` | V5.1: V5's training loop with 25-class targets |
+| `src/chordtracker/acoustic_hmm_v5_1.py` | V5.1: 25-state prior, change prior with N, N seconds found / missed / false |
+| `configs/v5_1.yaml` | V5.1: V5's settings with 25 states |
+| `scripts/run_v5_1.py` | V5.1: train + val sweep |
+| `scripts/v5_1_ablate_decoder.py` | V5.1: decoder ablation on val (N transition rate x N prior) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |
