@@ -1,0 +1,29 @@
+# V5.2: V5 with weight decay (step 1) and, from step 2, AAM songs in the training data.
+# Everything else is configs/v5.yaml: same log-CQT (and cache), 24 classes, Billboard counts, p_self grid.
+version: v5.2
+base_config: v2.yaml
+
+cqt:                      # the CNN's input, features_v5; unchanged, so data/processed/v5_logcqt/ is reused
+  hop_length: 2048
+  fmin: F#0
+  bins_per_octave: 24
+  n_bins: 168
+
+train:                    # train_v5_2.train
+  seed: 0
+  lr: 0.001
+  batch: 256
+  max_epochs: 50
+  patience: 5
+  dropout: 0.5
+  weight_decay: 0.0       # step 1: 1e-4 to 1 tried, none beat V5 by more than the seed gap
+  aam_ratio: 0            # AAM frames per real frame each epoch (--aam-ratio); step 2: 1, step 3: 2 and -1 (all)
+
+transitions:              # V3 Billboard change prior, 24 x 24 as in V5
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  states: 24
+  p_self_grid: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]

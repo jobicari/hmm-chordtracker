@@ -24,6 +24,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V4 | Learned emission (logistic regression on V2 beat chroma, fitted on train, divided by the train class prior) with V3's Billboard change prior at full strength | n/a (Viterbi only) | 62.3 % (p_self 0.5) | [reports/v4.md](reports/v4.md) |
 | V5 | CNN acoustic model on log-CQT patches (pitch-shift augmentation, trained on RWC-P + GuitarSet train), V4's decoder | n/a (Viterbi only) | 72.9 % (p_self 0.4); RWC-P test 79.0 % | [reports/v5.md](reports/v5.md) |
 | V5.1 | No-chord (N) class on V5 (25 states); null result on val (76.6% vs 76.98% mean, best decoder 76.7%), so V5.1 keeps V5 | n/a | 72.9 % (V5, not rerun); RWC-P 79.0 % | [reports/v5_1.md](reports/v5_1.md) |
+| V5.2 | Weight decay (5 strengths) and AAM synthetic songs (1,000, three shares) on V5; null result on val (best AAM 76.99% vs 76.98% mean, seed gap 0.9), so V5.2 keeps V5 | n/a | 72.9 % (V5, not rerun); RWC-P 79.0 % | [reports/v5_2.md](reports/v5_2.md) |
 
 ## Layout
 
@@ -69,6 +70,12 @@ version's report has the question, the method, the val analysis and the limitati
 | `configs/v5_1.yaml` | V5.1: V5's settings with 25 states |
 | `scripts/run_v5_1.py` | V5.1: train + val sweep |
 | `scripts/v5_1_ablate_decoder.py` | V5.1: decoder ablation on val (N transition rate x N prior) |
+| `src/chordtracker/data_aam.py` | V5.2: AAM beat labels -> chord segments, AAM takes read from the log-CQT cache |
+| `src/chordtracker/train_v5_2.py` | V5.2: V5's training with AdamW weight decay and AAM frames mixed into each epoch |
+| `configs/v5_2.yaml` | V5.2: V5's settings + weight_decay and aam_ratio (both 0) |
+| `scripts/fetch_aam.py` | V5.2: AAM mixes read one by one from the Zenodo zip, CRC-checked, cached, deleted |
+| `scripts/v5_2_check_aam.py` | V5.2: AAM data check (label shares, template accuracy by label shift) |
+| `scripts/run_v5_2.py` | V5.2: train + val sweep, with --weight-decay, --seed, --aam-ratio, --aam-songs |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |
