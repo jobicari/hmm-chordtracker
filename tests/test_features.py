@@ -1,6 +1,6 @@
 """Tests for chordtracker.features (component 2): load_audio and chroma.
 
-Interface agreed in the thread:
+Interface:
     load_audio(path, cfg) -> (y, sr)    mono, resampled to cfg["audio"]["sr"], harmonic part only
     chroma(y, sr, cfg)    -> (12, T)    chroma_cqt with the settings in cfg["features"]
 

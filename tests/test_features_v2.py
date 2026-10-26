@@ -39,7 +39,7 @@ def test_median_floor_removes_a_constant_bin_and_keeps_a_short_note():
 
 
 def test_median_floor_removes_a_note_held_for_most_of_the_take():
-    """The limit Jo asked about: a note in more than half of the frames is in its bin's median."""
+    """The floor's limit: a note in more than half of the frames is in its bin's median."""
     C = np.zeros((252, 10))
     C[bin_of("E3"), :7] = 1.0
     assert np.allclose(features_v2.remove_floor(C, FREQS, FLOOR)[bin_of("E3")], 0.0)
