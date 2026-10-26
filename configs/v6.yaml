@@ -1,0 +1,29 @@
+# V6: CRNN acoustic model (V5's conv front end + a GRU over the frames) on V5's log-CQT, V5's data,
+# and V5's decoder (Billboard change prior, p_self from val). Everything not under train is configs/v5.yaml.
+version: v6
+base_config: v2.yaml
+
+cqt:                      # the CRNN's input, features_v5; unchanged, so data/processed/v5_logcqt/ is reused
+  hop_length: 2048
+  fmin: F#0
+  bins_per_octave: 24
+  n_bins: 168
+
+train:                    # train_v6.train
+  seed: 0
+  lr: 0.001               # Adam
+  max_epochs: 50
+  patience: 5             # stop after 5 epochs without a better mean val frame accuracy
+  dropout: 0.5
+  excerpt_frames: 128     # 11.9 s per training excerpt
+  batch_excerpts: 8       # 8 x 128 = 1,024 frames per step
+  bidirectional: true     # false: causal, every frame sees only the past (and its own 15-frame window)
+
+transitions:              # V3 Billboard change prior, 24 x 24 as in V5
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  states: 24
+  p_self_grid: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
