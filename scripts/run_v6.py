@@ -3,6 +3,7 @@
     python scripts/run_v6.py --split val --train                       # bidirectional, seed 0 -> results/v6/bidir_seed0
     python scripts/run_v6.py --split val --train --seed 1              # -> results/v6/bidir_seed1
     python scripts/run_v6.py --split val --train --causal              # -> results/v6/causal_seed0
+    python scripts/run_v6.py --split val --train --batch-excerpts 2 --out results/v6/bidir_b2_seed0
     python scripts/run_v6.py --split val                               # reuse the saved model, decode again
     python scripts/run_v6.py --split test --freeze --decoder hmm --p-self 0.4    # once, after the freeze
     python scripts/run_v6.py --split val --train --limit 2 --max-epochs 1 --out <dir>   # dry run
@@ -40,6 +41,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--train", action="store_true", help="train the CRNN (val only); else load the saved one")
     parser.add_argument("--seed", type=int, help="override train.seed")
     parser.add_argument("--causal", action="store_true", help="a forward-only GRU instead of a bidirectional one")
+    parser.add_argument("--batch-excerpts", type=int, help="override train.batch_excerpts (excerpts per Adam step)")
     parser.add_argument("--freeze", action="store_true", help="required for --split test: the val choices are final")
     parser.add_argument("--decoder", choices=["hmm", ARGMAX], help="test only: the decoder chosen on val")
     parser.add_argument("--p-self", type=float, help="test only, with --decoder hmm: the p_self chosen on val")
@@ -102,6 +104,8 @@ def main(argv=None) -> None:
         t["seed"] = args.seed
     if args.causal:
         t["bidirectional"] = False
+    if args.batch_excerpts:
+        t["batch_excerpts"] = args.batch_excerpts
     out = args.out or paths.REPO_ROOT / "results" / cfg["version"] / (
         f"{'bidir' if t['bidirectional'] else 'causal'}_seed{t['seed']}")
     out.mkdir(parents=True, exist_ok=True)
