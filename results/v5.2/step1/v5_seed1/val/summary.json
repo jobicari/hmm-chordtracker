@@ -1,0 +1,260 @@
+{
+  "version": "v5.2",
+  "split": "val",
+  "config": {
+    "version": "v5.2",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "states": 24,
+      "p_self_grid": [
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    },
+    "base_config": "v2.yaml",
+    "cqt": {
+      "hop_length": 2048,
+      "fmin": "F#0",
+      "bins_per_octave": 24,
+      "n_bins": 168
+    },
+    "train": {
+      "seed": 1,
+      "lr": 0.001,
+      "batch": 256,
+      "max_epochs": 50,
+      "patience": 5,
+      "dropout": 0.5,
+      "weight_decay": 0.0
+    },
+    "transitions": {
+      "counts": "results/v3/billboard_counts.json",
+      "alpha": 1,
+      "tau": 1
+    }
+  },
+  "rows": [
+    {
+      "dataset": "rwc",
+      "system": 0.2,
+      "wcsr": 0.7815586379190295,
+      "mean_changes_per_min": 31.823159449731833,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.3,
+      "wcsr": 0.7827955343924959,
+      "mean_changes_per_min": 29.15687112393374,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.4,
+      "wcsr": 0.7807432122294389,
+      "mean_changes_per_min": 27.825420178052706,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.5,
+      "wcsr": 0.7786492871191323,
+      "mean_changes_per_min": 26.999981001806965,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.6,
+      "wcsr": 0.775048304145952,
+      "mean_changes_per_min": 26.082545475561023,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.7,
+      "wcsr": 0.769016669144792,
+      "mean_changes_per_min": 24.93794162162695,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "rwc",
+      "system": 0.8,
+      "wcsr": 0.765714341178787,
+      "mean_changes_per_min": 24.054936724604552,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.2,
+      "wcsr": 0.7366048553950225,
+      "mean_changes_per_min": 30.83142907435764,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.3,
+      "wcsr": 0.7385502874506995,
+      "mean_changes_per_min": 28.86496677731247,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.4,
+      "wcsr": 0.7385407284202666,
+      "mean_changes_per_min": 28.15834717077173,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.5,
+      "wcsr": 0.7368781539200142,
+      "mean_changes_per_min": 27.316545644166624,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.6,
+      "wcsr": 0.7369434845558155,
+      "mean_changes_per_min": 26.630498907944546,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.7,
+      "wcsr": 0.7347878678666304,
+      "mean_changes_per_min": 26.04524028299976,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "guitarset",
+      "system": 0.8,
+      "wcsr": 0.732106686500905,
+      "mean_changes_per_min": 25.365705392029685,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "dataset": "mean",
+      "system": 0.2,
+      "wcsr": 0.759081746657026
+    },
+    {
+      "dataset": "mean",
+      "system": 0.3,
+      "wcsr": 0.7606729109215977
+    },
+    {
+      "dataset": "mean",
+      "system": 0.4,
+      "wcsr": 0.7596419703248527
+    },
+    {
+      "dataset": "mean",
+      "system": 0.5,
+      "wcsr": 0.7577637205195733
+    },
+    {
+      "dataset": "mean",
+      "system": 0.6,
+      "wcsr": 0.7559958943508838
+    },
+    {
+      "dataset": "mean",
+      "system": 0.7,
+      "wcsr": 0.7519022685057113
+    },
+    {
+      "dataset": "mean",
+      "system": 0.8,
+      "wcsr": 0.748910513839846
+    }
+  ],
+  "chosen_p_self": 0.3
+}
