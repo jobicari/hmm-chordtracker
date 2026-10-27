@@ -1,0 +1,41 @@
+# V7: decoders that only use past frames, on V6's causal CRNN (results/v6/causal_seed*, not retrained).
+# One HMM step per CRNN frame (hop 2048 = 93 ms), no beats. Everything not listed here is configs/v6.yaml.
+version: v7
+base_config: v2.yaml
+
+cqt:                      # V6's input, unchanged (data/processed/v5_logcqt/ is reused)
+  hop_length: 2048
+  fmin: F#0
+  bins_per_octave: 24
+  n_bins: 168
+
+train:                    # only what train_v6.load needs: V7 trains nothing
+  bidirectional: false
+  dropout: 0.5
+
+transitions:              # V3 Billboard change prior, as V5 and V6
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  # per frame: a chord lasts 1 / (1 - p_self) frames. Correction 1: 0.1 and 0.3 added after the first
+  # val run, where lag 0 and 1 were best at the grid's lower edge (0.5).
+  p_self_grid: [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98]
+  lags: [0, 1, 2, 4, 8, 16, 32]                      # fixed-lag Viterbi, frames (0 to 3.0 s)
+  beat_p_self_grid: [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]   # beat-viterbi-v6, V6's grid (reference only)
+
+# How far the input of a frame already reaches past it, before any decoder (reports/v7.md, "How far V6's causal system looks ahead"):
+# the centred 15-frame window (7 frames, 0.65 s) + the centred CQT kernel of C1 (0.53 s) + the
+# harmonic-percussive median filter (0.39 s) = 1.57 s, rounded up to whole frames.
+front_end_lookahead_frames: 17
+
+frozen:                   # chosen on val (two-seed mean of the mean of RWC-P and GuitarSet), for the single test run
+  run: results/v6/causal_seed1          # the better causal seed on val, as V6
+  p_self:                               # best screen WCSR per system (whole-song systems: decision WCSR)
+    beat-viterbi-v6: 0.4
+    forward-filter: 0.1
+    offline-frame-viterbi: 0.98
+    fixed-lag-viterbi: {0: 0.1, 1: 0.3, 2: 0.7, 4: 0.95, 8: 0.98, 16: 0.98, 32: 0.98}   # lag (frames): p_self
+  # Live operating point: frame-argmax, lag 0 (best screen WCSR). Smallest lag within 0.5 points of
+  # offline-frame-viterbi (decision WCSR): 4 frames (0.37 s).

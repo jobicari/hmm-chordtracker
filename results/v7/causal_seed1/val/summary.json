@@ -1,0 +1,2631 @@
+{
+  "version": "v7",
+  "split": "val",
+  "run": "results/v6/causal_seed1",
+  "config": {
+    "version": "v7",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "p_self_grid": [
+        0.1,
+        0.3,
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95,
+        0.98
+      ],
+      "lags": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ],
+      "beat_p_self_grid": [
+        0.2,
+        0.3,
+        0.4,
+        0.5,
+        0.6,
+        0.7,
+        0.8
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    },
+    "base_config": "v2.yaml",
+    "cqt": {
+      "hop_length": 2048,
+      "fmin": "F#0",
+      "bins_per_octave": 24,
+      "n_bins": 168
+    },
+    "train": {
+      "bidirectional": false,
+      "dropout": 0.5
+    },
+    "transitions": {
+      "counts": "results/v3/billboard_counts.json",
+      "alpha": 1,
+      "tau": 1
+    },
+    "front_end_lookahead_frames": 17
+  },
+  "rows": [
+    {
+      "dataset": "rwc",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 48.06554506129059,
+      "decision": 0.7771829535076538,
+      "screen": 0.7771829535076538,
+      "wall": 0.28659536674545366
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 46.95392401077031,
+      "decision": 0.7740770806022018,
+      "screen": 0.7740770806022018,
+      "wall": 0.2852838283606106
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 42.404999100291036,
+      "decision": 0.7697865204866211,
+      "screen": 0.7697865204866211,
+      "wall": 0.27765490917774255
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 40.11896691779145,
+      "decision": 0.7662442958544357,
+      "screen": 0.7662442958544357,
+      "wall": 0.27264394696443756
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.1457740309731,
+      "decision": 0.762804211742621,
+      "screen": 0.762804211742621,
+      "wall": 0.2680908767163001
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.511647481509115,
+      "decision": 0.760061551070062,
+      "screen": 0.760061551070062,
+      "wall": 0.26624594759947556
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.56187566676577,
+      "decision": 0.7550713352214219,
+      "screen": 0.7550713352214219,
+      "wall": 0.2632760907172914
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.77929410956973,
+      "decision": 0.7503842450625646,
+      "screen": 0.7503842450625646,
+      "wall": 0.2603888739104259
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.260452033815845,
+      "decision": 0.7441908106637674,
+      "screen": 0.7441908106637674,
+      "wall": 0.257534989643528
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 51.6090918226344,
+      "decision": 0.7695725133493964,
+      "screen": 0.7695725133493964,
+      "wall": 0.28421641149288257
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 61.9449204278071,
+      "decision": 0.7649714459909391,
+      "screen": 0.7501322229015096,
+      "wall": 0.2637572452663512
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 64.01631231811209,
+      "decision": 0.766038051715731,
+      "screen": 0.7234656926612633,
+      "wall": 0.2509192118600005
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 67.73925263444235,
+      "decision": 0.7660655046122239,
+      "screen": 0.6563183422842981,
+      "wall": 0.22610355336172094
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 70.71013543731813,
+      "decision": 0.7663791147180918,
+      "screen": 0.5163651449777558,
+      "wall": 0.1961895054601195
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 72.30800008812955,
+      "decision": 0.7663947819159682,
+      "screen": 0.30313387435195793,
+      "wall": 0.16536773325004311
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 72.77014281326872,
+      "decision": 0.7664779989846342,
+      "screen": 0.16623282049291008,
+      "wall": 0.18259198729135587
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.49666652779717,
+      "decision": 0.7681861024590043,
+      "screen": 0.7681861024590043,
+      "wall": 0.2752547301188283
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.237104669557354,
+      "decision": 0.7732096737038625,
+      "screen": 0.7585108585932232,
+      "wall": 0.2659556950579189
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.673518258863275,
+      "decision": 0.7741343974756624,
+      "screen": 0.731157713888564,
+      "wall": 0.25128320780832886
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.70120001099866,
+      "decision": 0.7748687362991382,
+      "screen": 0.6641377556175762,
+      "wall": 0.22720791812033667
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.64141582729317,
+      "decision": 0.7758663237660218,
+      "screen": 0.5235909591359392,
+      "wall": 0.19781380979331
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.0290074075287,
+      "decision": 0.776089157479292,
+      "screen": 0.30701663527690787,
+      "wall": 0.16715117905289043
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.017017622825264,
+      "decision": 0.7760566584305946,
+      "screen": 0.16801331987110332,
+      "wall": 0.18446054875541468
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.69583572755479,
+      "decision": 0.7653504610354614,
+      "screen": 0.7653504610354614,
+      "wall": 0.27047741973613676
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.630594360196014,
+      "decision": 0.7741541681323874,
+      "screen": 0.7590615631889539,
+      "wall": 0.2655168525077924
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.20618520188957,
+      "decision": 0.7757970347885239,
+      "screen": 0.7327686869326843,
+      "wall": 0.252136087781736
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.47563405528512,
+      "decision": 0.7766161271286192,
+      "screen": 0.6664507462073125,
+      "wall": 0.228313237254392
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.751978810285806,
+      "decision": 0.7775853840189889,
+      "screen": 0.526139932893845,
+      "wall": 0.19899182551786185
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.864313801821744,
+      "decision": 0.7778756655117962,
+      "screen": 0.3087583013775014,
+      "wall": 0.16828303480174994
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.84033423241488,
+      "decision": 0.777588803314071,
+      "screen": 0.1692775397223095,
+      "wall": 0.1856504822369195
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.57523436068857,
+      "decision": 0.7609338146676846,
+      "screen": 0.7609338146676846,
+      "wall": 0.2665971150962457
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.53829655755382,
+      "decision": 0.7735279210890084,
+      "screen": 0.7573641940256745,
+      "wall": 0.2645896343571825
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.3512076949852,
+      "decision": 0.77654484711774,
+      "screen": 0.7333816778586613,
+      "wall": 0.25269855979108274
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.66284601365506,
+      "decision": 0.7777262242348726,
+      "screen": 0.6680156740649099,
+      "wall": 0.22922029365243402
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.87744812072462,
+      "decision": 0.7783225057179483,
+      "screen": 0.5276021071756404,
+      "wall": 0.19986700709680477
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.851295790521846,
+      "decision": 0.7787973722585235,
+      "screen": 0.3100939180604229,
+      "wall": 0.1685461127851537
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.72535379314372,
+      "decision": 0.7786977484652968,
+      "screen": 0.16956851096596676,
+      "wall": 0.18598700192458772
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.09292139136297,
+      "decision": 0.7569834789840278,
+      "screen": 0.7569834789840278,
+      "wall": 0.2641536097287905
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.067884572042885,
+      "decision": 0.772344726138082,
+      "screen": 0.7550494272513122,
+      "wall": 0.2629989993127176
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.957087524515075,
+      "decision": 0.7763159493872407,
+      "screen": 0.7331795783200559,
+      "wall": 0.2525168216162998
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.46631995136285,
+      "decision": 0.777586914879859,
+      "screen": 0.6683721269426404,
+      "wall": 0.22947252609099392
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.53402043935863,
+      "decision": 0.7783475901989676,
+      "screen": 0.5286578099610036,
+      "wall": 0.20027623200955305
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.32231440493706,
+      "decision": 0.7787392396708769,
+      "screen": 0.3107906928900796,
+      "wall": 0.16893983100169613
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.172392838152064,
+      "decision": 0.7786396158776502,
+      "screen": 0.16999416749119314,
+      "wall": 0.18636428802073535
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.538004439827745,
+      "decision": 0.7519773841362565,
+      "screen": 0.7519773841362565,
+      "wall": 0.26126385943353075
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.51296762050766,
+      "decision": 0.7705426154131197,
+      "screen": 0.7513744997363555,
+      "wall": 0.2609415598891209
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.430704035025165,
+      "decision": 0.7762007005532219,
+      "screen": 0.7327124763017505,
+      "wall": 0.25222456991469505
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.16828441858549,
+      "decision": 0.7776678188959694,
+      "screen": 0.6689204615991474,
+      "wall": 0.22980577733483357
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.22116383021483,
+      "decision": 0.7784253334495854,
+      "screen": 0.5299038067776054,
+      "wall": 0.20078591014346472
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 31.63413409529817,
+      "decision": 0.7785831106550426,
+      "screen": 0.31173983526413274,
+      "wall": 0.16882696175731776
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 31.43704580205292,
+      "decision": 0.7784418783274828,
+      "screen": 0.1700447417707415,
+      "wall": 0.18647258042792042
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.26748038339271,
+      "decision": 0.7465600250902711,
+      "screen": 0.7465600250902711,
+      "wall": 0.25861208486357184
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.242443564072616,
+      "decision": 0.7677385598040856,
+      "screen": 0.7465678363408754,
+      "wall": 0.25859128059640535
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.16687303759014,
+      "decision": 0.7748820513348746,
+      "screen": 0.7310319014034581,
+      "wall": 0.2516809472012179
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.94612128880196,
+      "decision": 0.7771508094927149,
+      "screen": 0.6687453954178582,
+      "wall": 0.23011241069720045
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.011199807530396,
+      "decision": 0.7786743787109853,
+      "screen": 0.5310449873687723,
+      "wall": 0.20151019120086558
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 31.14107670925077,
+      "decision": 0.7790854265366941,
+      "screen": 0.3128790258377518,
+      "wall": 0.16924328480565326
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 30.819804068944062,
+      "decision": 0.7786379560059437,
+      "screen": 0.17056857909791007,
+      "wall": 0.18681490966656156
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.51331452537627,
+      "decision": 0.7396933207219651,
+      "screen": 0.7396933207219651,
+      "wall": 0.25589971837340736
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.48827770605618,
+      "decision": 0.7634133033922545,
+      "screen": 0.7398751386396668,
+      "wall": 0.25587891410624086
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.453211127474404,
+      "decision": 0.7726847601012514,
+      "screen": 0.728092796336596,
+      "wall": 0.25085995931607713
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.25933144048038,
+      "decision": 0.7764748942931428,
+      "screen": 0.6679056974060177,
+      "wall": 0.2304570915900648
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.61685497803465,
+      "decision": 0.77862559483773,
+      "screen": 0.531371977015795,
+      "wall": 0.20158997475278237
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 30.718456939175617,
+      "decision": 0.779896312467009,
+      "screen": 0.3146419238713554,
+      "wall": 0.1689761683767358
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 30.295723552189703,
+      "decision": 0.779366834217205,
+      "screen": 0.17046660060296,
+      "wall": 0.1871079171481844
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.1,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 72.87003750761176,
+      "decision": 0.7665612160533001,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.3,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.017017622825264,
+      "decision": 0.7760566584305946,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.5,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.84033423241488,
+      "decision": 0.777588803314071,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.7,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.72535379314372,
+      "decision": 0.7786977484652968,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.8,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.172392838152064,
+      "decision": 0.7786396158776502,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.9,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 31.43704580205292,
+      "decision": 0.7784418783274828,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.95,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 30.819804068944062,
+      "decision": 0.7786379560059437,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 30.295723552189703,
+      "decision": 0.779366834217205,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.2,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 30.865642949199717,
+      "decision": 0.7747902702830861,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.3,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 28.82199230663313,
+      "decision": 0.7760377253284729,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.4,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 27.651220130286838,
+      "decision": 0.7751473026937472,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.5,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 26.7916531537035,
+      "decision": 0.7726184353254911,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.6,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 26.02096635072442,
+      "decision": 0.7709204556463639,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.7,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 25.33563927868595,
+      "decision": 0.7662735488076386,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.8,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 24.716505836152972,
+      "decision": 0.7633147873653044,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 43.61763372198805,
+      "decision": 0.7632302671721886,
+      "screen": 0.7632302671721886,
+      "wall": 0.21643220880255773
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 41.62248680169753,
+      "decision": 0.7644937606118243,
+      "screen": 0.7644937606118243,
+      "wall": 0.21883657143572802
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 37.627842657046536,
+      "decision": 0.7655644967938786,
+      "screen": 0.7655644967938786,
+      "wall": 0.21059835973528984
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 36.36202648782923,
+      "decision": 0.7635904281814787,
+      "screen": 0.7635904281814787,
+      "wall": 0.20397851569500552
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.15349757273425,
+      "decision": 0.7591125460410795,
+      "screen": 0.7591125460410795,
+      "wall": 0.19774868979666826
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 34.33357725324541,
+      "decision": 0.7562982927614768,
+      "screen": 0.7562982927614768,
+      "wall": 0.19415225524069651
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.70327410275685,
+      "decision": 0.7527153960742194,
+      "screen": 0.7527153960742194,
+      "wall": 0.18992630898326981
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.32534495901345,
+      "decision": 0.7482562161023746,
+      "screen": 0.7482562161023746,
+      "wall": 0.1859709959779155
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.86486153662961,
+      "decision": 0.7425117964916629,
+      "screen": 0.7425117964916629,
+      "wall": 0.1803676285358938
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 45.01913175808307,
+      "decision": 0.7642197763451988,
+      "screen": 0.7642197763451988,
+      "wall": 0.2199175394141816
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 54.28384467428001,
+      "decision": 0.7625191500798074,
+      "screen": 0.7491397541332331,
+      "wall": 0.19339290866022185
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 58.10424447443816,
+      "decision": 0.7629030048261082,
+      "screen": 0.7266003744799171,
+      "wall": 0.17301978539836255
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 60.95132149169272,
+      "decision": 0.7639309399576358,
+      "screen": 0.6657723116953184,
+      "wall": 0.13120478557614665
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 62.25285259744275,
+      "decision": 0.7648846216408056,
+      "screen": 0.5282661369952123,
+      "wall": 0.07965113338895283
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 62.530506103712554,
+      "decision": 0.7650862883924576,
+      "screen": 0.2549050644257407,
+      "wall": 0.07400599198821181
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 62.73470455954107,
+      "decision": 0.7651084419833339,
+      "screen": 0.0701036038273676,
+      "wall": 0.09380141902250938
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.79318443368579,
+      "decision": 0.7650024091522768,
+      "screen": 0.7650024091522768,
+      "wall": 0.20702995822179407
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.45406797676914,
+      "decision": 0.7677816990556398,
+      "screen": 0.7551687309098238,
+      "wall": 0.19209404581417908
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.010509146761244,
+      "decision": 0.7688834316236933,
+      "screen": 0.7317645668438649,
+      "wall": 0.17135031174488324
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 34.61200998759226,
+      "decision": 0.7699134279555891,
+      "screen": 0.6697304904438628,
+      "wall": 0.1303243754623467
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.442291047036875,
+      "decision": 0.7702109067390162,
+      "screen": 0.530096948943008,
+      "wall": 0.07899904855452095
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.14901428054456,
+      "decision": 0.7699256271915869,
+      "screen": 0.2540706031409416,
+      "wall": 0.0736759607842535
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.14901428054456,
+      "decision": 0.7699256271915869,
+      "screen": 0.06982455478101696,
+      "wall": 0.09378951593366075
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 34.487240548927566,
+      "decision": 0.7609293999658847,
+      "screen": 0.7609293999658847,
+      "wall": 0.20008568649847927
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 34.32054687392076,
+      "decision": 0.7668770071014831,
+      "screen": 0.7539520204529304,
+      "wall": 0.19042734251106105
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.98742142795163,
+      "decision": 0.7685034376074684,
+      "screen": 0.731454388291547,
+      "wall": 0.17077360959084176
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.86188554853643,
+      "decision": 0.7703644612267992,
+      "screen": 0.6706914158284367,
+      "wall": 0.13057017974850682
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.365559733537,
+      "decision": 0.7704594065211903,
+      "screen": 0.5309184806678968,
+      "wall": 0.0791996461579222
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.88762131827923,
+      "decision": 0.7696224835644074,
+      "screen": 0.25463979330040615,
+      "wall": 0.07401824488137487
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.88762131827923,
+      "decision": 0.7696224835644074,
+      "screen": 0.07011668947728802,
+      "wall": 0.09476345071927232
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.753537104369066,
+      "decision": 0.7557970379531274,
+      "screen": 0.7557970379531274,
+      "wall": 0.19324847939953527
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.61236743724408,
+      "decision": 0.7663524430683285,
+      "screen": 0.7520737302749007,
+      "wall": 0.18765170331267095
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.35451393174622,
+      "decision": 0.7685207015754417,
+      "screen": 0.7309935942499813,
+      "wall": 0.1700520214235494
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.16438524725543,
+      "decision": 0.7711484428605371,
+      "screen": 0.6712356959969145,
+      "wall": 0.13056947739365954
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.694355496614182,
+      "decision": 0.7719872056355087,
+      "screen": 0.5321963641389614,
+      "wall": 0.07920003801623128
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.706688147759102,
+      "decision": 0.7714620111989189,
+      "screen": 0.2560142483181255,
+      "wall": 0.0744888230502323
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.706688147759102,
+      "decision": 0.7716626088023202,
+      "screen": 0.07052835653646435,
+      "wall": 0.09441411448264272
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.567048382721865,
+      "decision": 0.7532151927948609,
+      "screen": 0.7532151927948609,
+      "wall": 0.1907452532525153
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.42587871559688,
+      "decision": 0.7656250664664361,
+      "screen": 0.7504091334829178,
+      "wall": 0.18653348990557403
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.22480404937438,
+      "decision": 0.7680522643709456,
+      "screen": 0.7304692586561631,
+      "wall": 0.16985870601023798
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.16151835281165,
+      "decision": 0.771374069039403,
+      "screen": 0.671288124637835,
+      "wall": 0.13056947739365954
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.60267219347968,
+      "decision": 0.7728533258146636,
+      "screen": 0.5328483063500155,
+      "wall": 0.07965129037396326
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.449611424323802,
+      "decision": 0.7729048494878525,
+      "screen": 0.2565964516986017,
+      "wall": 0.07483986885618449
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.421480763028217,
+      "decision": 0.7728045506861518,
+      "screen": 0.07087940234241653,
+      "wall": 0.09441411448264272
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.23626653041205,
+      "decision": 0.7491400407414666,
+      "screen": 0.7491400407414666,
+      "wall": 0.18655486161880677
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.12374753142065,
+      "decision": 0.7640629313772054,
+      "screen": 0.7472084789167198,
+      "wall": 0.18373016413511567
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.922672865198145,
+      "decision": 0.7678241059326104,
+      "screen": 0.7295820602136801,
+      "wall": 0.16906529168068454
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.88361041723244,
+      "decision": 0.7718983851709443,
+      "screen": 0.6713776493855991,
+      "wall": 0.1304727279770216
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.270062955823278,
+      "decision": 0.7740010872475173,
+      "screen": 0.5331650068159975,
+      "wall": 0.07965129037396326
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.927644767458283,
+      "decision": 0.7746042543300594,
+      "screen": 0.25654976473310703,
+      "wall": 0.07483986885618449
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.67603939435269,
+      "decision": 0.7753687313974833,
+      "screen": 0.07087940234241653,
+      "wall": 0.0939126204741396
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.74218051743726,
+      "decision": 0.7444785662150553,
+      "screen": 0.7444785662150553,
+      "wall": 0.18240189303885454
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.629661518445864,
+      "decision": 0.7617610307492017,
+      "screen": 0.7431432955945289,
+      "wall": 0.18051210700200696
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.48224189574345,
+      "decision": 0.7676375896100238,
+      "screen": 0.7283145215306589,
+      "wall": 0.1683593953906994
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.38066965435608,
+      "decision": 0.771848235770094,
+      "screen": 0.6711114512640166,
+      "wall": 0.13027213037362037
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.17994216335658,
+      "decision": 0.7740095107796913,
+      "screen": 0.5331655026755446,
+      "wall": 0.07960114097311295
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.71406267198656,
+      "decision": 0.7745948868639712,
+      "screen": 0.25736488706092825,
+      "wall": 0.07573919066777982
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.434326637585382,
+      "decision": 0.7753092145305447,
+      "screen": 0.0723303675633653,
+      "wall": 0.09410710301558342
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.6025726779544,
+      "decision": 0.7377848677128912,
+      "screen": 0.7377848677128912,
+      "wall": 0.1779274217457982
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.490053678962994,
+      "decision": 0.7591156266100513,
+      "screen": 0.736631431493334,
+      "wall": 0.17610043433015277
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.369460317902536,
+      "decision": 0.7665012577998445,
+      "screen": 0.7253366566364048,
+      "wall": 0.16741117201925118
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.258507974526566,
+      "decision": 0.771887913858509,
+      "screen": 0.670582019468739,
+      "wall": 0.13061640698993823
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.289592428554435,
+      "decision": 0.7752727640103084,
+      "screen": 0.5338094883805148,
+      "wall": 0.07999156212597879
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.23403158816671,
+      "decision": 0.7768695516437687,
+      "screen": 0.2581024023779648,
+      "wall": 0.07573919066777982
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 28.984768122359284,
+      "decision": 0.7775337299094918,
+      "screen": 0.0723303675633653,
+      "wall": 0.09410710301558342
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.1,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 62.73470455954107,
+      "decision": 0.7651084419833339,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.3,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.14901428054456,
+      "decision": 0.7699256271915869,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.5,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.88762131827923,
+      "decision": 0.7696224835644074,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.7,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.706688147759102,
+      "decision": 0.7716626088023202,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.8,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.421480763028217,
+      "decision": 0.7728045506861518,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.9,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.67603939435269,
+      "decision": 0.7753687313974833,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.95,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.434326637585382,
+      "decision": 0.7753092145305447,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 28.984768122359284,
+      "decision": 0.7775337299094918,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.2,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.693758068543186,
+      "decision": 0.7594086849968237,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.3,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 28.45396892396936,
+      "decision": 0.7639959789800583,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.4,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 27.828863165478086,
+      "decision": 0.7661438546256036,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.5,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 27.154537092127608,
+      "decision": 0.7666026142482462,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.6,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 26.788591522950092,
+      "decision": 0.7653465285338168,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.7,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 26.352326867285193,
+      "decision": 0.7624623639922185,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.8,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 25.572790076849234,
+      "decision": 0.7560426118679261,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "decision": 0.7702066103399212,
+      "screen": 0.7702066103399212,
+      "wall": 0.2515137877740057
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "decision": 0.769285420607013,
+      "screen": 0.769285420607013,
+      "wall": 0.2520601998981693
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.3,
+      "lag": 0,
+      "decision": 0.7676755086402498,
+      "screen": 0.7676755086402498,
+      "wall": 0.2441266344565162
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.5,
+      "lag": 0,
+      "decision": 0.7649173620179572,
+      "screen": 0.7649173620179572,
+      "wall": 0.23831123132972154
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.7,
+      "lag": 0,
+      "decision": 0.7609583788918503,
+      "screen": 0.7609583788918503,
+      "wall": 0.2329197832564842
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.8,
+      "lag": 0,
+      "decision": 0.7581799219157694,
+      "screen": 0.7581799219157694,
+      "wall": 0.23019910142008604
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.9,
+      "lag": 0,
+      "decision": 0.7538933656478206,
+      "screen": 0.7538933656478206,
+      "wall": 0.2266011998502806
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.95,
+      "lag": 0,
+      "decision": 0.7493202305824695,
+      "screen": 0.7493202305824695,
+      "wall": 0.2231799349441707
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.98,
+      "lag": 0,
+      "decision": 0.7433513035777151,
+      "screen": 0.7433513035777151,
+      "wall": 0.2189513090897109
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "decision": 0.7668961448472975,
+      "screen": 0.7668961448472975,
+      "wall": 0.25206697545353207
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 1,
+      "decision": 0.7637452980353733,
+      "screen": 0.7496359885173713,
+      "wall": 0.22857507696328652
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 2,
+      "decision": 0.7644705282709197,
+      "screen": 0.7250330335705901,
+      "wall": 0.21196949862918152
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 4,
+      "decision": 0.7649982222849299,
+      "screen": 0.6610453269898082,
+      "wall": 0.1786541694689338
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 8,
+      "decision": 0.7656318681794487,
+      "screen": 0.522315640986484,
+      "wall": 0.13792031942453617
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 16,
+      "decision": 0.7657405351542129,
+      "screen": 0.2790194693888493,
+      "wall": 0.11968686261912746
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "decision": 0.7657932204839841,
+      "screen": 0.11816821216013884,
+      "wall": 0.1381967031569326
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 0,
+      "decision": 0.7665942558056406,
+      "screen": 0.7665942558056406,
+      "wall": 0.24114234417031116
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "decision": 0.7704956863797512,
+      "screen": 0.7568397947515235,
+      "wall": 0.22902487043604897
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "decision": 0.7715089145496778,
+      "screen": 0.7314611403662145,
+      "wall": 0.21131675977660605
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 4,
+      "decision": 0.7723910821273636,
+      "screen": 0.6669341230307195,
+      "wall": 0.17876614679134167
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 8,
+      "decision": 0.773038615252519,
+      "screen": 0.5268439540394736,
+      "wall": 0.1384064291739155
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 16,
+      "decision": 0.7730073923354395,
+      "screen": 0.28054361920892473,
+      "wall": 0.12041356991857197
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 32,
+      "decision": 0.7729911428110907,
+      "screen": 0.11891893732606014,
+      "wall": 0.1391250323445377
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 0,
+      "decision": 0.7631399305006731,
+      "screen": 0.7631399305006731,
+      "wall": 0.23528155311730803
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 1,
+      "decision": 0.7705155876169352,
+      "screen": 0.7565067918209422,
+      "wall": 0.2279720975094267
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 2,
+      "decision": 0.7721502361979962,
+      "screen": 0.7321115376121157,
+      "wall": 0.2114548486862889
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 4,
+      "decision": 0.7734902941777092,
+      "screen": 0.6685710810178747,
+      "wall": 0.17944170850144942
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 8,
+      "decision": 0.7740223952700895,
+      "screen": 0.5285292067808709,
+      "wall": 0.13909573583789203
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 16,
+      "decision": 0.7737490745381018,
+      "screen": 0.2816990473389538,
+      "wall": 0.12115063984156241
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 32,
+      "decision": 0.7736056434392392,
+      "screen": 0.11969711459979876,
+      "wall": 0.1402069664780959
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 0,
+      "decision": 0.758365426310406,
+      "screen": 0.758365426310406,
+      "wall": 0.22992279724789047
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 1,
+      "decision": 0.7699401820786684,
+      "screen": 0.7547189621502876,
+      "wall": 0.22612066883492674
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "decision": 0.7725327743465908,
+      "screen": 0.7321876360543214,
+      "wall": 0.21137529060731608
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "decision": 0.7744373335477048,
+      "screen": 0.6696256850309121,
+      "wall": 0.17989488552304678
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 8,
+      "decision": 0.7751548556767285,
+      "screen": 0.5298992356573009,
+      "wall": 0.13953352255651802
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 16,
+      "decision": 0.7751296917287211,
+      "screen": 0.2830540831892742,
+      "wall": 0.121517467917693
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 32,
+      "decision": 0.7751801786338085,
+      "screen": 0.12004843375121554,
+      "wall": 0.1402005582036152
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 0,
+      "decision": 0.7550993358894444,
+      "screen": 0.7550993358894444,
+      "wall": 0.2274494314906529
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 1,
+      "decision": 0.7689848963022591,
+      "screen": 0.7527292803671151,
+      "wall": 0.2247662446091458
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 2,
+      "decision": 0.7721841068790931,
+      "screen": 0.7318244184881095,
+      "wall": 0.21118776381326887
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 4,
+      "decision": 0.774480491959631,
+      "screen": 0.6698301257902377,
+      "wall": 0.18002100174232671
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 8,
+      "decision": 0.7756004580068157,
+      "screen": 0.5307530581555095,
+      "wall": 0.13996376119175816
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 16,
+      "decision": 0.7758220445793647,
+      "screen": 0.28369357229434067,
+      "wall": 0.12188984992894031
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 32,
+      "decision": 0.775722083281901,
+      "screen": 0.12043678491680485,
+      "wall": 0.14038920125168902
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 0,
+      "decision": 0.7505587124388615,
+      "screen": 0.7505587124388615,
+      "wall": 0.22390936052616878
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 1,
+      "decision": 0.7673027733951625,
+      "screen": 0.7492914893265377,
+      "wall": 0.22233586201211827
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 2,
+      "decision": 0.7720124032429161,
+      "screen": 0.7311472682577154,
+      "wall": 0.2106449307976898
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 4,
+      "decision": 0.7747831020334568,
+      "screen": 0.6701490554923732,
+      "wall": 0.1801392526559276
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 8,
+      "decision": 0.7762132103485513,
+      "screen": 0.5315344067968015,
+      "wall": 0.140218600258714
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 16,
+      "decision": 0.776593682492551,
+      "screen": 0.28414479999861986,
+      "wall": 0.12183341530675112
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 32,
+      "decision": 0.776905304862483,
+      "screen": 0.12046207205657902,
+      "wall": 0.14019260045103002
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 0,
+      "decision": 0.7455192956526632,
+      "screen": 0.7455192956526632,
+      "wall": 0.22050698895121318
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 1,
+      "decision": 0.7647497952766436,
+      "screen": 0.7448555659677021,
+      "wall": 0.21955169379920614
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 2,
+      "decision": 0.7712598204724492,
+      "screen": 0.7296732114670585,
+      "wall": 0.21002017129595868
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 4,
+      "decision": 0.7744995226314044,
+      "screen": 0.6699284233409374,
+      "wall": 0.18019227053541043
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 8,
+      "decision": 0.7763419447453384,
+      "screen": 0.5321052450221584,
+      "wall": 0.14055566608698927
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 16,
+      "decision": 0.7768401567003327,
+      "screen": 0.28512195644934,
+      "wall": 0.12249123773671654
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 32,
+      "decision": 0.7769735852682442,
+      "screen": 0.12144947333063769,
+      "wall": 0.1404610063410725
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 0,
+      "decision": 0.7387390942174281,
+      "screen": 0.7387390942174281,
+      "wall": 0.21691357005960277
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 1,
+      "decision": 0.7612644650011529,
+      "screen": 0.7382532850665005,
+      "wall": 0.21598967421819681
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 2,
+      "decision": 0.7695930089505479,
+      "screen": 0.7267147264865004,
+      "wall": 0.20913556566766417
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "decision": 0.7741814040758259,
+      "screen": 0.6692438584373783,
+      "wall": 0.18053674929000152
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "decision": 0.7769491794240192,
+      "screen": 0.5325907326981549,
+      "wall": 0.14079076843938057
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "decision": 0.7783829320553888,
+      "screen": 0.2863721631246601,
+      "wall": 0.1223576795222578
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 32,
+      "decision": 0.7784502820633483,
+      "screen": 0.12139848408316266,
+      "wall": 0.1406075100818839
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.1,
+      "lag": null,
+      "decision": 0.765834829018317,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.3,
+      "lag": null,
+      "decision": 0.7729911428110907,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.5,
+      "lag": null,
+      "decision": 0.7736056434392392,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.7,
+      "lag": null,
+      "decision": 0.7751801786338085,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.8,
+      "lag": null,
+      "decision": 0.775722083281901,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.9,
+      "lag": null,
+      "decision": 0.776905304862483,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.95,
+      "lag": null,
+      "decision": 0.7769735852682442,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "decision": 0.7784502820633483,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.2,
+      "lag": null,
+      "decision": 0.7670994776399549,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.3,
+      "lag": null,
+      "decision": 0.7700168521542656,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.4,
+      "lag": null,
+      "decision": 0.7706455786596754,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.5,
+      "lag": null,
+      "decision": 0.7696105247868686,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.6,
+      "lag": null,
+      "decision": 0.7681334920900904,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.7,
+      "lag": null,
+      "decision": 0.7643679563999286,
+      "screen": null,
+      "wall": null
+    },
+    {
+      "dataset": "mean",
+      "system": "beat-viterbi-v6",
+      "p_self": 0.8,
+      "lag": null,
+      "decision": 0.7596786996166153,
+      "screen": null,
+      "wall": null
+    }
+  ],
+  "best_p_self": {
+    "forward-filter lag 0": {
+      "p_self": 0.1,
+      "decision": 0.769285420607013,
+      "screen": 0.769285420607013
+    },
+    "fixed-lag-viterbi lag 0": {
+      "p_self": 0.1,
+      "decision": 0.7668961448472975,
+      "screen": 0.7668961448472975
+    },
+    "fixed-lag-viterbi lag 1": {
+      "p_self": 0.5,
+      "decision": 0.7705155876169352,
+      "screen": 0.7565067918209422
+    },
+    "fixed-lag-viterbi lag 2": {
+      "p_self": 0.7,
+      "decision": 0.7725327743465908,
+      "screen": 0.7321876360543214
+    },
+    "fixed-lag-viterbi lag 4": {
+      "p_self": 0.9,
+      "decision": 0.7747831020334568,
+      "screen": 0.6701490554923732
+    },
+    "fixed-lag-viterbi lag 8": {
+      "p_self": 0.98,
+      "decision": 0.7769491794240192,
+      "screen": 0.5325907326981549
+    },
+    "fixed-lag-viterbi lag 16": {
+      "p_self": 0.98,
+      "decision": 0.7783829320553888,
+      "screen": 0.2863721631246601
+    },
+    "fixed-lag-viterbi lag 32": {
+      "p_self": 0.98,
+      "decision": 0.7784502820633483,
+      "screen": 0.12139848408316266
+    },
+    "offline-frame-viterbi lag None": {
+      "p_self": 0.98,
+      "decision": 0.7784502820633483,
+      "screen": null
+    },
+    "beat-viterbi-v6 lag None": {
+      "p_self": 0.4,
+      "decision": 0.7706455786596754,
+      "screen": null
+    }
+  }
+}

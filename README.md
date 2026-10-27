@@ -26,6 +26,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V5.1 | No-chord (N) class on V5 (25 states); null result on val (76.6% vs 76.98% mean, best decoder 76.7%), so V5.1 keeps V5 | n/a | 72.9 % (V5, not rerun); RWC-P 79.0 % | [reports/v5_1.md](reports/v5_1.md) |
 | V5.2 | Weight decay (5 strengths) and AAM synthetic songs (1,000, three shares) on V5; null result on val (best AAM 76.99% vs 76.98% mean, seed gap 0.9), so V5.2 keeps V5 | n/a | 72.9 % (V5, not rerun); RWC-P 79.0 % | [reports/v5_2.md](reports/v5_2.md) |
 | V6 | CRNN: V5's conv front end + a GRU over the frames (bidirectional or causal), same data and decoder; on val the network alone gains (76.5% vs 74.9% mean of two seeds) but with the HMM V6 ties V5 (77.0% vs 76.5%, seed gap 0.8) | n/a | 74.7 % (p_self 0.4, one seed); RWC-P test 80.0 % | [reports/v6.md](reports/v6.md) |
+| V7 | Decoders that only use past frames, per CRNN frame (no beats), on V6's causal model (not retrained); on val frames match or beat beats (offline frame Viterbi 77.0% vs beat Viterbi 76.6%), the HMM at lag 0 does not beat the network alone, and every frame of display delay costs more than waiting gains; the input itself looks ~1.6 s ahead | 71.4 % (network alone, lag 0, the live point); RWC-P 79.6 % | 72.1 % (fixed-lag Viterbi, lag 0.37 s); offline frame Viterbi 72.4 %, RWC-P 80.1 % | [reports/v7.md](reports/v7.md) |
 
 ## Layout
 
@@ -83,6 +84,11 @@ version's report has the question, the method, the val analysis and the limitati
 | `configs/v6.yaml` | V6: V5's settings + excerpt_frames, batch_excerpts, bidirectional |
 | `scripts/run_v6.py` | V6: train + val (argmax per beat and HMM sweep), with --seed, --causal, --batch-excerpts; test once with --freeze |
 | `scripts/v6_v5_argmax.py`, `scripts/v6_context_check.py` | V6: V5's network alone on val; val frame accuracy with the GRU restarted every n frames |
+| `src/chordtracker/online_hmm.py` | V7: forward filtering and fixed-lag Viterbi, streaming classes and whole-song functions |
+| `src/chordtracker/streaming_crnn.py` | V7: the causal CRNN fed one CQT column at a time (same posteriors as the whole-song pass) |
+| `configs/v7.yaml` | V7: per-frame p_self grid, lags, the input's look-ahead, the choices frozen on val |
+| `scripts/run_v7.py` | V7: five decoders on a causal V6 run, decision / screen / wall WCSR; test once with --freeze |
+| `scripts/v7_plot.py`, `scripts/v7_speed.py` | V7: the latency figure (val); time per live frame on the CPU |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |
