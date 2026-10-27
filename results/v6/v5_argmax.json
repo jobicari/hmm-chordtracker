@@ -1,0 +1,61 @@
+{
+  "split": "val",
+  "rows": [
+    {
+      "model": "v5_seed0",
+      "dataset": "rwc",
+      "system": "argmax",
+      "wcsr": 0.7769851031999837,
+      "mean_changes_per_min": 37.737578447573405,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "model": "v5_seed0",
+      "dataset": "guitarset",
+      "system": "argmax",
+      "wcsr": 0.7296732842902981,
+      "mean_changes_per_min": 37.28821124025278,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "model": "v5_seed0",
+      "dataset": "mean",
+      "system": "argmax",
+      "wcsr": 0.753329193745141
+    },
+    {
+      "model": "v5_seed1",
+      "dataset": "rwc",
+      "system": "argmax",
+      "wcsr": 0.771483668706145,
+      "mean_changes_per_min": 37.302820265883895,
+      "scored_s": 4464.46,
+      "reduced_s": 1611.508,
+      "excluded_s": 489.384,
+      "n_takes": 20
+    },
+    {
+      "model": "v5_seed1",
+      "dataset": "guitarset",
+      "system": "argmax",
+      "wcsr": 0.7158515332989985,
+      "mean_changes_per_min": 36.86076567206003,
+      "scored_s": 1852.062378,
+      "reduced_s": 184.902462,
+      "excluded_s": 92.45122199999992,
+      "n_takes": 60
+    },
+    {
+      "model": "v5_seed1",
+      "dataset": "mean",
+      "system": "argmax",
+      "wcsr": 0.7436676010025718
+    }
+  ]
+}
