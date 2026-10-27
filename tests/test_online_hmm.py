@@ -1,4 +1,4 @@
-"""Behaviour of V7's online decoders: what they may read, what they reduce to, and that live = batch."""
+"""Behaviour of V7's online decoders: what they may read, what they reduce to, and that streaming = batch."""
 import librosa
 import numpy as np
 import pytest

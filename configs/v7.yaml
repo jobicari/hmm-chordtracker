@@ -32,10 +32,10 @@ front_end_lookahead_frames: 17
 
 frozen:                   # chosen on val (two-seed mean of the mean of RWC-P and GuitarSet), for the single test run
   run: results/v6/causal_seed1          # the better causal seed on val, as V6
-  p_self:                               # best screen WCSR per system (whole-song systems: decision WCSR)
+  p_self:                               # best on-time WCSR per system (whole-song systems: aligned WCSR)
     beat-viterbi-v6: 0.4
     forward-filter: 0.1
     offline-frame-viterbi: 0.98
     fixed-lag-viterbi: {0: 0.1, 1: 0.3, 2: 0.7, 4: 0.95, 8: 0.98, 16: 0.98, 32: 0.98}   # lag (frames): p_self
-  # Live operating point: frame-argmax, lag 0 (best screen WCSR). Smallest lag within 0.5 points of
-  # offline-frame-viterbi (decision WCSR): 4 frames (0.37 s).
+  # Best on-time WCSR: frame-argmax, lag 0. Smallest lag within 0.5 points of offline-frame-viterbi
+  # (aligned WCSR): 4 frames (0.37 s).

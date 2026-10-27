@@ -14,15 +14,15 @@ def posteriors_both_ways(n_frames):
     strip = np.pad(cqt, ((0, 0), (7, 7)))
     whole = model_v6.frame_posteriors(model, torch.from_numpy(strip)[None, None]).numpy()
     s = StreamingCRNN(model)
-    live = [p for p in (s.step(cqt[:, t]) for t in range(n_frames)) if p is not None] + s.flush()
-    return whole, np.stack(live, axis=1)
+    streamed = [p for p in (s.step(cqt[:, t]) for t in range(n_frames)) if p is not None] + s.flush()
+    return whole, np.stack(streamed, axis=1)
 
 
 @pytest.mark.parametrize("n_frames", [40, 4])
 def test_streaming_gives_the_whole_song_posteriors(n_frames):
-    whole, live = posteriors_both_ways(n_frames)
-    assert live.shape == whole.shape == (24, n_frames)
-    np.testing.assert_allclose(live, whole, atol=1e-5)
+    whole, streamed = posteriors_both_ways(n_frames)
+    assert streamed.shape == whole.shape == (24, n_frames)
+    np.testing.assert_allclose(streamed, whole, atol=1e-5)
 
 
 def test_a_bidirectional_model_cannot_stream():

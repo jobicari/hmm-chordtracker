@@ -1,4 +1,4 @@
-dataset,system,p_self,lag,song_id,changes_per_min,scored_s,decision_s,screen_s,wall_s
+dataset,system,p_self,lag,song_id,changes_per_min,scored_s,aligned_s,on_time_s,end_to_end_s
 rwc,frame-argmax,,0,rwc/RWC_P005,62.865234297939125,205.792,153.2573106575964,153.2573106575964,52.950480725623805
 rwc,forward-filter,0.1,0,rwc/RWC_P005,55.237235157185005,205.792,156.03271201814067,156.03271201814067,54.186802721088625
 rwc,fixed-lag-viterbi,0.1,0,rwc/RWC_P005,53.65902843840829,205.79199999999997,158.37756689342405,158.37756689342405,55.76607709750583

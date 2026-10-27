@@ -1,4 +1,4 @@
-"""V7 speed check: the cost of one live frame (CRNN step + decoder step) against the 93 ms between frames.
+"""V7 speed check: the cost of one real-time frame (CRNN step + decoder step) against the 93 ms between frames.
 
     python scripts/v7_speed.py results/v6/causal_seed1     # -> results/v7/speed.json
 

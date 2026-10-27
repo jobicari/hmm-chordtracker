@@ -1,6 +1,6 @@
-"""Component 18 (V7): the causal V6 CRNN run one CQT frame at a time, as a live system would run it.
+"""Component 18 (V7): the causal V6 CRNN run one CQT frame at a time, as a real-time system would run it.
 
-model_v6.frame_posteriors reads a whole song at once. A live system gets one log-CQT column every
+model_v6.frame_posteriors reads a whole song at once. A real-time system gets one log-CQT column every
 93 ms instead. StreamingCRNN keeps what it needs between columns:
 
     the last 15 columns     the window of the frame 7 columns back (data_v5.patch is centred, so a
@@ -12,7 +12,7 @@ model_v6.frame_posteriors reads a whole song at once. A live system gets one log
                   data_v6.excerpt pads)
 
 Only a forward GRU can run this way; a test checks that the posteriors equal frame_posteriors on
-the whole song, so the frame-level results of run_v7 are exactly what this loop would produce live.
+the whole song, so the frame-level results of run_v7 are exactly what this loop would produce in real time.
 """
 import numpy as np
 import torch

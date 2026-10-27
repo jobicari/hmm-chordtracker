@@ -1,4 +1,4 @@
-"""Component 17 (V7): HMM decoders that only use past frames, for a live chord display.
+"""Component 17 (V7): HMM decoders that only use past frames, for real-time chord recognition.
 
 V5 and V6 decode with Viterbi over the whole song: the backtrace starts at the last beat, so no chord
 is final before the song ends. V7 decodes per CRNN frame (93 ms, no beats) with decoders whose
@@ -30,7 +30,7 @@ j at frame t, psi_t(j) = the chord at t - 1 on that path (the backpointer):
 At frame t the decoder follows the backpointers from argmax_j delta_t(j) down to frame t - L and
 outputs that chord for frame t - L. With L = 0 this is the max-product twin of forward filtering; as
 L grows to the song length it is offline Viterbi, decision for decision. At the end of a song the
-last L frames are read off the final best path (`flush`), as a live system would when the music stops.
+last L frames are read off the final best path (`flush`), as a streaming system would when the music stops.
 """
 from collections import deque
 

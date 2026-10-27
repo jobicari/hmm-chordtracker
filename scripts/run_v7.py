@@ -6,7 +6,7 @@
     python scripts/run_v7.py --split val --run results/v6/causal_seed0 --limit 2 --out <dir>   # dry run
 
 Nothing is trained: the CRNN and its prior are read from the V6 run. Its frame posteriors (the whole
-song in one pass, which streaming_crnn shows is what a live loop produces) are decoded by five systems:
+song in one pass, which streaming_crnn shows is what a frame-by-frame loop produces) are decoded by five systems:
 
     beat-viterbi-v6        V6's decoder: posteriors pooled per beat, Viterbi over the song (reference)
     frame-argmax           the most likely chord of every frame, the network alone (lag 0)
@@ -16,13 +16,14 @@ song in one pass, which streaming_crnn shows is what a live loop produces) are d
 
 Three WCSRs per system (mir_eval majmin, pooled per set, sets never pooled):
 
-    decision  the chord decided for frame t, placed at frame t; the lag is reported, not penalized
-    screen    what a live display shows at frame t: the decision for frame t - L (nothing, "N",
-              during the first L frames)
-    wall      screen, shifted further by the front end's look-ahead (front_end_lookahead_frames):
-              the delay from the sound to the display with V6's non-causal input
+    aligned     each label compared with the reference at the frame it describes (t); the lag is
+                reported, not penalized
+    on_time     each label compared with the reference at the frame at which the decoder outputs
+                it (t + L): the path shifted by L frames, "N" during the first L frames
+    end_to_end  on_time, shifted further by the input's look-ahead (front_end_lookahead_frames): the
+                earliest frame at which the label could exist with audio arriving as it is played
 
-screen and wall are left out for the two whole-song references. On val every p_self of the grids is
+on_time and end_to_end are left out for the two whole-song references. On val every p_self of the grids is
 scored; the test split needs --freeze and uses the p_self of every system (and of every lag of
 fixed-lag-viterbi) from the config's `frozen` section, chosen on val.
 """
@@ -44,7 +45,8 @@ import run_v6  # noqa: E402  (evidence: V6 posteriors pooled per beat)
 BEAT, ARGMAX, FILTER, FIXED_LAG, OFFLINE = (
     "beat-viterbi-v6", "frame-argmax", "forward-filter", "fixed-lag-viterbi", "offline-frame-viterbi")
 SYSTEMS = [BEAT, ARGMAX, FILTER, FIXED_LAG, OFFLINE]
-NOTHING = len(LABELS)                                   # index of "N": no chord shown yet
+NOTHING = len(LABELS)                                   # index of "N": no label output yet
+KINDS = ("aligned", "on_time", "end_to_end")            # the three WCSRs (module docstring)
 SHOWN = LABELS + ["N"]
 
 
@@ -63,7 +65,7 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 
 def shifted(path: np.ndarray, frames: int) -> np.ndarray:
-    """What a display shows: frame t gets the chord of frame t - frames, "N" before that.
+    """The path delayed by `frames`: frame t gets the chord of frame t - frames, "N" before that.
 
     Example: path [3, 3, 5, 5], frames 1 -> [N, 3, 3, 5].
     """
@@ -81,7 +83,7 @@ def score(path: np.ndarray, times: np.ndarray, take: data_v5.Take) -> tuple[eval
 
 
 def frame_paths(post: np.ndarray, Q: np.ndarray, prior: np.ndarray, grids: dict):
-    """Every frame-level (system, p_self, lag, decision path) of one song. Lag None: whole song.
+    """Every frame-level (system, p_self, lag, label path) of one song. Lag None: whole song.
 
     grids[FIXED_LAG] maps each p_self to the lags decoded with it (all lags on val, one p_self per lag on test).
     """
@@ -104,21 +106,21 @@ def score_take(model, take, cfg, Q, prior, grids, dataset) -> list[dict]:
     times = acoustic_hmm.frame_times(post.shape[1], cfg["audio"]["sr"], cfg["cqt"]["hop_length"])
     front = cfg["front_end_lookahead_frames"]
     for system, p_self, lag, path in frame_paths(post, Q, prior, grids):
-        decision, changes = score(path, times, take)
+        aligned, changes = score(path, times, take)
         row = {"dataset": dataset, "system": system, "p_self": p_self, "lag": lag, "song_id": take.key,
-               "changes_per_min": changes, "scored_s": decision.scored_s, "decision_s": decision.matched_s,
-               "screen_s": None, "wall_s": None}
+               "changes_per_min": changes, "scored_s": aligned.scored_s, "aligned_s": aligned.matched_s,
+               "on_time_s": None, "end_to_end_s": None}
         if lag is not None:
-            row["screen_s"] = score(shifted(path, lag), times, take)[0].matched_s
-            row["wall_s"] = score(shifted(path, lag + front), times, take)[0].matched_s
+            row["on_time_s"] = score(shifted(path, lag), times, take)[0].matched_s
+            row["end_to_end_s"] = score(shifted(path, lag + front), times, take)[0].matched_s
         rows.append(row)
     ev = run_v6.evidence(model, take, cfg)
     for p_self in grids[BEAT]:
         path = acoustic_hmm.decode(ev.posteriors, Q, p_self, prior)
-        decision, changes = beats.score_path(path, LABELS, ev)
+        aligned, changes = beats.score_path(path, LABELS, ev)
         rows.append({"dataset": dataset, "system": BEAT, "p_self": p_self, "lag": None, "song_id": take.key,
-                     "changes_per_min": changes, "scored_s": decision.scored_s, "decision_s": decision.matched_s,
-                     "screen_s": None, "wall_s": None})
+                     "changes_per_min": changes, "scored_s": aligned.scored_s, "aligned_s": aligned.matched_s,
+                     "on_time_s": None, "end_to_end_s": None})
     return rows
 
 
@@ -131,7 +133,7 @@ def summarize(per_song: list[dict]) -> list[dict]:
         scored = sum(r["scored_s"] for r in songs)
         row = {"dataset": dataset, "system": system, "p_self": p_self, "lag": lag, "n_takes": len(songs),
                "mean_changes_per_min": float(np.mean([r["changes_per_min"] for r in songs]))}
-        for kind in ("decision", "screen", "wall"):
+        for kind in KINDS:
             matched = [r[f"{kind}_s"] for r in songs]
             row[kind] = None if matched[0] is None else sum(matched) / scored
         rows.append(row)
@@ -139,19 +141,19 @@ def summarize(per_song: list[dict]) -> list[dict]:
         both = [r for r in rows if (r["system"], r["p_self"], r["lag"]) == (system, p_self, lag)]
         rows.append({"dataset": "mean", "system": system, "p_self": p_self, "lag": lag,
                      **{kind: None if both[0][kind] is None else float(np.mean([r[kind] for r in both]))
-                        for kind in ("decision", "screen", "wall")}})
+                        for kind in KINDS}})
     return rows
 
 
 def best_p_self(rows: list[dict]) -> dict:
-    """On val: for every (system, lag), the p_self with the best mean decision WCSR (ties: the smaller)."""
+    """On val: for every (system, lag), the p_self with the best mean aligned WCSR (ties: the smaller)."""
     best = {}
     for r in rows:
         if r["dataset"] != "mean" or r["p_self"] is None:
             continue
         key = f"{r['system']} lag {r['lag']}"
-        if key not in best or (r["decision"], -r["p_self"]) > (best[key]["decision"], -best[key]["p_self"]):
-            best[key] = {"p_self": r["p_self"], "decision": r["decision"], "screen": r["screen"]}
+        if key not in best or (r["aligned"], -r["p_self"]) > (best[key]["aligned"], -best[key]["p_self"]):
+            best[key] = {"p_self": r["p_self"], "aligned": r["aligned"], "on_time": r["on_time"]}
     return best
 
 
@@ -190,7 +192,7 @@ def main(argv=None) -> None:
         if r["dataset"] == "mean" and (args.split == "test" or r["system"] in (ARGMAX,) or
                                        summary["best_p_self"].get(f"{r['system']} lag {r['lag']}", {}).get("p_self") == r["p_self"]):
             print(f"  {r['system']:>21}  p_self {r['p_self']}  lag {r['lag']}  "
-                  f"decision {pct(r['decision'])}  screen {pct(r['screen'])}  wall {pct(r['wall'])}")
+                  f"aligned {pct(r['aligned'])}  on-time {pct(r['on_time'])}  end-to-end {pct(r['end_to_end'])}")
 
 
 if __name__ == "__main__":
