@@ -1,0 +1,74 @@
+{
+  "v7 results/v6/causal_seed0 rwc": {
+    "start": 0.7257876312718786,
+    "rest_start": 0.7797780466435813,
+    "after_change": 0.7253345782757548,
+    "rest_change": 0.7979578777508833
+  },
+  "v7 results/v6/causal_seed0 guitarset": {
+    "start": 0.7277777777777777,
+    "rest_start": 0.7068809926677947,
+    "after_change": 0.6336805555555556,
+    "rest_change": 0.731634274538565
+  },
+  "v7 results/v6/causal_seed1 rwc": {
+    "start": 0.7362893815635939,
+    "rest_start": 0.7897909800158538,
+    "after_change": 0.7488328664799253,
+    "rest_change": 0.8031605597751996
+  },
+  "v7 results/v6/causal_seed1 guitarset": {
+    "start": 0.7509259259259259,
+    "rest_start": 0.7380710659898477,
+    "after_change": 0.6688368055555556,
+    "rest_change": 0.7601149003789268
+  },
+  "v7_1 median 31 results/v7_1/seed0 rwc": {
+    "start": 0.6417736289381564,
+    "rest_start": 0.7245608911510701,
+    "after_change": 0.5020230314347961,
+    "rest_change": 0.8021589739309463
+  },
+  "v7_1 median 31 results/v7_1/seed0 guitarset": {
+    "start": 0.6305555555555555,
+    "rest_start": 0.6635645798082346,
+    "after_change": 0.4555121527777778,
+    "rest_change": 0.7156215621562156
+  },
+  "v7_1 median 31 results/v7_1/seed1 rwc": {
+    "start": 0.6534422403733956,
+    "rest_start": 0.7305686511744336,
+    "after_change": 0.5105042016806722,
+    "rest_change": 0.8074172996132766
+  },
+  "v7_1 median 31 results/v7_1/seed1 guitarset": {
+    "start": 0.6422839506172839,
+    "rest_start": 0.6676818950930626,
+    "after_change": 0.4602864583333333,
+    "rest_change": 0.7210609949883877
+  },
+  "v7_1 median 9 results/v7_1/median9_seed0 rwc": {
+    "start": 0.6721120186697783,
+    "rest_start": 0.727961116442071,
+    "after_change": 0.5235760971055089,
+    "rest_change": 0.7997106529783268
+  },
+  "v7_1 median 9 results/v7_1/median9_seed0 guitarset": {
+    "start": 0.679320987654321,
+    "rest_start": 0.6844331641285956,
+    "after_change": 0.4487847222222222,
+    "rest_change": 0.7497860897200831
+  },
+  "v7_1 median 9 results/v7_1/median9_seed1 rwc": {
+    "start": 0.6814469078179697,
+    "rest_start": 0.7211189453043515,
+    "after_change": 0.507703081232493,
+    "rest_change": 0.7964833208135103
+  },
+  "v7_1 median 9 results/v7_1/median9_seed1 guitarset": {
+    "start": 0.6746913580246914,
+    "rest_start": 0.6991539763113367,
+    "after_change": 0.4678819444444444,
+    "rest_change": 0.7594426109277594
+  }
+}
