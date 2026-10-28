@@ -1,0 +1,195 @@
+{
+  "split": "test",
+  "points": [
+    {
+      "total": 1,
+      "cqt_from": "F#0",
+      "input_lookahead": 0,
+      "system": "frame-argmax",
+      "lag": 0,
+      "p_self": null,
+      "seed": 1,
+      "test": {
+        "rwc": 0.7370147382788,
+        "guitarset": 0.6821732267287868,
+        "mean": 0.7095939825037934
+      },
+      "test_changes_per_min": {
+        "rwc": 87.9015279932756,
+        "guitarset": 88.1372102060084,
+        "mean": null
+      }
+    },
+    {
+      "total": 2,
+      "cqt_from": "F#0",
+      "input_lookahead": 1,
+      "system": "frame-argmax",
+      "lag": 0,
+      "p_self": null,
+      "seed": 0,
+      "test": {
+        "rwc": 0.7684610023254104,
+        "guitarset": 0.7025227955024775,
+        "mean": 0.735491898913944
+      },
+      "test_changes_per_min": {
+        "rwc": 78.79582800163713,
+        "guitarset": 77.23914483538705,
+        "mean": null
+      }
+    },
+    {
+      "total": 3,
+      "cqt_from": "C2",
+      "input_lookahead": 2,
+      "system": "frame-argmax",
+      "lag": 0,
+      "p_self": null,
+      "seed": 0,
+      "test": {
+        "rwc": 0.7865785731711408,
+        "guitarset": 0.7190363498147917,
+        "mean": 0.7528074614929663
+      },
+      "test_changes_per_min": {
+        "rwc": 65.3146635024602,
+        "guitarset": 63.14573475491818,
+        "mean": null
+      }
+    },
+    {
+      "total": 4,
+      "cqt_from": "F#0",
+      "input_lookahead": 2,
+      "system": "fixed-lag-viterbi",
+      "lag": 1,
+      "p_self": 0.3,
+      "seed": 0,
+      "test": {
+        "rwc": 0.7888807114539702,
+        "guitarset": 0.7051826936399058,
+        "mean": 0.747031702546938
+      },
+      "test_changes_per_min": {
+        "rwc": 46.531380274274646,
+        "guitarset": 42.164487294320864,
+        "mean": null
+      }
+    },
+    {
+      "total": 5,
+      "cqt_from": "F#0",
+      "input_lookahead": 2,
+      "system": "fixed-lag-viterbi",
+      "lag": 2,
+      "p_self": 0.7,
+      "seed": 0,
+      "test": {
+        "rwc": 0.7941303584477103,
+        "guitarset": 0.709388417855368,
+        "mean": 0.7517593881515392
+      },
+      "test_changes_per_min": {
+        "rwc": 41.30775761701012,
+        "guitarset": 37.21125561169749,
+        "mean": null
+      }
+    },
+    {
+      "total": 6,
+      "cqt_from": "C2",
+      "input_lookahead": 4,
+      "system": "fixed-lag-viterbi",
+      "lag": 1,
+      "p_self": 0.3,
+      "seed": 0,
+      "test": {
+        "rwc": 0.7981416760540447,
+        "guitarset": 0.708410032315141,
+        "mean": 0.7532758541845929
+      },
+      "test_changes_per_min": {
+        "rwc": 41.52257766260143,
+        "guitarset": 40.40037008835865,
+        "mean": null
+      }
+    },
+    {
+      "total": 7,
+      "cqt_from": "F#0",
+      "input_lookahead": 2,
+      "system": "fixed-lag-viterbi",
+      "lag": 4,
+      "p_self": 0.98,
+      "seed": 0,
+      "test": {
+        "rwc": 0.8007070937711304,
+        "guitarset": 0.7132446475855437,
+        "mean": 0.756975870678337
+      },
+      "test_changes_per_min": {
+        "rwc": 36.84160623249968,
+        "guitarset": 34.534736003876475,
+        "mean": null
+      }
+    },
+    {
+      "total": 9,
+      "cqt_from": "C2",
+      "input_lookahead": 4,
+      "system": "fixed-lag-viterbi",
+      "lag": 4,
+      "p_self": 0.98,
+      "seed": 0,
+      "test": {
+        "rwc": 0.8044208332963044,
+        "guitarset": 0.7138306334074604,
+        "mean": 0.7591257333518824
+      },
+      "test_changes_per_min": {
+        "rwc": 35.18179370149873,
+        "guitarset": 34.22556796714775,
+        "mean": null
+      }
+    },
+    {
+      "total": 10,
+      "cqt_from": "C2",
+      "input_lookahead": 1,
+      "system": "fixed-lag-viterbi",
+      "lag": 8,
+      "p_self": 0.98,
+      "seed": 0,
+      "test": {
+        "rwc": 0.7977595627800597,
+        "guitarset": 0.7154983350492211,
+        "mean": 0.7566289489146404
+      },
+      "test_changes_per_min": {
+        "rwc": 34.751494978869566,
+        "guitarset": 33.14201254235217,
+        "mean": null
+      }
+    },
+    {
+      "total": 11,
+      "cqt_from": "F#0",
+      "input_lookahead": 2,
+      "system": "fixed-lag-viterbi",
+      "lag": 8,
+      "p_self": 0.98,
+      "seed": 0,
+      "test": {
+        "rwc": 0.8042734220702894,
+        "guitarset": 0.7169604090013012,
+        "mean": 0.7606169155357954
+      },
+      "test_changes_per_min": {
+        "rwc": 33.70367182337738,
+        "guitarset": 31.66415162844883,
+        "mean": null
+      }
+    }
+  ]
+}
