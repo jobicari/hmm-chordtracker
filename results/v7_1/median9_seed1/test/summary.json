@@ -1,0 +1,422 @@
+{
+  "version": "v7_1",
+  "split": "test",
+  "config": {
+    "version": "v7_1",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0,
+      "harmonic_median_frames": 9
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "p_self_grid": [
+        0.1,
+        0.3,
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95,
+        0.98
+      ],
+      "lags": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    },
+    "base_config": "v2.yaml",
+    "cqt": {
+      "hop_length": 2048,
+      "fmin": "F#0",
+      "bins_per_octave": 24,
+      "n_bins": 168,
+      "tuning_seconds": 10.0
+    },
+    "train": {
+      "seed": 1,
+      "lr": 0.001,
+      "max_epochs": 50,
+      "patience": 5,
+      "dropout": 0.5,
+      "excerpt_frames": 128,
+      "batch_excerpts": 8
+    },
+    "transitions": {
+      "counts": "results/v3/billboard_counts.json",
+      "alpha": 1,
+      "tau": 1
+    },
+    "front_end_lookahead_frames": 1,
+    "frozen": {
+      "run": "results/v7_1/median9_seed1",
+      "p_self": {
+        "forward-filter": 0.1,
+        "offline-frame-viterbi": 0.98,
+        "fixed-lag-viterbi": {
+          "0": 0.1,
+          "1": 0.3,
+          "2": 0.7,
+          "4": 0.98,
+          "8": 0.98,
+          "16": 0.98,
+          "32": 0.1
+        }
+      }
+    }
+  },
+  "rows": [
+    {
+      "dataset": "rwc",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 87.87430686241908,
+      "aligned": 0.7370341552010726,
+      "on_time": 0.7370341552010726,
+      "end_to_end": 0.702724621831701
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 85.78859742708283,
+      "aligned": 0.7329661469131545,
+      "on_time": 0.7329661469131545,
+      "end_to_end": 0.6985895687504741
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 92.4284415594094,
+      "aligned": 0.7286547032286574,
+      "on_time": 0.7286547032286574,
+      "end_to_end": 0.6943583194200017
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 112.15841882705365,
+      "aligned": 0.7243741701846317,
+      "on_time": 0.17197375594185013,
+      "end_to_end": 0.17307705191714326
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 52.47369736980629,
+      "aligned": 0.7404946442081918,
+      "on_time": 0.7052425022205273,
+      "end_to_end": 0.6689964446728854
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.661037306543825,
+      "aligned": 0.746174260837103,
+      "on_time": 0.6744071084855642,
+      "end_to_end": 0.6376398971413763
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.66806457430345,
+      "aligned": 0.7540485153997812,
+      "on_time": 0.6095664771676026,
+      "end_to_end": 0.5727087173576644
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.67162770229963,
+      "aligned": 0.7599541452883734,
+      "on_time": 0.4734431807882041,
+      "end_to_end": 0.44054774214289505
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.13518713518209,
+      "aligned": 0.761259807214982,
+      "on_time": 0.2707827862576849,
+      "end_to_end": 0.25346390699695837
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 31.562466171883578,
+      "aligned": 0.7610381945238917,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 88.20457658479607,
+      "aligned": 0.6821732267287868,
+      "on_time": 0.6821732267287868,
+      "end_to_end": 0.660556787277124
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 81.79386139511844,
+      "aligned": 0.6818695651815415,
+      "on_time": 0.6818695651815415,
+      "end_to_end": 0.6602365925588096
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 87.91642697245578,
+      "aligned": 0.6779262524893337,
+      "on_time": 0.6779262524893337,
+      "end_to_end": 0.6569184271342308
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 108.01393852634767,
+      "aligned": 0.6686558495522965,
+      "on_time": 0.09488360497963405,
+      "end_to_end": 0.09215856695201909
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 51.48484886546342,
+      "aligned": 0.6878022750425795,
+      "on_time": 0.6648338261846233,
+      "end_to_end": 0.6372377615410759
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 41.814501530383865,
+      "aligned": 0.6924859408357341,
+      "on_time": 0.6412720445297919,
+      "end_to_end": 0.6118937216478926
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.713593955798714,
+      "aligned": 0.6963493169161692,
+      "on_time": 0.5875241617438619,
+      "end_to_end": 0.5575877015846757
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.19074010891053,
+      "aligned": 0.7023580631078764,
+      "on_time": 0.47637844693286613,
+      "end_to_end": 0.4466128898002094
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.255709559232677,
+      "aligned": 0.7040494805752092,
+      "on_time": 0.2554817076507571,
+      "end_to_end": 0.23340207691724188
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 28.398944843731893,
+      "aligned": 0.704184644472483,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "aligned": 0.7096036909649297,
+      "on_time": 0.7096036909649297,
+      "end_to_end": 0.6816407045544125
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "aligned": 0.7074178560473481,
+      "on_time": 0.7074178560473481,
+      "end_to_end": 0.6794130806546419
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "aligned": 0.7032904778589956,
+      "on_time": 0.7032904778589956,
+      "end_to_end": 0.6756383732771163
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "aligned": 0.696515009868464,
+      "on_time": 0.13342868046074208,
+      "end_to_end": 0.13261780943458118
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "aligned": 0.7141484596253856,
+      "on_time": 0.6850381642025754,
+      "end_to_end": 0.6531171031069807
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "aligned": 0.7193301008364186,
+      "on_time": 0.6578395765076781,
+      "end_to_end": 0.6247668093946344
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "aligned": 0.7251989161579753,
+      "on_time": 0.5985453194557322,
+      "end_to_end": 0.5651482094711701
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "aligned": 0.7311561041981249,
+      "on_time": 0.47491081386053513,
+      "end_to_end": 0.44358031597155223
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "aligned": 0.7326546438950956,
+      "on_time": 0.263132246954221,
+      "end_to_end": 0.2434329919571001
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "aligned": 0.7326114194981873,
+      "on_time": null,
+      "end_to_end": null
+    }
+  ]
+}
