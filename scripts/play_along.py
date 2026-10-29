@@ -273,7 +273,7 @@ def main(argv=None) -> None:
     else:
         channels = min(2, int(sd.query_devices(args.input_device, "input")["max_input_channels"]))
         inp = sd.InputStream(device=args.input_device, samplerate=rate, channels=channels, dtype="float32",
-                             latency="high", callback=lambda i, f, t, s: engine.push(i, s))
+                             latency="low", callback=lambda i, f, t, s: engine.push(i, s))   # VB-Cable zero-fills large input buffers
         with inp, out:
             window.root.mainloop()
 
