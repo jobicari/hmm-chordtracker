@@ -1,0 +1,2407 @@
+{
+  "version": "v7_2",
+  "split": "val",
+  "config": {
+    "version": "v7_2",
+    "audio": {
+      "sr": 22050,
+      "mono": true,
+      "harmonic_margin": 4.0,
+      "harmonic_median_frames": 9
+    },
+    "features": {
+      "kind": "chroma_cqt",
+      "hop_length": 512,
+      "threshold": null,
+      "tuning": null,
+      "norm": "inf"
+    },
+    "floor": {
+      "enabled": true,
+      "percentile": 50,
+      "alpha": 1.0,
+      "fmax": 200.0
+    },
+    "compression": {
+      "enabled": true,
+      "level_percentile": 99,
+      "gamma": 10
+    },
+    "bass": {
+      "fmin": "E1",
+      "fmax": "B3",
+      "weight": 0.2
+    },
+    "beats": {
+      "source": "full",
+      "aggregate": "mean"
+    },
+    "templates": {
+      "vocab": "majmin",
+      "no_chord_value": 0.25
+    },
+    "emission": {
+      "beta": 1.0
+    },
+    "decoder": {
+      "p_self_grid": [
+        0.1,
+        0.3,
+        0.5,
+        0.7,
+        0.8,
+        0.9,
+        0.95,
+        0.98
+      ],
+      "lags": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "evaluation": {
+      "metric": "majmin"
+    },
+    "base_config": "v2.yaml",
+    "cqt": {
+      "hop_length": 2048,
+      "fmin": "F#1",
+      "bins_per_octave": 24,
+      "n_bins": 168,
+      "tuning_seconds": 10.0
+    },
+    "train": {
+      "seed": 1,
+      "lr": 0.001,
+      "max_epochs": 50,
+      "patience": 5,
+      "dropout": 0.5,
+      "excerpt_frames": 128,
+      "batch_excerpts": 8,
+      "input_lookahead": 0
+    },
+    "transitions": {
+      "counts": "results/v3/billboard_counts.json",
+      "alpha": 1,
+      "tau": 1
+    },
+    "harmonic_lookahead_frames": 1
+  },
+  "rows": [
+    {
+      "dataset": "rwc",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 81.53953498483662,
+      "aligned": 0.7134796769280161,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 78.48794798026621,
+      "aligned": 0.711127206482748,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 59.205823769580476,
+      "aligned": 0.6984308371331344,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 52.19478455366876,
+      "aligned": 0.6884938150427304,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 47.25262565433776,
+      "aligned": 0.6801049326399378,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 45.477546588551306,
+      "aligned": 0.6756331138229188,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.013393557632206,
+      "aligned": 0.6677848609806145,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 41.59775065085272,
+      "aligned": 0.6601655231379766,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "forward-filter",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 40.379242992410845,
+      "aligned": 0.651328428646082,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 85.09606101352962,
+      "aligned": 0.7044741933274927,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 104.97058391973269,
+      "aligned": 0.6910506640487425,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 105.75888953458525,
+      "aligned": 0.6972196884798699,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 108.24513660943369,
+      "aligned": 0.6967318507631497,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 109.23823994775557,
+      "aligned": 0.6968345626897842,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 110.17084622633115,
+      "aligned": 0.6967409597408687,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 110.8606044054981,
+      "aligned": 0.6965070082394146,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 52.34891641138618,
+      "aligned": 0.6918107298678362,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 50.76104637770464,
+      "aligned": 0.7093378180547579,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 48.65451543700921,
+      "aligned": 0.7134821906076596,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 46.18275355712246,
+      "aligned": 0.715140282574162,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 44.33357536637625,
+      "aligned": 0.7162718361125976,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.80297505275263,
+      "aligned": 0.7168543555932593,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.767005698642336,
+      "aligned": 0.7169999854634247,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 46.96949829928978,
+      "aligned": 0.6833159366791655,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 46.60118420884036,
+      "aligned": 0.7086363648045719,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 45.21498622540472,
+      "aligned": 0.7159617169180637,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 42.3572630045388,
+      "aligned": 0.7200749414806339,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.73456798909037,
+      "aligned": 0.7221359901601506,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.90698065933931,
+      "aligned": 0.723435279626366,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.79720044851748,
+      "aligned": 0.7232896497562006,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 44.02629061953964,
+      "aligned": 0.674244689550812,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.898317684164375,
+      "aligned": 0.7047849733216256,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.288639763231984,
+      "aligned": 0.7159960023097206,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 40.60424604878545,
+      "aligned": 0.7219713225570278,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.758936598043604,
+      "aligned": 0.7250887602173409,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.620788565104306,
+      "aligned": 0.7270860694169929,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.393711362700955,
+      "aligned": 0.7270694138132594,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 42.844537349772686,
+      "aligned": 0.6692704060325548,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 42.719663767994874,
+      "aligned": 0.7021196069013402,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 42.157635498148046,
+      "aligned": 0.7161321163609075,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.968484035806924,
+      "aligned": 0.7230352612113389,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 37.226745591651515,
+      "aligned": 0.7267710594927581,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.76807373116961,
+      "aligned": 0.7288327354493732,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.3683887046555,
+      "aligned": 0.7291145154328097,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 41.260002796416174,
+      "aligned": 0.662052645909148,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 41.12719690196106,
+      "aligned": 0.696946772658313,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 40.69824117711479,
+      "aligned": 0.7154829973215624,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.26331314448361,
+      "aligned": 0.7241929810933199,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.254959081089766,
+      "aligned": 0.7293188051081344,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 34.409236441758345,
+      "aligned": 0.7322557022611933,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.91977584162895,
+      "aligned": 0.7324632177153455,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 40.234811995940916,
+      "aligned": 0.654889391340384,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 40.1020061014858,
+      "aligned": 0.6907485028927328,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.90207122234692,
+      "aligned": 0.7134271476771705,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.972751904699564,
+      "aligned": 0.7250161403222629,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.65436885558989,
+      "aligned": 0.7303784549140091,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.622863383382146,
+      "aligned": 0.732946052452779,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.045987589914574,
+      "aligned": 0.7326020790878484,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 20,
+      "mean_changes_per_min": 39.121651051063765,
+      "aligned": 0.6467590928742203,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 1,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.988845156608654,
+      "aligned": 0.683035559561596,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 2,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.89489358106488,
+      "aligned": 0.7099560694737779,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.289801445466246,
+      "aligned": 0.7250774712612363,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.09069449204377,
+      "aligned": 0.7308986804456743,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.84168720578777,
+      "aligned": 0.7332181109109819,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 32,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.15756779531265,
+      "aligned": 0.732460711654452,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.1,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 111.15255385195091,
+      "aligned": 0.6965953298707033,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.3,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 43.767005698642336,
+      "aligned": 0.7169999854634247,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.5,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 38.79720044851748,
+      "aligned": 0.7232896497562006,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.7,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 36.381721577997524,
+      "aligned": 0.72700700101176,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.8,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 35.3683887046555,
+      "aligned": 0.7288784926471392,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.9,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.907289004836066,
+      "aligned": 0.7323800006466796,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.95,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 33.02101391632881,
+      "aligned": 0.7324772534848495,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "rwc",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "n_takes": 20,
+      "mean_changes_per_min": 32.086224505525045,
+      "aligned": 0.732335886051453,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 73.42899448320304,
+      "aligned": 0.7000178881717867,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 73.28384557541918,
+      "aligned": 0.7004771493459822,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 57.029926493524044,
+      "aligned": 0.6984063318507612,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 49.32242497081212,
+      "aligned": 0.6927104650619973,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 45.18372749167593,
+      "aligned": 0.6827956513747846,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 43.99656618735106,
+      "aligned": 0.6779010063839074,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 42.73177104416423,
+      "aligned": 0.670317680481925,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 41.59981087729934,
+      "aligned": 0.6630605620585976,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "forward-filter",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.54105331967127,
+      "aligned": 0.655017819770269,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 77.32462014601244,
+      "aligned": 0.6996552340651058,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 96.00335772270114,
+      "aligned": 0.6940211611991093,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 98.0913861363509,
+      "aligned": 0.6979033241776029,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 100.9587891326481,
+      "aligned": 0.6979114680325922,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 101.47815001835373,
+      "aligned": 0.698531175906954,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 101.74173910171558,
+      "aligned": 0.6988236487798818,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 101.8037292328867,
+      "aligned": 0.6988236487798818,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 48.837190067532056,
+      "aligned": 0.6947979647370459,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 48.055020017746365,
+      "aligned": 0.7068397934286744,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 45.74762133450625,
+      "aligned": 0.7101258360953567,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 43.76448028632255,
+      "aligned": 0.7144892748616604,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 41.6055396371937,
+      "aligned": 0.7175530362985967,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.72648946916399,
+      "aligned": 0.7172539437990315,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.51421715006329,
+      "aligned": 0.7172790184994567,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 45.27175684415226,
+      "aligned": 0.6842810566465689,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 44.29713346401871,
+      "aligned": 0.7044513832342101,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 42.40361754766638,
+      "aligned": 0.7120529447316664,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 39.58126462046185,
+      "aligned": 0.7180506163361378,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 37.126709284498865,
+      "aligned": 0.7220071414192083,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.62932397148431,
+      "aligned": 0.7232027484095165,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.60744577179761,
+      "aligned": 0.7232278231099416,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 43.80408271673601,
+      "aligned": 0.6765028118286699,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 43.148516006912345,
+      "aligned": 0.7024685025725796,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 41.46648728423949,
+      "aligned": 0.7121278464981576,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 38.396968359515455,
+      "aligned": 0.7203821637778512,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.76894580862472,
+      "aligned": 0.7257853700472646,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.40085853358325,
+      "aligned": 0.7279052149006903,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.29068393204383,
+      "aligned": 0.7280556631032413,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 42.89742358387743,
+      "aligned": 0.6724457602391729,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 42.26738088193557,
+      "aligned": 0.7009650071177701,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.89607919587937,
+      "aligned": 0.7121514806876521,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 37.74373587253544,
+      "aligned": 0.7209400820979286,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.039140454982245,
+      "aligned": 0.7263024673476355,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.7075169654106,
+      "aligned": 0.7282217145976599,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.54863790254252,
+      "aligned": 0.728372162800211,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 41.6141451451342,
+      "aligned": 0.6650993810001177,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.95597178189676,
+      "aligned": 0.6967493814478728,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 39.46277060460002,
+      "aligned": 0.7115984459005579,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 36.941774711601575,
+      "aligned": 0.7222233103124012,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 34.03688839930573,
+      "aligned": 0.7277880492344436,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.851901119421687,
+      "aligned": 0.7296748197630862,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.644317595224948,
+      "aligned": 0.7298754173664874,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.953880035778035,
+      "aligned": 0.6587912669357793,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.2957066725406,
+      "aligned": 0.6915442208397311,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 38.81682832814339,
+      "aligned": 0.7102495733288062,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 36.71127282970031,
+      "aligned": 0.7230042209956655,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.627190928282396,
+      "aligned": 0.7288558670090909,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.17809888915105,
+      "aligned": 0.7301564371936895,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.837421071454497,
+      "aligned": 0.7303068853962406,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 0,
+      "n_takes": 60,
+      "mean_changes_per_min": 39.734141280559946,
+      "aligned": 0.6512942091595421,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 1,
+      "n_takes": 60,
+      "mean_changes_per_min": 39.0759679173225,
+      "aligned": 0.6848377662669135,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 2,
+      "n_takes": 60,
+      "mean_changes_per_min": 37.505149494566226,
+      "aligned": 0.7080052238042784,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "n_takes": 60,
+      "mean_changes_per_min": 36.107002268309245,
+      "aligned": 0.72358001743757,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.94009250246599,
+      "aligned": 0.7306968293804956,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.424331038669617,
+      "aligned": 0.7333740859422047,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 32,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.941961411172127,
+      "aligned": 0.733574683545606,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.1,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 101.8037292328867,
+      "aligned": 0.6988236487798818,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.3,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 40.51421715006329,
+      "aligned": 0.7172790184994567,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.5,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 35.60744577179761,
+      "aligned": 0.7232278231099416,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.7,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 33.29068393204383,
+      "aligned": 0.7280556631032413,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.8,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 32.54863790254252,
+      "aligned": 0.728372162800211,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.9,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 31.644317595224948,
+      "aligned": 0.7298754173664874,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.95,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 30.837421071454497,
+      "aligned": 0.7303068853962406,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "guitarset",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "n_takes": 60,
+      "mean_changes_per_min": 29.941961411172127,
+      "aligned": 0.733574683545606,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "aligned": 0.7067487825499014,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.1,
+      "lag": 0,
+      "aligned": 0.7058021779143651,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.3,
+      "lag": 0,
+      "aligned": 0.6984185844919477,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.5,
+      "lag": 0,
+      "aligned": 0.6906021400523639,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.7,
+      "lag": 0,
+      "aligned": 0.6814502920073612,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.8,
+      "lag": 0,
+      "aligned": 0.676767060103413,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.9,
+      "lag": 0,
+      "aligned": 0.6690512707312697,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.95,
+      "lag": 0,
+      "aligned": 0.6616130425982871,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "forward-filter",
+      "p_self": 0.98,
+      "lag": 0,
+      "aligned": 0.6531731242081755,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 0,
+      "aligned": 0.7020647136962992,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 1,
+      "aligned": 0.6925359126239259,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 2,
+      "aligned": 0.6975615063287364,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 4,
+      "aligned": 0.6973216593978709,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 8,
+      "aligned": 0.6976828692983691,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 16,
+      "aligned": 0.6977823042603752,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.1,
+      "lag": 32,
+      "aligned": 0.6976653285096481,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 0,
+      "aligned": 0.6933043473024411,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 1,
+      "aligned": 0.7080888057417162,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "aligned": 0.7118040133515082,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 4,
+      "aligned": 0.7148147787179111,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 8,
+      "aligned": 0.7169124362055972,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 16,
+      "aligned": 0.7170541496961453,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 32,
+      "aligned": 0.7171395019814407,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 0,
+      "aligned": 0.6837984966628672,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 1,
+      "aligned": 0.706543874019391,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 2,
+      "aligned": 0.714007330824865,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 4,
+      "aligned": 0.7190627789083859,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 8,
+      "aligned": 0.7220715657896795,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 16,
+      "aligned": 0.7233190140179413,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.5,
+      "lag": 32,
+      "aligned": 0.7232587364330711,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 0,
+      "aligned": 0.6753737506897409,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 1,
+      "aligned": 0.7036267379471026,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 2,
+      "aligned": 0.7140619244039391,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "aligned": 0.7211767431674395,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 8,
+      "aligned": 0.7254370651323028,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 16,
+      "aligned": 0.7274956421588417,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 32,
+      "aligned": 0.7275625384582504,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 0,
+      "aligned": 0.6708580831358639,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 1,
+      "aligned": 0.7015423070095552,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 2,
+      "aligned": 0.7141417985242797,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 4,
+      "aligned": 0.7219876716546337,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 8,
+      "aligned": 0.7265367634201968,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 16,
+      "aligned": 0.7285272250235166,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.8,
+      "lag": 32,
+      "aligned": 0.7287433391165103,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 0,
+      "aligned": 0.6635760134546329,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 1,
+      "aligned": 0.6968480770530929,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 2,
+      "aligned": 0.7135407216110601,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 4,
+      "aligned": 0.7232081457028605,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 8,
+      "aligned": 0.728553427171289,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 16,
+      "aligned": 0.7309652610121398,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.9,
+      "lag": 32,
+      "aligned": 0.7311693175409164,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 0,
+      "aligned": 0.6568403291380817,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 1,
+      "aligned": 0.6911463618662319,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 2,
+      "aligned": 0.7118383605029883,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 4,
+      "aligned": 0.7240101806589643,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 8,
+      "aligned": 0.72961716096155,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 16,
+      "aligned": 0.7315512448232342,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.95,
+      "lag": 32,
+      "aligned": 0.7314544822420445,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 0,
+      "aligned": 0.6490266510168812,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 1,
+      "aligned": 0.6839366629142547,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 2,
+      "aligned": 0.7089806466390282,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 4,
+      "aligned": 0.7243287443494031,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "aligned": 0.730797754913085,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 16,
+      "aligned": 0.7332960984265933,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 32,
+      "aligned": 0.733017697600029,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.1,
+      "lag": null,
+      "aligned": 0.6977094893252925,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.3,
+      "lag": null,
+      "aligned": 0.7171395019814407,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.5,
+      "lag": null,
+      "aligned": 0.7232587364330711,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.7,
+      "lag": null,
+      "aligned": 0.7275313320575006,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.8,
+      "lag": null,
+      "aligned": 0.7286253277236752,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.9,
+      "lag": null,
+      "aligned": 0.7311277090065835,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.95,
+      "lag": null,
+      "aligned": 0.731392069440545,
+      "on_time": null,
+      "end_to_end": null
+    },
+    {
+      "dataset": "mean",
+      "system": "offline-frame-viterbi",
+      "p_self": 0.98,
+      "lag": null,
+      "aligned": 0.7329552847985294,
+      "on_time": null,
+      "end_to_end": null
+    }
+  ],
+  "best_p_self": {
+    "forward-filter lag 0": {
+      "p_self": 0.1,
+      "aligned": 0.7058021779143651,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 0": {
+      "p_self": 0.1,
+      "aligned": 0.7020647136962992,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 1": {
+      "p_self": 0.3,
+      "aligned": 0.7080888057417162,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 2": {
+      "p_self": 0.8,
+      "aligned": 0.7141417985242797,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 4": {
+      "p_self": 0.98,
+      "aligned": 0.7243287443494031,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 8": {
+      "p_self": 0.98,
+      "aligned": 0.730797754913085,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 16": {
+      "p_self": 0.98,
+      "aligned": 0.7332960984265933,
+      "on_time": null
+    },
+    "fixed-lag-viterbi lag 32": {
+      "p_self": 0.98,
+      "aligned": 0.733017697600029,
+      "on_time": null
+    },
+    "offline-frame-viterbi lag None": {
+      "p_self": 0.98,
+      "aligned": 0.7329552847985294,
+      "on_time": null
+    }
+  }
+}

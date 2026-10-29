@@ -28,6 +28,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V6 | CRNN: V5's conv front end + a GRU over the frames (bidirectional or causal), same data and decoder; on val the network alone gains (76.5% vs 74.9% mean of two seeds) but with the HMM V6 ties V5 (77.0% vs 76.5%, seed gap 0.8) | n/a | 74.7 % (p_self 0.4, one seed); RWC-P test 80.0 % | [reports/v6.md](reports/v6.md) |
 | V7 | Decoders that only use past frames, per CRNN frame (no beats), on V6's causal model (not retrained); on val frames match or beat beats (offline frame Viterbi 77.0% vs beat Viterbi 76.6%), the HMM at lag 0 does not beat the network alone, and once the decoder's delay is counted (on-time WCSR) no lag beats the network alone; the input features already need ~1.6 s of future audio | 71.4 % (network alone, lag 0, best on-time WCSR on validation); RWC-P 79.6 % | 72.1 % (fixed-lag Viterbi, lag 0.37 s); offline frame Viterbi 72.4 %, RWC-P 80.1 % | [reports/v7.md](reports/v7.md) |
 | V7.1 | Input features that use no future audio (causal harmonic median, CQT bins delayed by half their kernel, running level, tuning from the first 10 s, window ending at the frame), causal CRNN retrained; on validation the network alone loses 4.6 points per label (71.5% vs 76.1%, the loss sits in the first 0.5 s after chord changes) but scores 68.4% end to end (V7: 25.0%) | 68.2 % (network alone, lag 0, aligned; end-to-end 66.1 %); RWC-P 73.7 % | 70.4 % (offline frame Viterbi); RWC-P 76.1 % | [reports/v7_1.md](reports/v7_1.md) |
+| V7.2 | Input look-ahead of 0 to 4 frames (window of frame t ends at t + a) and CQT from C2, for playback delayed by the total look-ahead; on validation 2 frames of input look-ahead (0.28 s in total) bring the network alone to 75.7% (V7.1 71.5%, V7 with 1.6 s 76.1%), a fixed-lag Viterbi adds up to 1.4 points and halves the flicker, C2 ties F#0 | 71.9 % (network alone, 0.28 s, C2); RWC-P 78.7 % | 71.3 % (fixed-lag Viterbi, 0.65 s); RWC-P 80.1 % | [reports/v7_2.md](reports/v7_2.md) |
 
 ## Layout
 
@@ -96,6 +97,10 @@ version's report has the question, the method, the val analysis and the limitati
 | `configs/v7_1.yaml` | V7.1: causal feature settings (median 9, tuning 10 s), V6's training, V7's decoders, frozen choices |
 | `scripts/run_v7_1.py` | V7.1: train + decode on validation (V7's systems and scores), --median-frames; test once with --freeze |
 | `scripts/v7_1_tuning.py`, `v7_1_breakdown.py`, `v7_1_plot.py` | V7.1: training-song tuning; accuracy after chord changes and at song starts; latency figure |
+| `src/chordtracker/data_v7_2.py`, `train_v7_2.py`, `streaming_v7_2.py` | V7.2: window with an input look-ahead, the C2 grid's cache, training, column-by-column inference |
+| `configs/v7_2.yaml` | V7.2: V7.1's settings + input_lookahead, the CQT grid, the frozen curve points |
+| `scripts/run_v7_2.py` | V7.2: train + decode one cell (--cqt-from, --input-lookahead, --seed); test once over the frozen points |
+| `scripts/v7_2_curve.py`, `v7_2_breakdown.py` | V7.2: best aligned WCSR per total look-ahead + figure; accuracy after chord changes by cell |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |

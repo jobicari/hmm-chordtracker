@@ -1,0 +1,130 @@
+{
+  "F#0 a=0 seed0 rwc": {
+    "after_change": 0.5235760971055089,
+    "rest": 0.7997106529783268
+  },
+  "F#0 a=0 seed0 guitarset": {
+    "after_change": 0.4487847222222222,
+    "rest": 0.7497860897200831
+  },
+  "F#0 a=0 seed1 rwc": {
+    "after_change": 0.507703081232493,
+    "rest": 0.7964833208135103
+  },
+  "F#0 a=0 seed1 guitarset": {
+    "after_change": 0.4678819444444444,
+    "rest": 0.7594426109277594
+  },
+  "F#0 a=1 seed0 rwc": {
+    "after_change": 0.6322751322751323,
+    "rest": 0.8019363992988899
+  },
+  "F#0 a=1 seed0 guitarset": {
+    "after_change": 0.5438368055555556,
+    "rest": 0.762315120400929
+  },
+  "F#0 a=1 seed1 rwc": {
+    "after_change": 0.6014628073451603,
+    "rest": 0.805553237069805
+  },
+  "F#0 a=1 seed1 guitarset": {
+    "after_change": 0.5416666666666666,
+    "rest": 0.7615205965040949
+  },
+  "F#0 a=2 seed0 rwc": {
+    "after_change": 0.701291627762216,
+    "rest": 0.8115627521353254
+  },
+  "F#0 a=2 seed0 guitarset": {
+    "after_change": 0.5974392361111112,
+    "rest": 0.7616428309497616
+  },
+  "F#0 a=2 seed1 rwc": {
+    "after_change": 0.6663554310613135,
+    "rest": 0.812063545057452
+  },
+  "F#0 a=2 seed1 guitarset": {
+    "after_change": 0.5787760416666666,
+    "rest": 0.758281383693925
+  },
+  "F#0 a=4 seed0 rwc": {
+    "after_change": 0.7192654839713664,
+    "rest": 0.7914475697632363
+  },
+  "F#0 a=4 seed0 guitarset": {
+    "after_change": 0.6321614583333334,
+    "rest": 0.7603593692702604
+  },
+  "F#0 a=4 seed1 rwc": {
+    "after_change": 0.6971677559912854,
+    "rest": 0.8254458448098378
+  },
+  "F#0 a=4 seed1 guitarset": {
+    "after_change": 0.5909288194444444,
+    "rest": 0.753942060872754
+  },
+  "C2 a=0 seed0 rwc": {
+    "after_change": 0.5373482726423903,
+    "rest": 0.7979856995798904
+  },
+  "C2 a=0 seed0 guitarset": {
+    "after_change": 0.4576822916666667,
+    "rest": 0.7546143503239213
+  },
+  "C2 a=0 seed1 rwc": {
+    "after_change": 0.4996109554933084,
+    "rest": 0.79695629190663
+  },
+  "C2 a=0 seed1 guitarset": {
+    "after_change": 0.4351128472222222,
+    "rest": 0.7487470969319154
+  },
+  "C2 a=1 seed0 rwc": {
+    "after_change": 0.6328976034858388,
+    "rest": 0.7988481762791085
+  },
+  "C2 a=1 seed0 guitarset": {
+    "after_change": 0.544921875,
+    "rest": 0.7568756875687569
+  },
+  "C2 a=1 seed1 rwc": {
+    "after_change": 0.6420012449424214,
+    "rest": 0.7935063851097571
+  },
+  "C2 a=1 seed1 guitarset": {
+    "after_change": 0.5277777777777778,
+    "rest": 0.7678767876787679
+  },
+  "C2 a=2 seed0 rwc": {
+    "after_change": 0.7005135387488328,
+    "rest": 0.8065548229140583
+  },
+  "C2 a=2 seed0 guitarset": {
+    "after_change": 0.6052517361111112,
+    "rest": 0.7637819337489304
+  },
+  "C2 a=2 seed1 rwc": {
+    "after_change": 0.7030034235916589,
+    "rest": 0.7907242022090533
+  },
+  "C2 a=2 seed1 guitarset": {
+    "after_change": 0.587890625,
+    "rest": 0.7740496271849407
+  },
+  "C2 a=4 seed0 rwc": {
+    "after_change": 0.7286803610333022,
+    "rest": 0.8129538435856773
+  },
+  "C2 a=4 seed0 guitarset": {
+    "after_change": 0.6078559027777778,
+    "rest": 0.757975797579758
+  },
+  "C2 a=4 seed1 rwc": {
+    "after_change": 0.7205882352941176,
+    "rest": 0.8026319450240659
+  },
+  "C2 a=4 seed1 guitarset": {
+    "after_change": 0.6082899305555556,
+    "rest": 0.75333088864442
+  }
+}

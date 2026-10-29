@@ -1,0 +1,53 @@
+# V7.2: V7.1's causal features and CRNN with an input look-ahead (the window of frame t ends at t + a),
+# on the F#0 grid (V7.1's cache) and on the C2 grid (fmin F#1). Scored by aligned WCSR against the total
+# look-ahead a + 1 + decoder lag, for playback delayed by at least that much (reports/v7_1.md).
+version: v7_2
+base_config: v2.yaml
+
+audio:
+  sr: 22050
+  mono: true
+  harmonic_margin: 4.0
+  harmonic_median_frames: 9   # V7.1 after its correction 1
+
+cqt:
+  hop_length: 2048
+  fmin: F#0                   # run_v7_2 --cqt-from C2 sets F#1: the network then sees C2 to B7
+  bins_per_octave: 24
+  n_bins: 168
+  tuning_seconds: 10.0
+
+train:                        # V7.1's settings; input_lookahead set by run_v7_2 --input-lookahead
+  seed: 0
+  lr: 0.001
+  max_epochs: 50
+  patience: 5
+  dropout: 0.5
+  excerpt_frames: 128
+  batch_excerpts: 8
+  input_lookahead: 0
+
+transitions:
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:                      # V7's grids
+  p_self_grid: [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98]
+  lags: [0, 1, 2, 4, 8, 16, 32]
+
+harmonic_lookahead_frames: 1  # the harmonic separation's STFT window (features_v7_1): part of every total look-ahead
+
+frozen:                       # chosen on validation (scripts/v7_2_curve.py): the best point at each total look-ahead,
+                              # with the better of its two seeds; the single test run scores every point
+  points:
+    - {total: 1, cqt_from: "F#0", input_lookahead: 0, system: frame-argmax, lag: 0, p_self: null, seed: 1}
+    - {total: 2, cqt_from: "F#0", input_lookahead: 1, system: frame-argmax, lag: 0, p_self: null, seed: 0}
+    - {total: 3, cqt_from: "C2", input_lookahead: 2, system: frame-argmax, lag: 0, p_self: null, seed: 0}
+    - {total: 4, cqt_from: "F#0", input_lookahead: 2, system: fixed-lag-viterbi, lag: 1, p_self: 0.3, seed: 0}
+    - {total: 5, cqt_from: "F#0", input_lookahead: 2, system: fixed-lag-viterbi, lag: 2, p_self: 0.7, seed: 0}
+    - {total: 6, cqt_from: "C2", input_lookahead: 4, system: fixed-lag-viterbi, lag: 1, p_self: 0.3, seed: 0}
+    - {total: 7, cqt_from: "F#0", input_lookahead: 2, system: fixed-lag-viterbi, lag: 4, p_self: 0.98, seed: 0}
+    - {total: 9, cqt_from: "C2", input_lookahead: 4, system: fixed-lag-viterbi, lag: 4, p_self: 0.98, seed: 0}
+    - {total: 10, cqt_from: "C2", input_lookahead: 1, system: fixed-lag-viterbi, lag: 8, p_self: 0.98, seed: 0}
+    - {total: 11, cqt_from: "F#0", input_lookahead: 2, system: fixed-lag-viterbi, lag: 8, p_self: 0.98, seed: 0}
