@@ -39,6 +39,7 @@ RUN = run_v7_2.run_dir("C2", pa.INPUT_LOOKAHEAD, 0)
 BEATLES = paths.DATA_DIR / "beatles" / "chordlab"
 LOG_DIR = paths.DATA_DIR / "play_along"
 STEP = 0.05
+BG, TEXT, MUTED, LINE, ACCENT, WARN = "#1c1c1e", "#f2f2f2", "#a8a8ad", "#3a3a3c", "#5eb0ff", "#ff6b6b"
 
 
 class Engine:
@@ -137,28 +138,40 @@ class Window:
         self.log = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "events": []}
         self.root = tk.Tk()
         self.root.title("Chord tracker: play along")
+        self.root.configure(bg=BG)
         self.songs = dict(pa.song_list(BEATLES))
-        top = ttk.Frame(self.root, padding=10)
+        top = tk.Frame(self.root, bg=BG, padx=12, pady=10)
         top.pack(fill="x")
-        ttk.Label(top, text="Song").pack(side="left")
+        tk.Label(top, text="Song", font=("Helvetica", 15), fg=TEXT, bg=BG).pack(side="left")
         self.pick = ttk.Combobox(top, values=list(self.songs), width=70, state="readonly")
         self.pick.pack(side="left", padx=8)
         self.pick.bind("<<ComboboxSelected>>", self.choose)
         big = ("Helvetica", 96, "bold")
-        self.system = tk.Label(self.root, text="", font=big)
+        self.system = tk.Label(self.root, text="", font=big, fg=TEXT, bg=BG)
         self.system.pack(pady=(10, 0))
-        self.system_next = tk.Label(self.root, text="", font=("Helvetica", 28), fg="#666")
+        self.system_next = tk.Label(self.root, text="", font=("Helvetica", 30), fg=MUTED, bg=BG)
         self.system_next.pack()
-        ttk.Separator(self.root).pack(fill="x", pady=10)
-        tk.Label(self.root, text="Isophonics", font=("Helvetica", 14), fg="#888").pack()
-        row = tk.Frame(self.root)
+        tk.Frame(self.root, height=2, bg=LINE).pack(fill="x", padx=20, pady=12)
+        tk.Label(self.root, text="ISOPHONICS", font=("Helvetica", 15, "bold"), fg=MUTED, bg=BG).pack()
+        row = tk.Frame(self.root, bg=BG)
         row.pack()
-        self.reference_now = tk.Label(row, text="", font=("Helvetica", 48, "bold"), fg="#2b6cb0")
+        self.reference_now = tk.Label(row, text="", font=("Helvetica", 52, "bold"), fg=ACCENT, bg=BG)
         self.reference_now.pack(side="left", padx=20)
-        self.reference_next = tk.Label(row, text="", font=("Helvetica", 36), fg="#9ab")
+        self.reference_next = tk.Label(row, text="", font=("Helvetica", 36), fg=MUTED, bg=BG)
         self.reference_next.pack(side="left", padx=20)
-        self.status = tk.Label(self.root, text="", font=("Menlo", 12), fg="#444", justify="left")
-        self.status.pack(pady=10)
+        tk.Frame(self.root, height=2, bg=LINE).pack(fill="x", padx=20, pady=12)
+        panel = tk.Frame(self.root, bg=BG)
+        panel.pack(padx=20, pady=(0, 16))
+        self.fields = {}
+        rows = [("Look-ahead", "1 / 2 / 3"), ("Playback delay", "up / down: extra"), ("Lead", "left / right"),
+                ("Annotation nudge", "[ / ]"), ("Input", "space: reset"), ("Analysis", "")]
+        for r, (name, keys_hint) in enumerate(rows):
+            tk.Label(panel, text=name, font=("Helvetica", 17), fg=MUTED, bg=BG, anchor="e").grid(
+                row=r, column=0, sticky="e", padx=(0, 14), pady=2)
+            self.fields[name] = tk.Label(panel, text="", font=("Menlo", 18, "bold"), fg=TEXT, bg=BG, anchor="w")
+            self.fields[name].grid(row=r, column=1, sticky="w")
+            tk.Label(panel, text=keys_hint, font=("Helvetica", 15), fg=MUTED, bg=BG, anchor="w").grid(
+                row=r, column=2, sticky="w", padx=(18, 0))
         keys = {"1": lambda: self.set_point("0.28 s"), "2": lambda: self.set_point("0.46 s"),
                 "3": lambda: self.set_point("0.65 s"), "<Up>": lambda: self.change("extra", STEP),
                 "<Down>": lambda: self.change("extra", -STEP), "<Right>": lambda: self.change("lead", STEP),
@@ -219,13 +232,15 @@ class Window:
             self.reference_now.config(text=s["reference"] or ("waiting for the music" if onset is None else ""))
             self.reference_next.config(text=f"next: {s['reference_next']}" if s["reference_next"] else "")
         lookahead = pa.total_lookahead(self.point) * e.hop / e.sr
-        self.status.config(text=(
-            f"point {self.point} (1 / 2 / 3)   delay {e.delay_s:.2f} s = look-ahead {lookahead:.2f} + margin "
-            f"{e.hop / e.sr:.2f} + lead + extra {self.extra:.2f} (up / down)\n"
-            f"lead {self.lead:.2f} s (left / right)   annotation nudge {self.nudge:+.2f} s ([ / ])   "
-            f"onset {'-' if onset is None else f'{onset:.2f} s'}   labels {len(labels)}   space: reset\n"
-            f"input level {e.level_db:5.0f} dBFS   dropouts {e.xruns}   resyncs {e.jumps}" + ("   (no signal: check that the player's output is the input device)"
-                                                     if e.level_db < -100 else "")))
+        f = self.fields
+        f["Look-ahead"].config(text=f"{self.point}  ({lookahead:.2f} s)")
+        f["Playback delay"].config(text=f"{e.delay_s:.2f} s   (extra {self.extra:.2f} s)")
+        f["Lead"].config(text=f"{self.lead:.2f} s")
+        f["Annotation nudge"].config(text=f"{self.nudge:+.2f} s")
+        silent = e.level_db < -100
+        f["Input"].config(text=f"{e.level_db:.0f} dBFS" + ("   no signal" if silent else ""), fg=WARN if silent else TEXT)
+        f["Analysis"].config(text=f"onset {'-' if onset is None else f'{onset:.1f} s'}   frames {len(labels)}   "
+                                  f"dropouts {e.xruns}   resyncs {e.jumps}")
         self.root.after(30, self.tick)
 
     def close(self) -> None:
