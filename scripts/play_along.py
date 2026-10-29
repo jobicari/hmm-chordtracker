@@ -75,6 +75,17 @@ class Engine:
         self.onset_time = None
         self.blocks.put(("reset", self.generation))
 
+    def close(self) -> None:
+        """Stop the analysis process and release its queues (no leaked semaphores at exit)."""
+        self.blocks.put(None)
+        self.worker.join(timeout=2)
+        if self.worker.is_alive():
+            self.worker.terminate()
+            self.worker.join()
+        for q in (self.blocks, self.results):
+            q.cancel_join_thread()
+            q.close()
+
     def set_delay(self, delay_s: float) -> None:
         self.delay_s, self.reposition = delay_s, True
 
@@ -246,6 +257,7 @@ class Window:
     def close(self) -> None:
         self.record("close")
         self.root.destroy()
+        self.engine.close()
 
 
 def feed_file(path: Path, engine: Engine) -> None:
