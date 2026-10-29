@@ -86,3 +86,10 @@ def test_the_analysis_labels_every_frame_at_every_point():
     assert n > 20
     assert len(a.labels["0.46 s"]) == n - 2 and len(a.labels["0.65 s"]) == n - 4
     assert all(0 <= l < len(LABELS) for l in a.labels["0.28 s"])
+
+
+def test_the_system_frames_count_from_the_onset():
+    labels = [0] * 5 + [7] * 5                            # analysis started at the onset (2.0 s)
+    hop_s = HOP / SR
+    at = lambda t: pa.shown(labels, None, 2.0, t, 0.0, 0.0, SR, HOP)["system"]
+    assert at(2.0 + 2.5 * hop_s) == "C" and at(2.0 + 7.5 * hop_s) == "G" and at(1.0) == ""

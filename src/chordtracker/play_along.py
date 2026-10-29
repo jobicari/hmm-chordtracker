@@ -147,11 +147,11 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
           nudge_s: float, sr: int, hop: int) -> dict:
     """What the window shows when the musician hears input time playback_s.
 
-    The chords are those of input time playback_s + lead_s: the system's from the frame there, the
-    reference's at annotation time (playback_s + lead_s - onset + nudge_s).
+    The chords are those of input time playback_s + lead_s. The analysis starts at the onset, so the
+    system's frame is counted from it, as is the reference's annotation time (+ nudge_s).
     """
     t = playback_s + lead_s
-    frame = int(np.floor(t * sr / hop))
+    frame = int(np.floor((t - (onset or 0.0)) * sr / hop))
     system_now, system_next = system_at(labels, frame)
     ref_now = ref_next = ""
     if reference is not None and onset is not None:
@@ -200,7 +200,9 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rat
         y = resampler.resample_chunk(message[1])
         onset.update(y, analysed / sr)
         analysed += len(y)
-        analysis.step(y)
+        if onset.time is None:
+            continue                                # the song has not started: nothing to analyse yet
+        analysis.step(y)                            # from the onset block on: the tuning reads the song's 10 s
         new = {p: analysis.labels[p][sent[p]:] for p in OPERATING_POINTS}
         if any(new.values()) or onset.time is not None:
             sent = {p: len(analysis.labels[p]) for p in OPERATING_POINTS}
