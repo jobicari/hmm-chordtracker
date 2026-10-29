@@ -51,6 +51,7 @@ class Engine:
         self.written = 0                                             # input samples since start (device rate)
         self.played = 0
         self.delay_s = 0.5
+        self.level_db = -200.0                                       # input level of the last block, dBFS
         self.blocks = queue.Queue()
         self.lock = threading.Lock()
         self.reset()
@@ -77,6 +78,7 @@ class Engine:
         self.ring[idx] = block[:, :2]
         self.written += n
         self.blocks.put((self.generation, block.mean(axis=1)))
+        self.level_db = 20 * np.log10(max(float(np.sqrt(np.mean(block ** 2))), 1e-10))
 
     def pull(self, out: np.ndarray, frames: int, *_args) -> None:
         """Output callback: the input `delay_s` seconds ago (silence before it exists)."""
@@ -200,7 +202,9 @@ class Window:
             f"point {self.point} (1 / 2 / 3)   delay {e.delay_s:.2f} s = look-ahead {lookahead:.2f} + margin "
             f"{e.hop / e.sr:.2f} + lead + extra {self.extra:.2f} (up / down)\n"
             f"lead {self.lead:.2f} s (left / right)   annotation nudge {self.nudge:+.2f} s ([ / ])   "
-            f"onset {'-' if onset is None else f'{onset:.2f} s'}   labels {len(labels)}   space: reset"))
+            f"onset {'-' if onset is None else f'{onset:.2f} s'}   labels {len(labels)}   space: reset\n"
+            f"input level {e.level_db:5.0f} dBFS" + ("   (no signal: check that the player's output is the input device)"
+                                                     if e.level_db < -100 else "")))
         self.root.after(30, self.tick)
 
     def close(self) -> None:

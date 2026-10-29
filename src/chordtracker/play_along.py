@@ -90,8 +90,11 @@ class Reference:
 
 @dataclass
 class Onset:
-    """The input time at which the audio first rises above `threshold` (RMS of a block); None until then."""
-    threshold: float = 1e-3
+    """The input time at which the audio first rises above `threshold` (RMS of a block); None until then.
+
+    A paused player sends digital silence, so the threshold is low (-100 dBFS): any music starts the clock.
+    """
+    threshold: float = 1e-5
     time: float | None = None
 
     def update(self, block: np.ndarray, block_start: float) -> None:
