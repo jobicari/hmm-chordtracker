@@ -60,7 +60,7 @@ def test_the_reference_starts_at_the_onset_and_can_be_nudged(tmp_path):
     ref = pa.Reference.from_lab(lab)
     show = lambda t, nudge: pa.shown([], ref, 5.0, t, 0.0, nudge, SR, HOP)["reference"]
     assert show(5.5, 0.0) == "C" and show(6.5, 0.0) == "G"
-    assert show(5.95, 0.1) == "G"
+    assert show(6.05, -0.1) == "G" and show(6.05, 0.1) == "C"     # ] (positive nudge) shows the reference later
 
 
 def test_the_required_delay_covers_the_total_lookahead_and_the_lead():

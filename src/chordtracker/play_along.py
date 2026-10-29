@@ -148,14 +148,15 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
     """What the window shows when the musician hears input time playback_s.
 
     The chords are those of input time playback_s + lead_s. The analysis starts at the onset, so the
-    system's frame is counted from it, as is the reference's annotation time (+ nudge_s).
+    system's frame is counted from it, as is the reference's annotation time. nudge_s > 0 shows the
+    reference later (its chords change nudge_s seconds after they would).
     """
     t = playback_s + lead_s
     frame = int(np.floor((t - (onset or 0.0)) * sr / hop))
     system_now, system_next = system_at(labels, frame)
     ref_now = ref_next = ""
     if reference is not None and onset is not None:
-        ref_now, ref_next = reference.at(t - onset + nudge_s)
+        ref_now, ref_next = reference.at(t - onset - nudge_s)
     return {"system": system_now, "system_next": system_next, "reference": ref_now, "reference_next": ref_next,
             "frame": frame, "ready": frame < len(labels)}
 

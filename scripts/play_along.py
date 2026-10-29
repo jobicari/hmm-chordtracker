@@ -12,7 +12,7 @@ clock starts when the input rises out of silence.
 
 Keys: 1 / 2 / 3 operating point (0.28 / 0.46 / 0.65 s of total look-ahead); Up / Down extra delay
 +-50 ms; Right / Left lead +-50 ms (chords shown earlier); ] / [ nudge the annotation +-50 ms; space
-reset for the next song. Every change is logged to data/play_along/<start time>.json.
+reset for the next song ([ shows the annotation earlier, ] later). Every change is logged to data/play_along/<start time>.json.
 """
 import argparse
 import json
@@ -164,7 +164,7 @@ class Window:
         panel.pack(padx=20, pady=(0, 16))
         self.fields = {}
         rows = [("Look-ahead", "1 / 2 / 3"), ("Playback delay", "up / down: extra"), ("Lead", "left / right"),
-                ("Annotation nudge", "[ / ]"), ("Input", "space: reset"), ("Analysis", "")]
+                ("Annotation nudge", "[ earlier / ] later"), ("Input", "space: reset"), ("Analysis", "")]
         for r, (name, keys_hint) in enumerate(rows):
             tk.Label(panel, text=name, font=("Helvetica", 17), fg=MUTED, bg=BG, anchor="e").grid(
                 row=r, column=0, sticky="e", padx=(0, 14), pady=2)
