@@ -92,8 +92,11 @@ class Engine:
         self.played += frames
 
     def playback_s(self) -> float:
-        """Input time (since the last reset) of the sample being heard now."""
-        return (self.played - self.base) / self.rate
+        """Input time (since the last reset) of the sample being heard now: the input clock minus the delay.
+
+        Taken from the input side, so the chords keep moving even if the output device stalls or changes.
+        """
+        return (self.written - self.base) / self.rate - self.delay_s
 
     # ------------------------------------------------------------ analysis thread
     def _analyse(self) -> None:
