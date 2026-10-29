@@ -16,6 +16,7 @@ reset for the next song. Every change is logged to data/play_along/<start time>.
 """
 import argparse
 import json
+import multiprocessing as mp
 import queue
 import sys
 import threading
@@ -27,9 +28,8 @@ from tkinter import ttk
 import librosa
 import numpy as np
 import sounddevice as sd
-import soxr
 
-from chordtracker import paths, play_along as pa, train_v7_2
+from chordtracker import paths, play_along as pa
 
 sys.path.insert(0, str(Path(__file__).parent))
 import run_v5  # noqa: E402
@@ -42,49 +42,82 @@ STEP = 0.05
 
 
 class Engine:
-    """Capture, delayed playback and analysis threads. Input time = samples since the last reset / rate."""
+    """Capture and delayed playback in the audio callbacks; the analysis in its own process (analysis_worker).
 
-    def __init__(self, rate: int, cfg: dict, model, prior, Q):
-        self.rate, self.cfg, self.model, self.prior, self.Q = rate, cfg, model, prior, Q
+    Input time = input samples since the last reset / rate. The callbacks only copy samples, so the
+    analysis (and Python's interpreter lock) can never make the playback stutter.
+    """
+
+    def __init__(self, rate: int, cfg: dict, Q):
+        self.rate, self.cfg = rate, cfg
         self.sr, self.hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
         self.ring = np.zeros((rate * 30, 2), dtype=np.float32)       # the last 30 s of input
         self.written = 0                                             # input samples since start (device rate)
-        self.played = 0
-        self.delay_s = 0.5
+        self.played = 0                                              # next output sample (input clock)
+        self.delay_s, self.reposition = 0.5, True
         self.level_db = -200.0                                       # input level of the last block, dBFS
-        self.blocks = queue.Queue()
-        self.lock = threading.Lock()
+        self.xruns = 0                                               # input overflows + output underflows
+        self.jumps = 0                                               # playback repositions after drift
+        ctx = mp.get_context("spawn")
+        self.blocks, self.results = ctx.Queue(), ctx.Queue()
+        self.worker = ctx.Process(target=pa.analysis_worker, daemon=True,
+                                  args=(self.blocks, self.results, cfg, str(RUN), Q, rate))
+        self.worker.start()
+        self.generation = 0
         self.reset()
-        threading.Thread(target=self._analyse, daemon=True).start()
 
     def reset(self) -> None:
         """A new song: analysis, onset and input time start again from the next sample."""
-        with self.lock:
-            self.base = self.written
-            self.generation = getattr(self, "generation", 0) + 1
-            self.analysis = pa.Analysis(self.cfg, self.model, self.prior, self.Q)
-            self.onset = pa.Onset()
-            self.resampler = soxr.ResampleStream(self.rate, self.sr, 1, dtype="float32")
-            self.analysed = 0                                       # 22,050 Hz samples analysed since reset
+        self.generation += 1
+        self.base = self.written
+        self.labels = {p: [] for p in pa.OPERATING_POINTS}
+        self.onset_time = None
+        self.blocks.put(("reset", self.generation))
+
+    def set_delay(self, delay_s: float) -> None:
+        self.delay_s, self.reposition = delay_s, True
+
+    def collect(self) -> None:
+        """Take the analysis results that have arrived (called from the window's timer)."""
+        while True:
+            try:
+                generation, new, onset = self.results.get_nowait()
+            except queue.Empty:
+                return
+            if generation == self.generation:
+                for p, labels in new.items():
+                    self.labels[p].extend(labels)
+                self.onset_time = onset
 
     # ------------------------------------------------------------ audio callbacks
-    def push(self, block: np.ndarray) -> None:
-        """Input callback: store the block for playback and queue it for analysis."""
+    def push(self, block: np.ndarray, status=None) -> None:
+        """Input callback: store the block for playback and send its mono mix to the analysis."""
+        if status:
+            self.xruns += 1
         block = np.asarray(block, dtype=np.float32)
         if block.shape[1] == 1:
             block = np.repeat(block, 2, axis=1)
         n = len(block)
-        idx = (self.written + np.arange(n)) % len(self.ring)
-        self.ring[idx] = block[:, :2]
+        start = self.written % len(self.ring)
+        first = min(n, len(self.ring) - start)
+        self.ring[start:start + first] = block[:first, :2]
+        self.ring[:n - first] = block[first:, :2]
         self.written += n
         self.blocks.put((self.generation, block.mean(axis=1)))
         self.level_db = 20 * np.log10(max(float(np.sqrt(np.mean(block ** 2))), 1e-10))
 
-    def pull(self, out: np.ndarray, frames: int, *_args) -> None:
-        """Output callback: the input `delay_s` seconds ago (silence before it exists)."""
+    def pull(self, out: np.ndarray, frames: int, status=None) -> None:
+        """Output callback: the input `delay_s` seconds ago, played continuously.
+
+        The read position moves only when the delay is changed, or if the two devices' clocks have drifted
+        more than 0.25 s apart; otherwise samples are played in order, without gaps or repeats.
+        """
+        if status:
+            self.xruns += 1
         target = self.written - int(self.delay_s * self.rate)
-        if abs(self.played - target) > self.rate // 50:                 # the delay changed (or drifted): jump
-            self.played = target
+        if self.reposition or abs(self.played - target) > self.rate // 4:
+            self.jumps += 0 if self.reposition else 1
+            self.played, self.reposition = target, False
         pos = self.played + np.arange(frames)
         ok = (pos >= 0) & (pos < self.written) & (pos > self.written - len(self.ring))
         out[:] = 0
@@ -92,24 +125,8 @@ class Engine:
         self.played += frames
 
     def playback_s(self) -> float:
-        """Input time (since the last reset) of the sample being heard now: the input clock minus the delay.
-
-        Taken from the input side, so the chords keep moving even if the output device stalls or changes.
-        """
+        """Input time (since the last reset) of the sample being heard now: the input clock minus the delay."""
         return (self.written - self.base) / self.rate - self.delay_s
-
-    # ------------------------------------------------------------ analysis thread
-    def _analyse(self) -> None:
-        while True:
-            generation, mono = self.blocks.get()
-            with self.lock:
-                if generation != self.generation:
-                    continue
-                y = self.resampler.resample_chunk(mono)
-                self.onset.update(y, self.analysed / self.sr)
-                self.analysed += len(y)
-                analysis = self.analysis
-            analysis.step(y)
 
 
 class Window:
@@ -162,7 +179,7 @@ class Window:
 
     def apply(self) -> None:
         e = self.engine
-        e.delay_s = pa.required_delay(self.point, self.lead, e.sr, e.hop) + self.extra
+        e.set_delay(pa.required_delay(self.point, self.lead, e.sr, e.hop) + self.extra)
 
     def set_point(self, point: str) -> None:
         self.point = point
@@ -189,8 +206,9 @@ class Window:
 
     def tick(self) -> None:
         e = self.engine
-        labels = e.analysis.labels[self.point]
-        onset = e.onset.time
+        e.collect()
+        labels = e.labels[self.point]
+        onset = e.onset_time
         s = pa.shown(labels, self.reference, onset, e.playback_s(), self.lead, self.nudge, e.sr, e.hop)
         self.system.config(text=s["system"] or "...")
         self.system_next.config(text=f"next: {s['system_next']}" if s["system_next"] else "")
@@ -206,7 +224,7 @@ class Window:
             f"{e.hop / e.sr:.2f} + lead + extra {self.extra:.2f} (up / down)\n"
             f"lead {self.lead:.2f} s (left / right)   annotation nudge {self.nudge:+.2f} s ([ / ])   "
             f"onset {'-' if onset is None else f'{onset:.2f} s'}   labels {len(labels)}   space: reset\n"
-            f"input level {e.level_db:5.0f} dBFS" + ("   (no signal: check that the player's output is the input device)"
+            f"input level {e.level_db:5.0f} dBFS   dropouts {e.xruns}   resyncs {e.jumps}" + ("   (no signal: check that the player's output is the input device)"
                                                      if e.level_db < -100 else "")))
         self.root.after(30, self.tick)
 
@@ -241,15 +259,13 @@ def main(argv=None) -> None:
 
     base = run_v5.load_config(paths.REPO_ROOT / "configs" / "v7_2.yaml")
     cfg = run_v7_2.cell_config(base, "C2", pa.INPUT_LOOKAHEAD, 0)
-    model = train_v7_2.load(RUN / "model.pt", False, 0.5).cpu()
-    prior = np.array(json.loads((RUN / "prior.json").read_text()))
     rate = int(sd.query_devices(args.output_device, "output")["default_samplerate"])
-    engine = Engine(rate, cfg, model, prior, run_v5.change_prior(cfg))
+    engine = Engine(rate, cfg, run_v5.change_prior(cfg))
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     window = Window(engine, LOG_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json")
 
     out = sd.OutputStream(device=args.output_device, samplerate=rate, channels=2, dtype="float32",
-                          callback=lambda o, f, t, s: engine.pull(o, f))
+                          latency="high", callback=lambda o, f, t, s: engine.pull(o, f, s))
     if args.file:
         threading.Thread(target=feed_file, args=(args.file, engine), daemon=True).start()
         with out:
@@ -257,7 +273,7 @@ def main(argv=None) -> None:
     else:
         channels = min(2, int(sd.query_devices(args.input_device, "input")["max_input_channels"]))
         inp = sd.InputStream(device=args.input_device, samplerate=rate, channels=channels, dtype="float32",
-                             callback=lambda i, f, t, s: engine.push(i))
+                             latency="high", callback=lambda i, f, t, s: engine.push(i, s))
         with inp, out:
             window.root.mainloop()
 

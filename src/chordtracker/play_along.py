@@ -163,3 +163,45 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
 def required_delay(point: str, lead_s: float, sr: int, hop: int, margin_frames: int = 1) -> float:
     """The smallest playback delay, s, for which every label is ready on time (one frame of margin)."""
     return (total_lookahead(point) + margin_frames) * hop / sr + lead_s
+
+
+def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rate: int) -> None:
+    """The analysis, in its own process so it never holds up the audio callbacks.
+
+    blocks: ("reset", generation) or (generation, mono block at `rate`); results: (generation, {point:
+    new labels}, onset time). Resamples to cfg's rate, finds the onset, runs Analysis.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    import soxr
+    import torch
+
+    from chordtracker import train_v7_2
+
+    torch.set_num_threads(1)
+    run = _Path(run_dir)
+    model = train_v7_2.load(run / "model.pt", False, 0.5).cpu()
+    prior = np.array(_json.loads((run / "prior.json").read_text()))
+    sr = cfg["audio"]["sr"]
+    generation, analysis, onset, resampler, analysed, sent = None, None, None, None, 0, {}
+    while True:
+        message = blocks.get()
+        if message is None:
+            return
+        if message[0] == "reset":
+            generation = message[1]
+            analysis, onset = Analysis(cfg, model, prior, Q), Onset()
+            resampler = soxr.ResampleStream(rate, sr, 1, dtype="float32")
+            analysed, sent = 0, {p: 0 for p in OPERATING_POINTS}
+            continue
+        if message[0] != generation or analysis is None:
+            continue
+        y = resampler.resample_chunk(message[1])
+        onset.update(y, analysed / sr)
+        analysed += len(y)
+        analysis.step(y)
+        new = {p: analysis.labels[p][sent[p]:] for p in OPERATING_POINTS}
+        if any(new.values()) or onset.time is not None:
+            sent = {p: len(analysis.labels[p]) for p in OPERATING_POINTS}
+            results.put((generation, new, onset.time))
