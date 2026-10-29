@@ -1,0 +1,74 @@
+[
+  {
+    "total": 3,
+    "cqt_from": "C2",
+    "input_lookahead": 2,
+    "system": "frame-argmax",
+    "lag": 0,
+    "p_self": null,
+    "seed": 0,
+    "cache": 76.16887984967846,
+    "streaming": 76.16753189861913,
+    "difference": -0.0013479510593299437
+  },
+  {
+    "total": 3,
+    "cqt_from": "C2",
+    "input_lookahead": 2,
+    "system": "frame-argmax",
+    "lag": 0,
+    "p_self": null,
+    "seed": 1,
+    "cache": 75.77748780825526,
+    "streaming": 75.76451353634562,
+    "difference": -0.012974271909641288
+  },
+  {
+    "total": 5,
+    "cqt_from": "F#0",
+    "input_lookahead": 2,
+    "system": "fixed-lag-viterbi",
+    "lag": 2,
+    "p_self": 0.7,
+    "seed": 0,
+    "cache": 77.16786648882542,
+    "streaming": 77.14265370397837,
+    "difference": -0.02521278484705647
+  },
+  {
+    "total": 5,
+    "cqt_from": "F#0",
+    "input_lookahead": 2,
+    "system": "fixed-lag-viterbi",
+    "lag": 2,
+    "p_self": 0.7,
+    "seed": 1,
+    "cache": 75.8749913476051,
+    "streaming": 75.86341936986781,
+    "difference": -0.01157197773729024
+  },
+  {
+    "total": 7,
+    "cqt_from": "F#0",
+    "input_lookahead": 2,
+    "system": "fixed-lag-viterbi",
+    "lag": 4,
+    "p_self": 0.98,
+    "seed": 0,
+    "cache": 77.85613861509448,
+    "streaming": 77.83277499876917,
+    "difference": -0.023363616325312364
+  },
+  {
+    "total": 7,
+    "cqt_from": "F#0",
+    "input_lookahead": 2,
+    "system": "fixed-lag-viterbi",
+    "lag": 4,
+    "p_self": 0.98,
+    "seed": 1,
+    "cache": 76.33383736593291,
+    "streaming": 76.28994969997774,
+    "difference": -0.04388766595516813
+  }
+]
