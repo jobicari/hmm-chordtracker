@@ -1,0 +1,72 @@
+[
+  {
+    "tool": "v6",
+    "dataset": "rwc",
+    "n_songs": 20,
+    "wcsr": 0.7823484950830061,
+    "wcsr_n_excluded": 0.8016502218993803,
+    "reference_n_s": 107.49300000000014,
+    "n_right_s": 0.0,
+    "scored_s": 4464.459999999999
+  },
+  {
+    "tool": "btc",
+    "dataset": "rwc",
+    "n_songs": 20,
+    "wcsr": 0.8255809759746982,
+    "wcsr_n_excluded": 0.8271811613445778,
+    "reference_n_s": 107.49300000000014,
+    "n_right_s": 81.77222100000002,
+    "scored_s": 4464.459999999999
+  },
+  {
+    "tool": "chordino",
+    "dataset": "rwc",
+    "n_songs": 20,
+    "wcsr": 0.7637395602155694,
+    "wcsr_n_excluded": 0.7721730146223282,
+    "reference_n_s": 107.49300000000014,
+    "n_right_s": 45.352374000000104,
+    "scored_s": 4464.459999999999
+  },
+  {
+    "tool": "v6",
+    "dataset": "guitarset",
+    "n_songs": 60,
+    "wcsr": 0.7661915129027165,
+    "wcsr_n_excluded": 0.7661915129027165,
+    "reference_n_s": 0.0,
+    "n_right_s": 0.0,
+    "scored_s": 1852.0623779999996
+  },
+  {
+    "tool": "btc",
+    "dataset": "guitarset",
+    "n_songs": 60,
+    "wcsr": 0.7734397113270448,
+    "wcsr_n_excluded": 0.7734397113270448,
+    "reference_n_s": 0.0,
+    "n_right_s": 0.0,
+    "scored_s": 1852.0623779999994
+  },
+  {
+    "tool": "chordino",
+    "dataset": "guitarset",
+    "n_songs": 60,
+    "wcsr": 0.7103445427257638,
+    "wcsr_n_excluded": 0.7103445427257638,
+    "reference_n_s": 0.0,
+    "n_right_s": 0.0,
+    "scored_s": 1852.0623779999996
+  },
+  {
+    "tool": "madmom",
+    "dataset": "guitarset",
+    "n_songs": 60,
+    "wcsr": 0.7487441230232691,
+    "wcsr_n_excluded": 0.7487441230232691,
+    "reference_n_s": 0.0,
+    "n_right_s": 0.0,
+    "scored_s": 1852.0623779999996
+  }
+]
