@@ -40,3 +40,6 @@ pythonpath = ["src"]
 addopts = "-m 'not slow'"
 markers = ["slow: needs the real GuitarSet in data/guitarset (run with: pytest -m slow)"]
 filterwarnings = ["ignore:Passing a schema to Validator.iter_errors:DeprecationWarning:jsonschema.*"]
+
+[tool.setuptools.package-data]
+chordtracker = ["weights/*.pt"]   # the frozen V6 weights, for chordtracker.inference
