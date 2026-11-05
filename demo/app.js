@@ -214,6 +214,60 @@ function renderReference(s) {
   reference.nowEl.title = i >= 0 ? reference.segs[i].chord : "";
 }
 
+const SVG = "http://www.w3.org/2000/svg";
+
+function svg(tag, attrs = {}, text = null) {
+  const el = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  if (text !== null) el.textContent = text;
+  return el;
+}
+
+function buildDiagram() {
+  // The pipeline as a flow: four shared stages, then two branches (decoder, argmax) to the two rows.
+  // Every value comes from the sample's metadata and the chosen look-ahead.
+  const m = view.sample.metadata, P = m.pipeline, p = view.point;
+  const ms = Math.round(m.frameSeconds * 1000);
+  const W = 150, H = 96, MAIN_Y = 105, TOP_Y = 14, BOT_Y = 196;
+  const root = svg("svg", { viewBox: "0 0 1120 306", xmlns: SVG });
+  const defs = svg("defs");
+  const marker = svg("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7,
+                                 orient: "auto-start-reverse" });
+  marker.appendChild(svg("path", { d: "M0 0 L10 5 L0 10 z", class: "arrow-head" }));
+  defs.appendChild(marker);
+  root.appendChild(defs);
+  const box = (x, y, w, kind, num, title, lines) => {
+    root.appendChild(svg("rect", { x, y, width: w, height: H, rx: 10, class: `box ${kind}` }));
+    if (num) root.appendChild(svg("text", { x: x + 12, y: y + 22, class: "num" }, num));
+    root.appendChild(svg("text", { x: x + (num ? 28 : 12), y: y + 22, class: "title" }, title));
+    lines.forEach((line, i) => root.appendChild(svg("text", { x: x + 12, y: y + 46 + i * 17, class: "text" }, line)));
+  };
+  const arrow = (d) => root.appendChild(svg("path", { d, class: "arrow", "marker-end": "url(#arrow)" }));
+  const xs = [10, 195, 380, 565];
+  box(xs[0], MAIN_Y, W, "", "1", "Audio", [`${P.sampleRate.toLocaleString("en")} Hz, mono`,
+    `${m.hopLength.toLocaleString("en")}-sample blocks`, `one per ${ms} ms frame`]);
+  box(xs[1], MAIN_Y, W, "", "2", "Harmonic part", [`STFT ${P.harmonic.nFft}, hop ${P.harmonic.stftHop}`,
+    `past ${P.harmonic.medianFrames}-frame median`, "keeps sustained notes"]);
+  box(xs[2], MAIN_Y, W, "", "3", "Log-CQT", [`${P.cqt.binsPerOctave} bins per octave`,
+    `tuning: first ${P.cqt.tuningSeconds} s`, `log(1 + ${P.compression.gamma} x)`]);
+  box(xs[3], MAIN_Y, W, "model", "4", "CRNN", [`${P.network.windowFrames} frames, ${P.network.inputLookaheadFrames} ahead`,
+    `${P.cqt.networkLowest} to ${P.cqt.networkHighest}`, `causal GRU, ${P.network.classes} chords`]);
+  for (let i = 0; i < 3; i++) arrow(`M${xs[i] + W} ${MAIN_Y + H / 2} H${xs[i + 1] - 3}`);
+  const decoderOn = p.pSelf !== null;
+  box(775, TOP_Y, 170, decoderOn ? "decoder" : "decoder off", "5", "HMM + Viterbi", decoderOn
+    ? ["Billboard chord changes", `p_self ${p.pSelf}`, `decides ${p.lagFrames} frames later`]
+    : ["not used at this", "look-ahead: the row is", "the network alone"]);
+  box(775, BOT_Y, 170, "", "5'", "Argmax", ["most probable chord", "of each frame", "no smoothing"]);
+  box(990, TOP_Y, 120, "out", "", "Decoded", ["row, shown", `${p.decisionDelaySeconds.toFixed(2)} s later`]);
+  box(990, BOT_Y, 120, "out", "", "Framewise", ["row, shown", `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s later`]);
+  const cx = xs[3] + W, cy = MAIN_Y + H / 2;
+  arrow(`M${cx} ${cy} H${cx + 25} V${TOP_Y + H / 2} H${775 - 3}`);
+  arrow(`M${cx} ${cy} H${cx + 25} V${BOT_Y + H / 2} H${775 - 3}`);
+  arrow(`M945 ${TOP_Y + H / 2} H${990 - 3}`);
+  arrow(`M945 ${BOT_Y + H / 2} H${990 - 3}`);
+  $("pipeline-diagram").replaceChildren(root);
+}
+
 function buildPipeline() {
   // The stages in the order the code runs them, with the values of this run (metadata.pipeline).
   const m = view.sample.metadata, P = m.pipeline, p = view.point;
@@ -250,6 +304,7 @@ function buildPipeline() {
       + `appears once decided: ${p.decisionDelaySeconds.toFixed(2)} s after its frame for the decoded row, `
       + `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s for the framewise row.`],
   ];
+  buildDiagram();
   $("pipeline-stages").replaceChildren(...stages.map(([title, text]) => {
     const li = document.createElement("li");
     const b = document.createElement("strong");
@@ -430,6 +485,7 @@ function clearSample() {
   reference.nowEl.textContent = "";
   $("reference-note").textContent = "";
   $("pipeline-stages").replaceChildren();
+  $("pipeline-diagram").replaceChildren();
   $("decoded-name").textContent = "Decoded";
   $("delay-note").textContent = "";
   $("time").textContent = "0:00.0 / 0:00.0";

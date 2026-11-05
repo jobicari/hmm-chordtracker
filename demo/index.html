@@ -11,10 +11,10 @@
   <header>
     <div class="wrap">
       <h1>Chord Tracker</h1>
-      <p class="tagline">Real-time chord tracking. A neural network labels every 93 ms frame on its own, so its
-        chords flicker; an HMM / Viterbi decoder that waits for a few more frames smooths them into steady chords.</p>
-      <p class="notice">Computed ahead of time, because the model does not run in the browser: each chord appears
-        only from the moment the live system would have output it, never earlier.</p>
+      <p class="tagline">Real-time chord tracking. On its own, the neural network's chords flicker from frame to
+        frame. An HMM / Viterbi decoder that waits a few frames turns them into steady chords.</p>
+      <p class="notice">The chords were computed ahead of time, because the model does not run in the browser.
+        Each one appears when the live system would have shown it, never earlier.</p>
     </div>
   </header>
 
@@ -89,9 +89,15 @@
     </section>
 
     <section class="more">
-      <details id="pipeline" class="pipeline">
+      <details id="pipeline" class="pipeline" open>
         <summary>Analysis pipeline: how each chord is computed</summary>
-        <ol id="pipeline-stages"></ol>
+        <div id="pipeline-diagram" class="diagram" role="img" aria-label="Analysis pipeline diagram"></div>
+        <p class="diagram-caption">The audio goes through the same stages as in the live system, one 93 ms frame
+          at a time. The network's output feeds both rows: directly (framewise) and through the decoder.</p>
+        <details class="stage-details">
+          <summary>Stage details</summary>
+          <ol id="pipeline-stages"></ol>
+        </details>
       </details>
 
       <details class="notes" open>
