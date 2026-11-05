@@ -83,6 +83,7 @@ In the browser (Funk, Rock and SS takes):
 | Pause and resume; seek while playing; look-ahead change while playing; pause during the wait | resume plays at once; a seek and a look-ahead change wait again (the new P, 0.42 s at 0.28 s); a pause during the wait stops it |
 | During playback (3 points x delay on / off): chord texts, single active block, mask positions vs the JSON, every ~16 ms | 0 mismatches |
 | Blocks rebuilt during playback | never |
+| Same recording and run (Phase 2): every row of the three samples starts at 0, has no gap, ends at the audio's duration; the page refuses a row that does not (checked with a truncated row) | all rows pass; the truncated one is refused |
 | Playing to the end with the delay off | the decoder flushes: the whole row shown, last chord, status "Ended" |
 | Three sample picks 5 ms apart | the last pick wins; nothing of the others shown; look-ahead and delay settings kept |
 | Console | no page errors; the browser pane itself requests `/favicon.ico` (404) although the page declares no icon file |

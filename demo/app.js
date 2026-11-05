@@ -55,6 +55,13 @@ function colour(chord) {
   return `hsl(${((pc * 7) % 12) * 30}, ${minor ? 45 : 60}%, ${minor ? 33 : 45}%)`;
 }
 
+function coversRecording(segs, d) {
+  // Same recording and run: every row starts at 0, has no gap or overlap, and ends at the audio's end
+  // (the export cuts all of them from the same frame grid, chordtracker.demo.result).
+  if (segs.length === 0 || segs[0].start !== 0 || Math.abs(segs.at(-1).end - d) > 1e-3) return false;
+  return segs.every((g, i) => g.end > g.start && (i === 0 || Math.abs(g.start - segs[i - 1].end) < 1e-6));
+}
+
 function segmentAt(segs, t) {
   // Index of the last segment with start <= t (binary search); -1 if t is before the first.
   let lo = 0, hi = segs.length - 1, found = -1;
@@ -324,6 +331,11 @@ async function loadSample(entry) {
   const sample = await fetchJSON(`samples/${entry.file}`);
   if (!Array.isArray(sample.points) || sample.points.length === 0 || !Array.isArray(sample.framewise)) {
     throw new Error(`${entry.title}: the decoded or framewise output is missing.`);
+  }
+  for (const [name, segs] of [["framewise", sample.framewise], ...sample.points.map((p) => [p.id, p.segments])]) {
+    if (!coversRecording(segs, sample.duration)) {
+      throw new Error(`${entry.title}: the ${name} output does not cover this recording; it is not shown.`);
+    }
   }
   const response = await fetch(`samples/${sample.audio}`);
   if (!response.ok) throw new Error(`samples/${sample.audio}: HTTP ${response.status}`);
