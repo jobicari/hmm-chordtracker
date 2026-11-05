@@ -128,6 +128,10 @@ times, post = inference.posteriors("song.wav", phases=4)    # (n,), (24, n) in i
 `phases=4` reads the song four times, a quarter hop apart, for a frame every 23 ms instead of 93 ms
 (finer sampling, not finer timing). The model runs on the CPU and is loaded once per process.
 
+The tuning is estimated as V6's features do, on quarter-tone bins: it wraps at +-25 cents, so a recording
+30-50 cents off A440 reads its chords a semitone off. A caller that knows the tuning passes it,
+`tuning_semitones=-0.44` for a recording 44 cents flat.
+
 ## Setup
 
 Python 3.12 in the conda env `hmm-chordtracker`; dependencies are in `pyproject.toml` / `uv.lock`.

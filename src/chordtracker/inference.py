@@ -2,7 +2,8 @@
 whole recording, for projects that install this package.
 
     load_v6()                                  the model with the packaged weights, on the CPU, eval mode
-    posteriors(path, phases=1, model=None)     (times, 24 x n posteriors), CLASSES order
+    posteriors(path, phases=1, model=None, tuning_semitones=None)
+                                               (times, 24 x n posteriors), CLASSES order
 
 Everything a caller needs ships in the package: SETTINGS holds V6's audio, CQT and compression settings
 (configs/v6.yaml on top of v2.yaml, checked by tests/test_inference.py) and weights/ the frozen weights
@@ -11,8 +12,15 @@ validation song: offline, both directions of the GRU.
 
 phases: V6's frames are 93 ms apart (hop 2048). With phases = p, the song is read p times, delayed by
 0, 1/p, ..., (p - 1)/p of a hop, and the frames interleaved: one every hop / p, each computed from
-exactly the input V6 was trained on. Finer sampling, not finer resolution: the model's own timing does
-not change.
+the input V6 was trained on. Finer sampling, not finer resolution: the model's own timing does not
+change.
+
+tuning_semitones: the recording's deviation from A440 in semitones, when the caller knows it (e.g.
+checked against annotated chords); about -0.5..0.5, as a whole semitone more transposes the chords. By
+default the tuning is estimated as V6's features do (features_v5.log_cqt), on the CQT's quarter-tone
+bins: that estimate wraps at +-25 cents, so a recording 44 cents flat (Another Girl, Help!) reads as 6
+cents sharp, its notes fall between the bins the model reads, and its chords come out a semitone low. A
+caller that knows better passes the tuning; the default stays as V6 was scored.
 """
 from functools import cache
 from pathlib import Path
@@ -44,9 +52,12 @@ def load_v6() -> ChordCRNN:
     return model.eval()
 
 
-def posteriors(path: Path | str, phases: int = 1, model: ChordCRNN | None = None) -> tuple[np.ndarray, np.ndarray]:
+def posteriors(
+    path: Path | str, phases: int = 1, model: ChordCRNN | None = None, tuning_semitones: float | None = None
+) -> tuple[np.ndarray, np.ndarray]:
     """P(chord | frame) of a whole recording: times (n,) in seconds from the start, ascending, and the
-    (24, n) posteriors in CLASSES order. Audio, tuning, CQT and compression as features_v5.log_cqt.
+    (24, n) posteriors in CLASSES order. Audio, tuning, CQT and compression as features_v5.log_cqt, or the
+    CQT read at `tuning_semitones` from A440 when given (see the module docstring).
 
     Raises ValueError when `phases` does not divide the hop.
     """
@@ -56,7 +67,10 @@ def posteriors(path: Path | str, phases: int = 1, model: ChordCRNN | None = None
         raise ValueError(f"phases must divide the hop ({hop} samples), got {phases}")
     model = model or load_v6()
     y, sr = load_audio(path, SETTINGS)
-    tuning = float(librosa.estimate_tuning(y=y, sr=sr, bins_per_octave=q["bins_per_octave"]))
+    if tuning_semitones is None:
+        tuning = float(librosa.estimate_tuning(y=y, sr=sr, bins_per_octave=q["bins_per_octave"]))
+    else:
+        tuning = tuning_semitones * q["bins_per_octave"] / 12  # librosa.cqt: fractions of its bins
     times, posts = [], []
     for p in range(phases):
         delay = p * hop // phases
