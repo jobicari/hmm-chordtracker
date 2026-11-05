@@ -62,7 +62,8 @@ def test_health_lists_the_tested_formats(server):
     url, module, _ = server
     with urllib.request.urlopen(f"{url}/api/health") as r:
         body = json.loads(r.read())
-    assert body["formats"] == [".wav", ".flac", ".ogg", ".mp3"] and body["maxBytes"] == module.MAX_BYTES
+    assert body["formats"] == [".wav", ".flac", ".ogg", ".mp3"]
+    assert body["maxBytes"] == 100 * 1024 * 1024 and body["maxSeconds"] == 600.0      # Jo's limits
 
 
 def test_a_supported_file_is_analysed_and_served_without_audio(server, tmp_path):

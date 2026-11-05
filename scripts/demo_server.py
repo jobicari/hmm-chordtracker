@@ -36,7 +36,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import demo_export  # noqa: E402
 
 FORMATS = (".wav", ".flac", ".ogg", ".mp3")
-MAX_BYTES = 50 * 1024 * 1024
+MAX_BYTES = 100 * 1024 * 1024
 MAX_SECONDS = 600.0
 UPLOAD_SOURCE = {"dataset": "uploaded file"}
 

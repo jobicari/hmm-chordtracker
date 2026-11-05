@@ -441,7 +441,7 @@ function clearSample() {
 
 let loadGeneration = 0;
 let analysisAbort = null;
-const ANALYSIS_TIMEOUT_MS = 180000;
+const ANALYSIS_TIMEOUT_MS = 300000;           // a 9.5 min stereo WAV took 103 s on the Mac
 const upload = { formats: [], maxBytes: 0, file: null, sample: null };   // the uploaded file and its result
 
 function checkSample(sample, title) {

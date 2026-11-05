@@ -19,7 +19,7 @@ PYTHONPATH=src python scripts/demo_server.py
 ```
 
 Then open http://localhost:8000. The server also analyses a file you upload (WAV, FLAC, Ogg Vorbis or
-MP3, up to 50 MB and 10 min) with the same model, on this computer. Without uploads, any static server
+MP3, up to 100 MB and 10 min) with the same model, on this computer. Without uploads, any static server
 works: `python -m http.server -d demo 8000`. Space plays and pauses; click or drag on the timeline, or use the seek
 bar, to seek.
 

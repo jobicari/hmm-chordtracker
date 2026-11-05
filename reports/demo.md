@@ -105,12 +105,12 @@ plays the browser's own copy of the file; the result has no reference ("not avai
 **Formats.** Only what was tested is offered: WAV, FLAC, Ogg Vorbis and MP3. Converted from a GuitarSet
 take with ffmpeg, each loads here with the original's duration (25.941 s) and no time offset
 (cross-correlation with the WAV: 0 samples), and Chrome reports the same duration for the MP3 and Ogg.
-AAC / M4A cannot be read by this environment's libsndfile, so it is refused. Limits: 50 MB, 1 s to
+AAC / M4A cannot be read by this environment's libsndfile, so it is refused. Limits: 100 MB, 1 s to
 10 min. The lossy files give slightly different chords (Ogg: 17 instead of 16 segments at 0.46 s).
 
 **Errors and stale results.** Wrong type or size is refused in the browser before upload; unreadable
 audio, a too short or too long file and a failed analysis come back from the server as a message; the
-request is stopped after 180 s. Every new choice (a sample or a file) clears the page first, aborts a
+request is stopped after 300 s (a 9.5 min, 100 MB stereo WAV took 103 s to analyse). Every new choice (a sample or a file) clears the page first, aborts a
 running analysis and makes any older load drop its result; the uploaded file stays in the list as
 "Your file: name" and comes back without a new analysis.
 
