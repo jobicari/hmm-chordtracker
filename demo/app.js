@@ -1,28 +1,36 @@
-// Chord Tracker demo, Phase 1: play a prepared sample and follow its decoded chords.
+// Chord Tracker demo: a prepared sample played back with its chords shown as the live system shows them.
 //
-// Data: demo/samples/<id>.json, written by scripts/demo_export.py. The page draws its "decoded"
-// segments (HMM / fixed-lag Viterbi) and decides nothing itself: it only looks up which segment holds
-// the playback time.
+// Data: demo/samples/<id>.json, written by scripts/demo_export.py. For each of the listening prototype's
+// three operating points it holds the label segments and the delay after which a frame's label is known
+// (decisionDelaySeconds: total look-ahead + one frame); the framewise row (network alone) has its own.
+// A fixed-lag decision is final, so revealing each label when its delay has passed shows exactly what a
+// live decoder would have shown. The page decides no chord itself.
 //
-// Clock: audio.currentTime is the only time source. The playhead, the seek bar, the time display and
-// the decoded chord are all derived from it, on every animation frame while playing and at once on
-// pause, seek and load.
+// Two clocks, both from audio.currentTime (s, what you hear):
+//   heard      = s + delay, what the system has received; delay = the point's decision delay when
+//                "Delay playback" is on (the live set-up: playback runs that far behind the input), else 0
+//   known(row) = up to the last frame f with f * h + the row's decision delay <= heard (h = one frame,
+//                93 ms, so the mask moves one frame at a time, as the live output does); once the input
+//                reaches the end of the recording the decoder flushes and everything is known
+// A row is revealed up to min(s, known): never past what you hear, never past what is decided. The
+// chords shown "now" are the row's chord at that revealed time: on time with the delay, late without it.
 //
-// Active segment: the one with start <= t < end. At a boundary the new chord is active; at or past the
-// end of the recording the last segment stays active.
-//
-// No flicker: the timeline is built once per sample. During playback only the playhead's transform,
-// the seek bar's value and texts whose content changes are written; the chord texts and the active
-// highlight are touched only when the active segment changes.
+// No flicker: tracks are built once per sample (and per look-ahead change, for the decoded row). During
+// playback only transforms (playhead, input head, masks), the seek bar and changed texts are written; the
+// chord texts and active highlights only when the displayed segment changes.
 "use strict";
 
 const PX_PER_SECOND = 40;           // minimum scale; the timeline scrolls when the recording is longer
 const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const EPS = 1e-4;
 
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
-const view = { sample: null, segs: [], divs: [], active: undefined, timeText: "", width: 0, seeking: false,
-               audioUrl: null };
+const rows = {
+  decoded: { track: $("track-decoded"), segs: [], divs: [], active: undefined, delay: 0, nowEl: $("now") },
+  framewise: { track: $("track-framewise"), segs: [], divs: [], active: undefined, delay: 0, nowEl: $("now-framewise") },
+};
+const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null };
 
 // ---------------------------------------------------------------------------------------------------
 // Chords
@@ -55,10 +63,26 @@ function segmentAt(segs, t) {
   return found;
 }
 
-function nextDifferent(segs, i) {
-  const now = i >= 0 ? segs[i].name : null;
-  for (let j = i + 1; j < segs.length; j++) if (segs[j].name !== now) return segs[j].name;
-  return "-";
+// ---------------------------------------------------------------------------------------------------
+// Clocks
+
+function playbackDelay() {
+  return $("delay").checked && view.point ? view.point.decisionDelaySeconds : 0;
+}
+
+function knownUntil(row, heard, d) {
+  // End of the part of the row the live system has decided once it has received `heard` seconds.
+  // Frame f (centre f * h, region (f - 1/2) h .. (f + 1/2) h, as the segments are cut) is decided when
+  // heard >= f * h + the row's decision delay; at the end of the input the decoder flushes the rest.
+  const h = view.sample.metadata.frameSeconds;
+  if (heard >= d) return d;
+  if (heard < row.delay) return 0;
+  return Math.min(d, (Math.floor((heard - row.delay) / h + 1e-6) + 0.5) * h);
+}
+
+function revealedUntil(row, s, heard, d) {
+  // Shown: what is decided and what you have reached, min(s, known); the mask covers the rest.
+  return Math.max(0, Math.min(s, knownUntil(row, heard, d)));
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -74,12 +98,15 @@ function setStatus(text, isError = false) {
   $("status").classList.toggle("error", isError);
 }
 
-function buildTimeline(sample) {
-  // Once per sample: the segment blocks and the ruler, positioned in % of the duration.
-  const d = sample.duration;
-  const track = $("track");
-  track.replaceChildren();
-  view.divs = view.segs.map((seg) => {
+function buildRow(row, segs, delay) {
+  // Once per sample (and per look-ahead for the decoded row): the blocks, in % of the duration.
+  const d = view.sample.duration;
+  const mask = row.track.querySelector(".mask");
+  row.track.replaceChildren(mask);
+  row.segs = segs;
+  row.delay = delay;
+  row.active = undefined;
+  row.divs = segs.map((seg) => {
     const div = document.createElement("div");
     div.className = "seg" + (rootPitch(seg.chord) === null ? " nc" : "");
     div.style.left = `${(100 * seg.start) / d}%`;
@@ -88,9 +115,19 @@ function buildTimeline(sample) {
     if (bg) div.style.backgroundColor = bg;
     div.textContent = seg.name;
     div.title = `${seg.name} (${seg.chord}), ${seg.start.toFixed(2)} - ${seg.end.toFixed(2)} s`;
-    track.appendChild(div);
+    row.track.insertBefore(div, mask);
     return div;
   });
+  markNarrow(row);
+}
+
+function markNarrow(row) {
+  const d = view.sample ? view.sample.duration : 1;
+  row.segs.forEach((seg, i) =>
+    row.divs[i].classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < 8 + 7 * seg.name.length));
+}
+
+function buildRuler(d) {
   const ruler = $("ruler");
   ruler.replaceChildren();
   const step = d > 240 ? 30 : d > 60 ? 10 : 5;
@@ -103,44 +140,91 @@ function buildTimeline(sample) {
     tick.appendChild(label);
     ruler.appendChild(tick);
   }
-  $("timeline").style.width = `${Math.max(d * PX_PER_SECOND, 0)}px`;
-  view.active = undefined;
-  layout();
+}
+
+function buildPoints(sample) {
+  // The look-ahead choice: one radio per operating point in the JSON.
+  const box = $("points");
+  box.querySelectorAll("label").forEach((l) => l.remove());
+  for (const p of sample.points) {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "point";
+    input.value = p.id;
+    input.addEventListener("change", () => selectPoint(p.id));
+    const span = document.createElement("span");
+    span.className = "sub";
+    span.textContent = p.pSelf === null ? "network alone" : `Viterbi, lag ${p.lagFrames}`;
+    label.append(input, `${p.lookaheadSeconds.toFixed(2)} s `, span);
+    label.title = p.decoder;
+    box.appendChild(label);
+  }
+}
+
+function selectPoint(id) {
+  const sample = view.sample;
+  if (!sample) return;
+  const point = sample.points.find((p) => p.id === id) || sample.points.find((p) => p.id === sample.defaultPoint);
+  view.point = point;
+  view.wantedPoint = point.id;
+  $("points").querySelector(`input[value="${point.id}"]`).checked = true;
+  buildRow(rows.decoded, point.segments, point.decisionDelaySeconds);
+  const sub = document.createElement("span");
+  sub.className = "sub";
+  sub.textContent = `look-ahead ${point.lookaheadSeconds.toFixed(2)} s, ${point.segments.length} chord segments`;
+  $("decoded-name").replaceChildren(
+    point.pSelf === null ? "Decoded: no decoder, the network alone" : `Decoded: HMM / Viterbi, fixed lag of ${point.lagFrames} frames`,
+    sub);
+  updateDelayNote();
+  render();
+}
+
+function updateDelayNote() {
+  if (!view.point) { $("delay-note").textContent = ""; return; }
+  const D = view.point.decisionDelaySeconds.toFixed(2);
+  $("delay-note").textContent = $("delay").checked
+    ? `Playback is delayed by ${D} s: the system receives the recording ${D} s before you hear it, so each `
+      + `chord is decided by the time you hear it (the look-ahead plus one frame of audio).`
+    : `Playback is not delayed: each decoded chord appears ${D} s after you hear it, and the network's `
+      + `own label ${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s after.`;
+  $("input-head").hidden = !$("delay").checked;
 }
 
 function layout() {
   // On load and resize: timeline width, and which blocks are too narrow to print their name.
-  const scroller = $("scroller");
   const d = view.sample ? view.sample.duration : 0;
-  $("timeline").style.width = `${Math.max(d * PX_PER_SECOND, scroller.clientWidth)}px`;
-  view.width = $("track").getBoundingClientRect().width;
-  view.segs.forEach((seg, i) =>
-    view.divs[i].classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < 8 + 7 * seg.name.length));
+  $("timeline").style.width = `${Math.max(d * PX_PER_SECOND, $("scroller").clientWidth)}px`;
+  view.width = rows.decoded.track.getBoundingClientRect().width;
+  if (view.sample) { markNarrow(rows.decoded); markNarrow(rows.framewise); }
   render();
+}
+
+function renderRow(row, revealed) {
+  row.track.querySelector(".mask").style.transform = `translateX(${(revealed / view.sample.duration) * view.width}px)`;
+  const i = revealed > 0 ? segmentAt(row.segs, revealed - EPS) : -1;
+  if (i === row.active) return;                                   // same chord: touch nothing
+  if (row.active >= 0) row.divs[row.active].classList.remove("active");
+  if (i >= 0) row.divs[i].classList.add("active");
+  row.active = i;
+  row.nowEl.textContent = i >= 0 ? row.segs[i].name : "";
+  row.nowEl.title = i >= 0 ? row.segs[i].chord : "";
 }
 
 function render() {
   // Everything that depends on the playback time, from audio.currentTime only.
   const sample = view.sample;
-  if (!sample) return;
+  if (!sample || !view.point) return;
   const d = sample.duration;
-  const t = Math.min(audio.currentTime, d);
-  const x = (t / d) * view.width;
+  const s = Math.min(audio.currentTime, d);
+  const heard = Math.min(s + playbackDelay(), d);
+  const x = (s / d) * view.width;
   $("playhead").style.transform = `translateX(${x}px)`;
-  if (!view.seeking) $("seek").value = t;
-
-  const text = `${formatTime(t)} / ${formatTime(d)}`;
+  $("input-head").style.transform = `translateX(${(heard / d) * view.width}px)`;
+  if (!view.seeking) $("seek").value = s;
+  const text = `${formatTime(s)} / ${formatTime(d)}`;
   if (text !== view.timeText) { view.timeText = text; $("time").textContent = text; }
-
-  const i = segmentAt(view.segs, t);
-  if (i !== view.active) {
-    if (view.active >= 0) view.divs[view.active].classList.remove("active");
-    if (i >= 0) view.divs[i].classList.add("active");
-    view.active = i;
-    $("now").textContent = i >= 0 ? view.segs[i].name : "";
-    $("now").title = i >= 0 ? view.segs[i].chord : "";
-    $("next").textContent = nextDifferent(view.segs, i);
-  }
+  for (const row of Object.values(rows)) renderRow(row, revealedUntil(row, s, heard, d));
 
   if (!audio.paused) {
     // Keep the playhead in view when the timeline scrolls: jump only when it leaves the visible part.
@@ -175,18 +259,20 @@ function clearSample() {
   audio.removeAttribute("src");
   audio.load();
   if (view.audioUrl) URL.revokeObjectURL(view.audioUrl);
-  view.audioUrl = null;
-  view.sample = null;
-  view.segs = [];
-  view.divs = [];
-  view.active = undefined;
-  view.timeText = "";
-  $("track").replaceChildren();
+  Object.assign(view, { sample: null, point: null, timeText: "", audioUrl: null });
+  for (const row of Object.values(rows)) {
+    const mask = row.track.querySelector(".mask");
+    mask.style.transform = "";
+    row.track.replaceChildren(mask);
+    Object.assign(row, { segs: [], divs: [], active: undefined });
+    row.nowEl.textContent = "";
+  }
   $("ruler").replaceChildren();
-  $("now").textContent = "";
-  $("next").textContent = "-";
+  $("decoded-name").textContent = "Decoded";
+  $("delay-note").textContent = "";
   $("time").textContent = "0:00.0 / 0:00.0";
   $("seek").value = 0;
+  $("points").disabled = true;
   setControls(false);
 }
 
@@ -200,18 +286,23 @@ async function loadSample(entry) {
   clearSample();
   setStatus(`Loading ${entry.title}...`);
   const sample = await fetchJSON(`samples/${entry.file}`);
-  if (!Array.isArray(sample.decoded) || sample.decoded.length === 0) {
-    throw new Error(`${entry.title}: the decoded output is missing.`);
+  if (!Array.isArray(sample.points) || sample.points.length === 0 || !Array.isArray(sample.framewise)) {
+    throw new Error(`${entry.title}: the decoded or framewise output is missing.`);
   }
   const response = await fetch(`samples/${sample.audio}`);
   if (!response.ok) throw new Error(`samples/${sample.audio}: HTTP ${response.status}`);
   const blob = await response.blob();
   if (generation !== loadGeneration) return;
   view.sample = sample;
-  view.segs = sample.decoded;
   view.audioUrl = URL.createObjectURL(blob);
   $("seek").max = sample.duration;
-  buildTimeline(sample);
+  $("timeline").style.width = `${Math.max(sample.duration * PX_PER_SECOND, $("scroller").clientWidth)}px`;
+  view.width = rows.decoded.track.getBoundingClientRect().width;
+  buildRuler(sample.duration);
+  buildRow(rows.framewise, sample.framewise, sample.framewiseDecisionDelaySeconds);
+  buildPoints(sample);
+  $("points").disabled = false;
+  selectPoint(view.wantedPoint || sample.defaultPoint);
   audio.src = view.audioUrl;
   audio.load();
   history.replaceState(null, "", `#${sample.id}`);
@@ -261,7 +352,7 @@ function seek(t) {
 audio.addEventListener("canplay", () => {
   if (!view.sample) return;
   setControls(true);
-  setStatus(`Ready: ${view.sample.title}`);
+  if (audio.paused) setStatus(`Ready: ${view.sample.title}`);
 });
 audio.addEventListener("play", () => {
   $("play").textContent = "Pause";
@@ -282,6 +373,7 @@ audio.addEventListener("error", () => {
 
 $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
+$("delay").addEventListener("change", () => { updateDelayNote(); render(); });
 
 const seekBar = $("seek");
 seekBar.addEventListener("pointerdown", () => { view.seeking = true; });
@@ -293,7 +385,7 @@ const timeline = $("timeline");
 let dragging = false;
 const seekFromPointer = (e) => {
   if (!view.sample || $("play").disabled) return;
-  const rect = $("track").getBoundingClientRect();
+  const rect = rows.decoded.track.getBoundingClientRect();
   seek(((e.clientX - rect.left) / rect.width) * view.sample.duration);
 };
 timeline.addEventListener("pointerdown", (e) => {

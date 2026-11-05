@@ -10,23 +10,31 @@
 <body>
   <header>
     <h1>Chord Tracker</h1>
-    <p class="tagline">A chord-tracking system comparing framewise chord classification with HMM/Viterbi temporal decoding.</p>
-    <p class="methods">Log-CQT features · CRNN chord classifier · HMM · Fixed-lag Viterbi</p>
+    <p class="tagline">Real-time chord tracking. A neural network labels every 93 ms frame on its own, so its
+      chords flicker; an HMM / Viterbi decoder that waits for a few more frames smooths them into steady chords.</p>
   </header>
 
   <main>
-    <section class="input">
-      <label class="picker">Prepared sample
+    <p class="notice">The chords were computed ahead of time, because the model does not run in the browser.
+      The page shows each chord only from the moment the live system would have output it, never earlier.</p>
+
+    <section class="settings">
+      <label class="field">Prepared sample
         <select id="sample" disabled></select>
       </label>
-      <span id="status" class="status" role="status">Loading samples...</span>
+      <fieldset class="field points" id="points" disabled>
+        <legend>Look-ahead</legend>
+      </fieldset>
+      <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
     </section>
+    <p id="delay-note" class="delay-note"></p>
+    <p id="status" class="status" role="status">Loading samples...</p>
 
     <section class="player">
       <div class="now">
-        <span class="caption">Decoded chord (HMM/Viterbi)</span>
+        <span class="caption">Chord now</span>
         <span id="now" class="chord-big"></span>
-        <span class="caption">Next: <span id="next" class="chord-next">-</span></span>
+        <span class="caption">Network alone now: <span id="now-framewise" class="chord-small"></span></span>
       </div>
       <div class="transport">
         <div class="buttons">
@@ -34,20 +42,29 @@
           <button id="restart" type="button" disabled>Restart</button>
           <span id="time" class="time">0:00.0 / 0:00.0</span>
         </div>
-        <input id="seek" class="seek" type="range" min="0" max="0" step="0.01" value="0" disabled
-               aria-label="Seek">
+        <input id="seek" class="seek" type="range" min="0" max="0" step="0.01" value="0" disabled aria-label="Seek">
       </div>
     </section>
 
-    <section class="timeline-section">
-      <h2>Decoded chord timeline <span class="sub">HMM / Viterbi output, not ground truth</span></h2>
+    <section>
       <div id="scroller" class="scroller">
-        <div id="timeline" class="timeline" aria-label="Decoded chord timeline: click to seek">
+        <div id="timeline" class="timeline" aria-label="Chord timelines: click to seek">
           <div id="ruler" class="ruler"></div>
-          <div id="track" class="track"></div>
-          <div id="playhead" class="playhead"></div>
+          <div class="row main">
+            <div class="row-name"><span id="decoded-name">Decoded</span></div>
+            <div class="track" id="track-decoded"><div class="mask"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-name">Framewise <span class="sub">network alone, no decoder</span></div>
+            <div class="track" id="track-framewise"><div class="mask"></div></div>
+          </div>
+          <div id="input-head" class="input-head" title="What the system has heard"></div>
+          <div id="playhead" class="playhead" title="What you hear"></div>
         </div>
       </div>
+      <p class="legend"><span class="key playhead-key"></span> what you hear
+        <span class="key input-key"></span> what the system has heard
+        <span class="key mask-key"></span> not decided yet</p>
     </section>
   </main>
 

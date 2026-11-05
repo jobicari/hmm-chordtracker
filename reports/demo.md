@@ -5,8 +5,10 @@
 The listening prototype (reports/play_along.md) shows the chords live in a desktop window and needs a
 virtual audio cable. **A web page that plays a prepared recording and shows the decoded chords in time
 with it** lets a reviewer who has never seen the code see what the system does. This report covers
-Phase 0 (inspection) and Phase 1 (stable prepared-sample flow) of the demo specification; Phases 2 to 4
-(framewise comparison row, pipeline and reference rows, upload) are not started.
+Phase 0 (inspection) and Phase 1 (stable prepared-sample flow) of the demo specification, reworked after
+review into a real-time view: the chords appear as the live system would output them, with the framewise
+row (the spec's Phase 2) brought forward to show what the decoder smooths. The pipeline and reference
+rows (Phase 3) and upload (Phase 4) are not started.
 
 ## Phase 0: what the repo had
 
@@ -21,77 +23,78 @@ Phase 0 (inspection) and Phase 1 (stable prepared-sample flow) of the demo speci
 | Cause of the flickering | No page existed, so no rendering flicker to trace. The flicker the project knows is in the output: the network alone changes chord about twice as often as the music (64 vs 22 changes per minute on the Funk take below), in runs of one or two frames; the fixed-lag Viterbi halves that. A page would add its own flicker if it redrew the chord or the timeline on every playback update. |
 | Smallest Phase 1 plan | Export the outputs of a few GuitarSet validation takes with the real chain to JSON next to the audio, in the spec's result shape; a static page (no framework, no build) that plays the audio, draws the decoded timeline once, and on each playback update moves only the playhead and changes the chord text when the active segment changes. |
 
-The spec's header suggests "Chroma features · Chord templates · HMM · Viterbi". That describes V0 to V4,
-not the current system: the page says "Log-CQT features · CRNN chord classifier · HMM · Fixed-lag
-Viterbi". The spec's description calls the system "interpretable"; the page leaves that word out, since
-the acoustic model is a neural network.
+After the first review the page changed in three ways: the header states the comparison (the network
+alone flickers, the Viterbi decoder smooths) instead of listing methods; the page is real time rather
+than a finished track; and one setting picks the look-ahead.
 
 ## Phase 1: what was built
 
     scripts/demo_export.py      runs the prototype's chain on whole validation takes, writes demo/samples/
-    src/chordtracker/demo.py    frame paths -> segments, the result JSON (tests/test_demo.py)
+    src/chordtracker/demo.py    frame paths -> segments, each point's delays, the result JSON (tests/test_demo.py)
     demo/index.html, app.js, style.css, README.md
 
-The chain is the listening prototype's: `streaming_features.offline_log_cqt` (the columns
+**Outputs.** The chain is the listening prototype's: `streaming_features.offline_log_cqt` (the columns
 `StreamingFeatures` gives block by block), the V7.2 network with input look-ahead 2 on the C2 grid
-(seed 0), then the argmax per frame (framewise) and the fixed-lag Viterbi with lag 4 and p_self 0.98
-(decoded), the settings of `play_along.OPERATING_POINTS`. Each sample's JSON follows the spec's
-TrackerResult: `duration`, `decoded`, `framewise`, `reference`, `metadata` (sample rate, hop, frame
-count, model and decoder read from the run). Segments carry the label as output (`chord`, a Harte label
-such as `G#:min`) and as shown (`name`, `G#m`). Framewise runs are merged into segments but never
-smoothed. The JSON already holds the framewise and reference segments; Phase 1 shows only the decoded
-ones.
+(seed 0), then the prototype's three operating points (`play_along.OPERATING_POINTS`): the network
+alone (0.28 s of look-ahead), fixed-lag Viterbi lag 2 with p_self 0.9 (0.46 s) and lag 4 with p_self
+0.98 (0.65 s, the default, the steadiest by ear). `online_hmm.fixed_lag_viterbi` makes the same
+decisions as the streaming decoder (`tests/test_online_hmm.py`). Each sample's JSON holds, per point,
+the segments and the decision delay (total look-ahead + one frame, `play_along.required_delay`), and the
+framewise segments (argmax per frame, runs merged, never smoothed).
 
-The page:
+**Real time.** The model does not run in the browser; the page says so and reveals each label only when
+the live system would have output it. A fixed-lag decision is final, so this is exactly the live output.
+With h one frame (92.9 ms) and D a row's decision delay, frame f is decided once the system has heard
+f h + D. Two clocks, both from `audio.currentTime` (s):
 
-- **Clock**: `audio.currentTime` is the only time source; playhead, seek bar, time display and decoded
-  chord are derived from it on every animation frame while playing, and at once on pause, seek and load.
-- **Active segment**: start <= t < end, so at a boundary the new chord is active; at or past the end
-  the last segment stays active.
-- **No flicker**: the timeline is built once per sample; during playback only the playhead's transform,
-  the seek bar and changed texts are written, and the chord text and active highlight only when the
-  active segment changes.
-- **Long recordings**: at least 40 px per second, scrolling horizontally; the view follows the playhead
-  only when it leaves the visible part.
-- **Stale results**: picking a sample clears the old one before loading; a newer pick makes an older,
-  slower load drop its results; a failed load leaves an error and an empty page.
-- **Seeking**: the audio is fetched whole and played from a blob URL. `python -m http.server` does not
-  answer byte-range requests, and Chrome then cannot seek a plain URL (seekable range 0 - 0, found while
-  testing); a blob is seekable on any static server.
+    heard        s + D_point when "Delay playback" is on (the live set-up: playback runs D behind the
+                 input), s when it is off; the end of the recording once reached (the decoder flushes)
+    shown(row)   up to min(s, end of the last decided frame); a striped mask covers the rest
+
+With the delay on, the chord shown is the one being heard (at most half a frame late, see below). With
+it off, the decoded chord comes D late (0.74 s at lag 4) and the framewise one 0.37 s late. A dashed
+line marks what the system has heard, a red one what you hear.
+
+**Page.** Header with the comparison; a notice that the chords were computed ahead of time; sample,
+look-ahead (three buttons) and the delay checkbox, with a sentence that states the delay or its absence;
+the chord now (decoded) and the network's chord now; play, restart, seek bar, time; the decoded row above
+the framewise row on one time axis, click or drag to seek. No accuracy figure is shown. Tracks are built
+once per sample (the decoded row again when the look-ahead changes); during playback only transforms,
+the seek bar and texts that change are written. Audio is played from a blob URL, so it can be seeked on
+`python -m http.server` (no byte ranges there: Chrome reports a seekable range of 0 - 0 for a plain URL).
 
 ## What was checked
 
-`tests/test_demo.py`: segment boundaries halfway between frames, segments cover the whole recording
-without gaps, single-frame framewise runs are kept, metadata from the run, decoded and framewise of
-different lengths refused. Full suite in `hmm-chordtracker`: all passing.
+`tests/test_demo.py`: segment boundaries halfway between frames, segments cover the recording without
+gaps, single-frame framewise runs kept, look-ahead and decision delay of each point, outputs of
+different lengths or missing points refused. Full suite in `hmm-chordtracker`: all passing.
 
-In the browser (Funk, Rock and SS takes), against the JSON:
+In the browser (Funk, Rock and SS takes):
 
 | Check | Result |
 |---|---|
-| Decoded chord, active highlight (exactly one) and playhead position vs the JSON at the audio time, every ~16 ms of playback (0 - 5 s, 9 - 12 s, 0 - 3 s, then pause / resume 9 - 13.5 s) | 0 mismatches; playhead never moved back |
-| Timeline rebuilt during playback | never (0 child-list mutations on the track) |
-| Chord text rewrites | only at segment changes and seeks |
-| Click on the timeline at 12 s, seek bar to 20.1 s, Restart | audio, playhead, seek bar, time and chord all agree |
-| Playback to the end; play again | ends at 25.9 / 25.9 s with the last chord, status "Ended"; plays again from 0 |
-| Three sample picks 5 ms apart | the last pick wins, its 16 segments shown, no mix |
-| Missing sample file | error in the status line, nothing of the previous sample left |
+| Reveal rule over the Funk take, every 13.7 ms, 3 points x delay on / off x 2 rows (31,140 checks): no frame shown before f h + D, and none withheld once decided and reached | 0 early, 0 withheld; with the delay on the decoded row trails what you hear by at most 46 ms (half a frame), with it off by D + 46 ms |
+| During playback (3 points x delay on / off): chord texts, single active block, mask positions vs the JSON, every ~16 ms | 0 mismatches |
+| Blocks rebuilt during playback | never |
+| Playing to the end with the delay off | the decoder flushes: the whole row shown, last chord, status "Ended" |
+| Three sample picks 5 ms apart | the last pick wins; nothing of the others shown; look-ahead and delay settings kept |
 | Console | no page errors; the browser pane itself requests `/favicon.ico` (404) although the page declares no icon file |
 
 ## Open questions
 
-- **Playback delay.** The page plays the recording undelayed and shows the aligned labels, as if
-  playback were delayed by the look-ahead. Whether to say so on the page, or simulate the delay, is
-  open.
-- **Reference annotations (Phase 3).** GuitarSet's annotations are the performed chords (sevenths,
-  half-diminished...), which the 24-chord system cannot output. Show them as annotated, or reduced to
-  major/minor as the WCSR judges them?
-- **Which prepared samples.** Three validation takes, chosen by style, not by score; which one to make
-  the default is open.
-- **Upload (Phase 4)** needs a backend: the analysis is Python (PyTorch, librosa), so a small local
-  server would run `demo_export`'s chain on the uploaded file. Formats would be what librosa reads.
-- **Narrow segments** shorter than their name hide the text (the name is in the tooltip and in the large
-  chord display when active); the spec asks for text labels always.
+- **Half a frame.** Frame f stands for the time from (f - 1/2) h to (f + 1/2) h (the WCSR's segments),
+  but is decided only once f h + D has been heard, so with the delay on the first 46 ms of each frame are
+  still masked. Whether the delay should include that half frame, or the frame time convention of the
+  causal features differs, was not checked.
+- **Seeking is not a restart.** After a seek the page shows the decisions of the continuous run; a live
+  system started at that point would begin with an empty decoder and running level.
+- **The delay is stated, not played.** The page plays the audio at once and moves the system's clock
+  ahead instead; a real delayed start (silence for D seconds after Play) was left out.
+- **Reference annotations (Phase 3).** GuitarSet's chords as played (sevenths, half-diminished...) or
+  reduced to major/minor as the WCSR judges them?
+- **Upload (Phase 4)** needs a small local server that runs `demo_export`'s chain on the file.
+- **Narrow blocks** hide their name (tooltip, and the large chord when it is the current one); the spec
+  asks for text labels always.
 
 ## Reproduce
 

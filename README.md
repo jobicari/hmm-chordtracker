@@ -107,7 +107,7 @@ version's report has the question, the method, the val analysis and the limitati
 | `src/chordtracker/hold.py` | V7.3: the hold rule against flicker |
 | `scripts/v7_3_check.py`, `v7_3_speed.py`, `v7_3_hold.py` | V7.3: same chords as the cache on validation; time per block of the live chain; the hold rule on validation |
 | `src/chordtracker/play_along.py`, `scripts/play_along.py` | Listening prototype: what to show when, the live analysis in its own process; the player (input device or file, delayed playback, window, keys, log) |
-| `src/chordtracker/demo.py`, `scripts/demo_export.py`, `demo/` | Demo website: outputs of GuitarSet validation takes exported with the prototype's chain; a static page that plays one and follows its decoded chords ([reports/demo.md](reports/demo.md)) |
+| `src/chordtracker/demo.py`, `scripts/demo_export.py`, `demo/` | Demo website: outputs of GuitarSet validation takes exported with the prototype's chain; a static page that plays one and reveals its chords as the live system would, framewise vs fixed-lag Viterbi ([reports/demo.md](reports/demo.md)) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |

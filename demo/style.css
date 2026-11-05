@@ -4,6 +4,8 @@
   --muted: #6e6e73;
   --line: #d2d2d7;
   --accent: #d70015;
+  --input: #0a62c9;
+  --track: #ececf0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--fg);
   background: var(--bg);
@@ -13,23 +15,53 @@ body { margin: 0; }
 
 header { padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid var(--line); }
 h1 { font-size: 1.3rem; margin: 0 0 .3rem; font-weight: 600; }
-.tagline { margin: 0 0 .35rem; }
-.methods { margin: 0; color: var(--muted); font-size: .85rem; }
+.tagline { margin: 0; max-width: 52rem; line-height: 1.4; }
 
-main { padding: 1.25rem 1.5rem 2rem; max-width: 72rem; margin: 0 auto; }
+main { padding: 1rem 1.5rem 2rem; max-width: 72rem; margin: 0 auto; }
 
-.input { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
-.picker { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .9rem; }
-.picker select { font: inherit; color: var(--fg); padding: .3rem .4rem; max-width: 34rem; }
-.status { color: var(--muted); font-size: .85rem; }
+.notice {
+  margin: 0 0 1rem;
+  padding: .6rem .8rem;
+  border-left: 3px solid var(--input);
+  background: #eef4fc;
+  font-size: .9rem;
+  line-height: 1.4;
+}
+
+.settings { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 1.25rem 2rem; }
+.field { display: flex; flex-direction: column; gap: .3rem; color: var(--muted); font-size: .85rem; }
+.field select { font: inherit; font-size: .95rem; color: var(--fg); padding: .3rem .4rem; max-width: 30rem; }
+.points { border: 0; padding: 0; margin: 0; flex-direction: row; gap: 0; }
+.points legend { padding: 0; margin-bottom: .3rem; }
+.points label {
+  font-size: .9rem;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: .35rem .7rem;
+  cursor: pointer;
+  margin-left: -1px;
+}
+.points label:first-of-type { border-radius: .4rem 0 0 .4rem; margin-left: 0; }
+.points label:last-of-type { border-radius: 0 .4rem .4rem 0; }
+.points label .sub { color: var(--muted); font-size: .8rem; }
+.points input { position: absolute; opacity: 0; pointer-events: none; }
+.points label:has(input:checked) { background: var(--fg); color: #fff; border-color: var(--fg); }
+.points label:has(input:checked) .sub { color: #d2d2d7; }
+.points label:has(input:focus-visible) { outline: 2px solid var(--input); outline-offset: 1px; }
+.points:disabled label { cursor: default; opacity: .5; }
+.check { display: flex; align-items: center; gap: .4rem; font-size: .9rem; padding-bottom: .4rem; }
+
+.delay-note { margin: .8rem 0 0; font-size: .9rem; min-height: 1.3em; }
+.status { color: var(--muted); font-size: .85rem; margin: .3rem 0 0; min-height: 1.2em; }
 .status.error { color: var(--accent); font-weight: 500; }
 
 /* Player: fixed sizes, so a chord change never moves the layout. */
-.player { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 2.5rem; margin: 1.5rem 0 1.25rem; }
+.player { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 2.5rem; margin: 1rem 0 1.25rem; }
 .now { display: flex; flex-direction: column; min-width: 15rem; }
 .caption { color: var(--muted); font-size: .85rem; }
 .chord-big { font-size: 4.5rem; line-height: 1.1; font-weight: 600; min-height: 5rem; }
-.chord-next { color: var(--fg); font-weight: 600; }
+.chord-small { color: var(--fg); font-weight: 600; display: inline-block; min-width: 3rem; }
 .transport { flex: 1; min-width: 18rem; display: flex; flex-direction: column; gap: .6rem; padding-bottom: .4rem; }
 .buttons { display: flex; align-items: center; gap: .6rem; }
 .buttons button {
@@ -45,9 +77,7 @@ main { padding: 1.25rem 1.5rem 2rem; max-width: 72rem; margin: 0 auto; }
 .time { font-variant-numeric: tabular-nums; color: var(--muted); margin-left: .4rem; }
 .seek { width: 100%; accent-color: var(--accent); }
 
-/* Decoded timeline: blocks positioned by time, a ruler, a playhead; scrolls when the recording is long. */
-h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .6rem; }
-h2 .sub { font-weight: 400; color: var(--muted); font-size: .85rem; margin-left: .5rem; }
+/* Timelines: one shared ruler and playhead over two rows; scrolls when the recording is long. */
 .scroller { overflow-x: auto; padding-bottom: .3rem; }
 .timeline { position: relative; user-select: none; cursor: pointer; min-width: 100%; }
 .ruler { position: relative; height: 1.3rem; border-bottom: 1px solid var(--line); }
@@ -63,14 +93,28 @@ h2 .sub { font-weight: 400; color: var(--muted); font-size: .85rem; margin-left:
 }
 .tick.first span { transform: none; }
 .tick.last span { transform: translateX(-100%); }
-.track { position: relative; height: 3rem; margin-top: .4rem; background: #ececf0; border-radius: .25rem; overflow: hidden; }
+.row { margin-top: .5rem; }
+.row-name {
+  font-size: .85rem;
+  font-weight: 600;
+  margin-bottom: .2rem;
+  padding-right: .4rem;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: max-content;
+  background: var(--bg);
+}
+.row-name .sub { font-weight: 400; color: var(--muted); margin-left: .3rem; }
+.track { position: relative; height: 2.2rem; background: var(--track); border-radius: .25rem; overflow: hidden; }
+.row.main .track { height: 3.2rem; }
 .seg {
   position: absolute;
   top: 0;
   bottom: 0;
   box-sizing: border-box;
   border-right: 1px solid rgba(255, 255, 255, .8);
-  font-size: .8rem;
+  font-size: .78rem;
   font-weight: 600;
   color: #fff;
   padding: 0 .25rem;
@@ -78,19 +122,39 @@ h2 .sub { font-weight: 400; color: var(--muted); font-size: .85rem; margin-left:
   align-items: center;
   overflow: hidden;
   white-space: nowrap;
-  opacity: .82;
 }
+.row.main .seg { font-size: .9rem; }
 .seg.nc { background-color: #b0b0b8; }
 .seg.narrow { color: transparent; padding: 0; }
-.seg.active { opacity: 1; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 3px rgba(0, 0, 0, .35); }
-.playhead {
+.seg.active { box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 3px rgba(0, 0, 0, .35); }
+/* Covers what the live system has not decided yet: from its left edge to the end of the track. */
+.mask {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+  background: repeating-linear-gradient(135deg, var(--track) 0 6px, #e2e2e8 6px 12px);
+  will-change: transform;
+}
+.playhead, .input-head {
   position: absolute;
   top: 0;
   bottom: 0;
   left: 0;
   width: 2px;
   margin-left: -1px;
-  background: var(--accent);
+  z-index: 2;
   pointer-events: none;
   will-change: transform;
 }
+.playhead { background: var(--accent); }
+.input-head { border-left: 2px dashed var(--input); width: 0; }
+
+.legend { font-size: .8rem; color: var(--muted); margin: .5rem 0 0; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.key { display: inline-block; width: 1rem; height: .8rem; margin-left: .8rem; vertical-align: middle; }
+.key:first-child { margin-left: 0; }
+.playhead-key { width: 2px; background: var(--accent); }
+.input-key { width: 0; border-left: 2px dashed var(--input); }
+.mask-key { background: repeating-linear-gradient(135deg, var(--track) 0 3px, #d6d6de 3px 6px); border: 1px solid var(--line); }
