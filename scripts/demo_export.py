@@ -26,8 +26,8 @@ import librosa
 import numpy as np
 import soundfile as sf
 
-from chordtracker import data_v5, demo, online_hmm, paths, streaming_features, train_v7_2, transitions
-from chordtracker.data_v5 import Song
+from chordtracker import data_v5, demo, features_v7_1, model_v6, online_hmm, paths, streaming_features, train_v7_2, transitions
+from chordtracker.data_v5 import CENTRE_ROW, PATCH_BINS, PATCH_FRAMES, Song
 from chordtracker.learned_emission import LABELS
 from chordtracker.play_along import INPUT_LOOKAHEAD, OPERATING_POINTS
 
@@ -37,6 +37,8 @@ import run_v7_2  # noqa: E402
 
 OUT = paths.REPO_ROOT / "demo" / "samples"
 FEATURE = "causal log-CQT (harmonic part, C2 grid), computed as the live chain does"
+REFERENCE_SOURCE = ("GuitarSet lead-sheet chords for this take (the first chord annotation of its JAMS "
+                    "file, the reference all of the project's scores use)")
 SOURCE = {"dataset": "GuitarSet", "split": "validation", "license": "CC BY 4.0",
           "url": "https://guitarset.weebly.com/"}
 
@@ -56,6 +58,30 @@ def title_of(song_id: str) -> str:
     return f"GuitarSet player {player} - {name} {style[len(name):]}, {bpm} bpm, {key} (comping)"
 
 
+def pipeline_settings(cfg: dict, run: Path) -> dict:
+    """The settings of every stage, read from the run's config, the code's constants and the files used."""
+    q, a = cfg["cqt"], cfg["audio"]
+    semitone_bins = q["bins_per_octave"] // 12
+    lowest = librosa.note_to_midi(q["fmin"]) + CENTRE_ROW // semitone_bins
+    counts = json.loads((paths.REPO_ROOT / cfg["transitions"]["counts"]).read_text())
+    return {
+        "sampleRate": a["sr"],
+        "harmonic": {"nFft": features_v7_1.N_FFT, "stftHop": features_v7_1.STFT_HOP,
+                     "medianFrames": a.get("harmonic_median_frames", features_v7_1.MEDIAN_FRAMES),
+                     "margin": a["harmonic_margin"], "lookaheadFrames": features_v7_1.LOOKAHEAD_FRAMES},
+        "cqt": {"hop": q["hop_length"], "binsPerOctave": q["bins_per_octave"], "nBins": q["n_bins"],
+                "tuningSeconds": q["tuning_seconds"], "networkBins": PATCH_BINS,
+                "networkLowest": librosa.midi_to_note(lowest, unicode=False),
+                "networkHighest": librosa.midi_to_note(lowest + PATCH_BINS // semitone_bins - 1, unicode=False)},
+        "compression": {"gamma": cfg["compression"]["gamma"], "levelPercentile": cfg["compression"]["level_percentile"]},
+        "network": {"windowFrames": PATCH_FRAMES, "inputLookaheadFrames": INPUT_LOOKAHEAD,
+                    "gruHidden": model_v6.HIDDEN, "classes": model_v6.N_CLASSES,
+                    "model": str(run.relative_to(paths.REPO_ROOT))},
+        "hmm": {"states": model_v6.N_CLASSES, "changeCountsSource": counts["source"],
+                "alpha": cfg["transitions"]["alpha"], "tau": cfg["transitions"]["tau"]},
+    }
+
+
 def export(song_id: str, cfg: dict, run: Path, model, prior: np.ndarray, Q: np.ndarray) -> dict:
     take = take_of(song_id)
     sr, hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
@@ -73,9 +99,9 @@ def export(song_id: str, cfg: dict, run: Path, model, prior: np.ndarray, Q: np.n
     duration = sf.info(str(take.audio)).duration
     metadata = {"sampleRate": sr, "hopLength": hop, "featureName": FEATURE,
                 "model": str(run.relative_to(paths.REPO_ROOT)),
-                "inputLookaheadFrames": INPUT_LOOKAHEAD}
+                "inputLookaheadFrames": INPUT_LOOKAHEAD, "pipeline": pipeline_settings(cfg, run)}
     out = demo.result(song_id, title_of(song_id), audio, duration, points, framewise, LABELS,
-                      take.annotation, "GuitarSet annotation (performed chords, from the JAMS file)", SOURCE,
+                      take.annotation, REFERENCE_SOURCE, SOURCE,
                       metadata)
     (OUT / f"{song_id}.json").write_text(json.dumps(out, indent=1))
     return out
