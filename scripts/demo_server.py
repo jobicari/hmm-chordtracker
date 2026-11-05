@@ -1,114 +1,172 @@
-"""Demo website with uploads: serves demo/ and analyzes an uploaded recording with the prepared samples' chain.
+"""Demo website with live decoding: serves demo/ and decodes the audio the page streams to it, as it plays.
 
     python scripts/demo_server.py            # then open http://localhost:8000
     python scripts/demo_server.py --port 8010
 
-The page alone (python -m http.server -d demo) plays the prepared samples; uploading a file needs the
-model, so this server adds two routes to the static files:
+The page decodes the recording (a prepared sample or the listener's own file), resamples it to the
+model's rate and streams it at playback speed; this server runs the listening prototype's live chain on
+it (play_along.Analysis: block-by-block features, the causal CRNN, the three operating points' decoders)
+and sends every chord back as soon as it is decided. Routes:
 
-    GET  /api/health      {"formats": [".wav", ...], "maxBytes": ..., "maxSeconds": ...}
-    POST /api/analyze     body: the file's bytes; header X-Filename: its name (URL-encoded)
-                          200: the JSON of chordtracker.demo.result (no reference, "audio": null: the
-                          browser plays its own copy of the file); 400: unsupported or unreadable file,
-                          413: too large; 500: the analysis failed. Errors: {"error": message}
+    GET  /api/health    {"live": true, "points": [...], "metadata": {...}, "maxSeconds": ...}: what a
+                        page needs to decode a file of its own (the same fields as a sample's JSON)
+    WS   /api/live      one session per connection:
+                          client {"type": "start"}         -> {"type": "ready", "labels": [...], "sampleRate": ...}
+                          client binary: 16-bit mono PCM at sampleRate, any block size
+                                                           -> {"type": "labels", "points": {id: {"from": k, "labels": [...]}}}
+                          client {"type": "end"}           -> the last labels (decoders flushed), then {"type": "done"}
+                          errors                           -> {"type": "error", "message": ...}, then the server closes
 
-The analysis is demo_export.Analyzer, the same chain and model as the prepared samples, one file at a
-time. Formats: those librosa reads here through libsndfile with the same duration and timing as the
-original (checked on a GuitarSet take: WAV, FLAC, Ogg Vorbis, MP3; AAC / M4A is not read). Listens on
-127.0.0.1 only; uploads are written to a temporary file and deleted after the analysis.
+Each session has its own features, network state and decoders; the model is shared. The work of a block
+runs in a thread pool, one block at a time per session (tornado delivers a connection's messages in
+order). At most MAX_SESSIONS sessions run at once and each stops after MAX_SECONDS of audio. Listens on
+127.0.0.1 only. Tornado is already in the environment (a Jupyter dependency).
 """
 import argparse
+import asyncio
 import json
 import sys
-import tempfile
-import threading
-import traceback
-from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.parse import unquote
 
-import soundfile as sf
+import numpy as np
+import torch
+import tornado.web
+import tornado.websocket
 
-from chordtracker import paths
+from chordtracker import demo, paths
+from chordtracker.learned_emission import LABELS
+from chordtracker.play_along import OPERATING_POINTS, Analysis
 
 sys.path.insert(0, str(Path(__file__).parent))
 import demo_export  # noqa: E402
 
-FORMATS = (".wav", ".flac", ".ogg", ".mp3")
-MAX_BYTES = 100 * 1024 * 1024
+MAX_SESSIONS = 8
 MAX_SECONDS = 600.0
-UPLOAD_SOURCE = {"dataset": "uploaded file"}
 
 
-class Handler(SimpleHTTPRequestHandler):
-    analyzer: demo_export.Analyzer
-    lock = threading.Lock()
-    uploads = 0
+class Chain:
+    """The model and its settings, loaded once; new_session() -> a fresh play_along.Analysis."""
 
-    def send_json(self, status: int, body: dict) -> None:
-        data = json.dumps(body).encode()
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(data)
+    def __init__(self):
+        self.analyzer = demo_export.Analyzer()
+        a = self.analyzer
+        self.sr, self.hop = a.cfg["audio"]["sr"], a.cfg["cqt"]["hop_length"]
+        self.metadata = {"sampleRate": self.sr, "hopLength": self.hop, "featureName": demo_export.FEATURE,
+                         "model": str(a.run.relative_to(paths.REPO_ROOT)),
+                         "inputLookaheadFrames": demo_export.INPUT_LOOKAHEAD,
+                         "frameSeconds": round(self.hop / self.sr, 6),
+                         "pipeline": demo_export.pipeline_settings(a.cfg, a.run)}
 
-    def do_GET(self):
-        if self.path == "/api/health":
-            self.send_json(200, {"formats": list(FORMATS), "maxBytes": MAX_BYTES, "maxSeconds": MAX_SECONDS})
-            return
-        super().do_GET()
+    def new_session(self):
+        return Analysis(self.analyzer.cfg, self.analyzer.model, self.analyzer.prior, self.analyzer.Q)
 
-    def do_POST(self):
-        if self.path != "/api/analyze":
-            self.send_json(404, {"error": "Unknown route."})
-            return
-        name = Path(unquote(self.headers.get("X-Filename", ""))).name or "upload"
-        suffix = Path(name).suffix.lower()
-        length = int(self.headers.get("Content-Length") or 0)
-        if suffix not in FORMATS:
-            self.send_json(400, {"error": f"{name}: unsupported file type. Supported: {', '.join(FORMATS)}."})
-            return
-        if length > MAX_BYTES:
-            self.send_json(413, {"error": f"{name}: larger than {MAX_BYTES // 2 ** 20} MB."})
-            return
-        if length == 0:
-            self.send_json(400, {"error": f"{name}: the file is empty."})
-            return
-        body = self.rfile.read(length)
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / f"upload{suffix}"
-            path.write_bytes(body)
-            try:
-                duration = sf.info(str(path)).duration
-            except Exception:
-                self.send_json(400, {"error": f"{name}: could not be read as audio."})
-                return
-            if not 1.0 <= duration <= MAX_SECONDS:
-                self.send_json(400, {"error": f"{name}: {duration:.1f} s long; the demo takes 1 s to "
-                                              f"{MAX_SECONDS / 60:.0f} min."})
-                return
-            try:
-                with Handler.lock:                  # one analysis at a time
-                    Handler.uploads += 1
-                    out = self.analyzer.analyze(path, f"upload-{Handler.uploads}", name, None, source=UPLOAD_SOURCE)
-            except Exception:
-                traceback.print_exc()
-                self.send_json(500, {"error": f"{name}: the analysis failed (see the server's output)."})
-                return
-        self.send_json(200, out)
+    def health(self) -> dict:
+        return {"live": True, "points": demo.point_info(self.sr, self.hop), "defaultPoint": demo.DEFAULT_POINT,
+                "framewiseDecisionDelaySeconds": demo.framewise_decision_delay(self.sr, self.hop),
+                "metadata": self.metadata, "maxSeconds": MAX_SECONDS}
+
+
+class HealthHandler(tornado.web.RequestHandler):
+    def initialize(self, chain):
+        self.chain = chain
+
+    def get(self):
+        self.set_header("Cache-Control", "no-store")
+        self.write(self.chain.health())
+
+
+class LiveHandler(tornado.websocket.WebSocketHandler):
+    """One live session: PCM blocks in, decided chords out."""
+    sessions = 0
+
+    def initialize(self, chain, pool):
+        self.chain, self.pool = chain, pool
+        self.analysis, self.sent, self.samples, self.counted = None, {}, 0, False
+
+    def check_origin(self, origin):
+        return True                                  # served on 127.0.0.1 only
+
+    async def on_message(self, message):
+        try:
+            if isinstance(message, bytes):
+                await self.on_audio(message)
+            else:
+                await self.on_command(json.loads(message))
+        except tornado.websocket.WebSocketClosedError:
+            pass
+
+    async def on_command(self, msg: dict):
+        kind = msg.get("type")
+        if kind == "start":
+            if self.analysis is not None:
+                return self.fail("The session has already started.")
+            if LiveHandler.sessions >= MAX_SESSIONS:
+                return self.fail("The demo server is busy; try again in a moment.")
+            LiveHandler.sessions += 1
+            self.counted = True
+            self.analysis = self.chain.new_session()
+            self.sent = {p: 0 for p in OPERATING_POINTS}
+            await self.write_message({"type": "ready", "labels": list(LABELS), "sampleRate": self.chain.sr})
+        elif kind == "end":
+            if self.analysis is None:
+                return self.fail("No session.")
+            await asyncio.get_running_loop().run_in_executor(self.pool, self.analysis.finish)
+            await self.send_new()
+            await self.write_message({"type": "done"})
+        else:
+            self.fail(f"Unknown message {kind!r}.")
+
+    async def on_audio(self, data: bytes):
+        if self.analysis is None:
+            return self.fail("Send {\"type\": \"start\"} first.")
+        block = np.frombuffer(data, dtype="<i2").astype(np.float32) / 32768.0
+        self.samples += len(block)
+        if self.samples > MAX_SECONDS * self.chain.sr:
+            return self.fail(f"The demo decodes at most {MAX_SECONDS / 60:.0f} min per session.")
+        await asyncio.get_running_loop().run_in_executor(self.pool, self.analysis.step, block)
+        await self.send_new()
+
+    async def send_new(self):
+        new = {}
+        for point, labels in self.analysis.labels.items():
+            if len(labels) > self.sent[point]:
+                new[point] = {"from": self.sent[point], "labels": labels[self.sent[point]:]}
+                self.sent[point] = len(labels)
+        if new:
+            await self.write_message({"type": "labels", "points": new})
+
+    def fail(self, message: str):
+        self.write_message({"type": "error", "message": message})
+        self.close()
+
+    def on_close(self):
+        if self.counted:
+            LiveHandler.sessions -= 1
+            self.counted = False
+
+
+def make_app(chain, static_dir: Path) -> tornado.web.Application:
+    pool = ThreadPoolExecutor(max_workers=MAX_SESSIONS)
+    return tornado.web.Application([
+        (r"/api/health", HealthHandler, {"chain": chain}),
+        (r"/api/live", LiveHandler, {"chain": chain, "pool": pool}),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": str(static_dir), "default_filename": "index.html"}),
+    ], websocket_max_message_size=2 ** 20)
+
+
+async def serve(port: int) -> None:
+    torch.set_num_threads(1)                         # one block at a time per session; sessions in parallel
+    app = make_app(Chain(), paths.REPO_ROOT / "demo")
+    app.listen(port, address="127.0.0.1")
+    print(f"Demo: http://localhost:{port}", flush=True)
+    await asyncio.Event().wait()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--port", type=int, default=8000)
-    args = parser.parse_args()
-    Handler.analyzer = demo_export.Analyzer()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), partial(Handler, directory=str(paths.REPO_ROOT / "demo")))
-    print(f"Demo: http://localhost:{args.port}", flush=True)
-    server.serve_forever()
+    asyncio.run(serve(parser.parse_args().port))
 
 
 if __name__ == "__main__":

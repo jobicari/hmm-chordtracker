@@ -13,8 +13,7 @@
       <h1>Chord Tracker</h1>
       <p class="tagline">Real-time chord tracking. On its own, the neural network's chords flicker from frame to
         frame. An HMM / Viterbi decoder that waits a few frames turns them into steady chords.</p>
-      <p class="notice">The chords were computed ahead of time, because the model does not run in the browser.
-        Each one appears when the live system would have shown it, never earlier.</p>
+      <p id="notice" class="notice">Connecting to the demo server...</p>
     </div>
   </header>
 
@@ -24,7 +23,7 @@
         <label class="label" for="sample">Recording</label>
         <select id="sample" disabled></select>
         <div id="upload" class="upload unavailable">
-          <label class="file-button"><input id="file" type="file" disabled> Analyse your own file</label>
+          <label class="file-button"><input id="file" type="file" accept="audio/*" disabled> Play your own file</label>
           <span class="drop-hint">or drop it here</span>
           <span id="file-name" class="file-name"></span>
           <span id="upload-help" class="upload-help"></span>
@@ -120,6 +119,7 @@
   </main>
 
   <audio id="audio" preload="auto"></audio>
+  <script src="live.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

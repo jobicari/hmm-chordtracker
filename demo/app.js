@@ -1,10 +1,12 @@
-// Chord Tracker demo: a prepared sample played back with its chords shown as the live system shows them.
+// Chord Tracker demo: a recording played back with its chords shown as the live system shows them.
 //
-// Data: demo/samples/<id>.json, written by scripts/demo_export.py. For each of the listening prototype's
-// three operating points it holds the label segments and the delay after which a frame's label is known
-// (decisionDelaySeconds: total look-ahead + one frame); the framewise row (network alone) has its own.
-// A fixed-lag decision is final, so revealing each label when its delay has passed shows exactly what a
-// live decoder would have shown. The page decides no chord itself.
+// Two modes, both showing only what the live system would show:
+//   live         scripts/demo_server.py is running: the page streams the audio to it at playback speed
+//                (live.js) and draws each chord when the server sends it, decided by the live chain
+//   precomputed  no server (a static host): demo/samples/<id>.json, written by scripts/demo_export.py,
+//                holds every point's segments; each label is revealed once its decision delay has passed
+//                (a fixed-lag decision is final, so this is what a live decoder would have shown)
+// The page decides no chord itself.
 //
 // Two clocks, both from audio.currentTime (s, what you hear):
 //   heard      = what the system has received. With "Delay playback" on, the audio really waits the
@@ -13,6 +15,7 @@
 //   known(row) = up to the last frame f with f * h + the row's decision delay <= heard (h = one frame,
 //                93 ms, so the mask moves one frame at a time, as the live output does); once the input
 //                reaches the end of the recording the decoder flushes and everything is known
+//                (precomputed); in live mode, up to the last frame the server has sent
 // A row is revealed up to min(s, known): never past what you hear, never past what is decided. The
 // chords shown "now" are the row's chord at that revealed time: on time with the delay, late without it.
 //
@@ -24,6 +27,8 @@
 const PX_PER_SECOND = 40;           // minimum scale; the timeline scrolls when the recording is longer
 const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const EPS = 1e-4;
+const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only
+const MAX_UPLOAD_BYTES = 100 * 2 ** 20;
 
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
@@ -35,7 +40,8 @@ const rows = {
 const reference = { track: $("track-reference"), segs: [], divs: [], active: undefined, nowEl: $("now-reference") };
 const MAJMIN = new Set(["maj", "min"]);
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
-               primed: false, preroll: null, internalPause: false };
+               primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
+               live: null };
 
 // ---------------------------------------------------------------------------------------------------
 // Chords
@@ -56,6 +62,12 @@ function colour(chord) {
   const quality = (chord.split(":")[1] || "maj").split("/")[0];
   const minor = quality.startsWith("min") || quality.includes("dim");
   return `hsl(${((pc * 7) % 12) * 30}, ${minor ? 45 : 60}%, ${minor ? 33 : 45}%)`;
+}
+
+function chordName(label) {
+  // "C:maj" -> "C", "A:min" -> "Am" (the model's 24 labels), as chordtracker.play_along.chord_name.
+  const [root, q = "maj"] = label.split(":");
+  return root + (q === "min" ? "m" : "");
 }
 
 function coversRecording(segs, d) {
@@ -81,7 +93,8 @@ function segmentAt(segs, t) {
 function playbackDelay() {
   // With "Delay playback" on: the point's decision delay + half a frame, so that every label is
   // decided by the time its segment starts being heard (chordtracker.demo.playback_delay); else 0.
-  return $("delay").checked && view.point ? view.point.playbackDelaySeconds : 0;
+  if (!$("delay").checked || !view.point) return 0;
+  return view.point.playbackDelaySeconds + (view.mode === "live" ? LIVE_MARGIN : 0);
 }
 
 function heardTime(s, d) {
@@ -95,6 +108,8 @@ function heardTime(s, d) {
 
 function knownUntil(row, heard, d) {
   // End of the part of the row the live system has decided once it has received `heard` seconds.
+  // Live mode: what the server has sent so far.
+  if (view.mode === "live") return row.knownEnd ?? 0;
   // Frame f (centre f * h, region (f - 1/2) h .. (f + 1/2) h, as the segments are cut) is decided when
   // heard >= f * h + the row's decision delay; at the end of the input the decoder flushes the rest.
   const h = view.sample.metadata.frameSeconds;
@@ -129,19 +144,56 @@ function buildRow(row, segs, delay) {
   row.segs = segs;
   row.delay = delay;
   row.active = undefined;
+  row.knownEnd = 0;
   row.divs = segs.map((seg) => {
-    const div = document.createElement("div");
-    div.className = "seg" + (rootPitch(seg.chord) === null ? " nc" : "");
-    div.style.left = `${(100 * seg.start) / d}%`;
-    div.style.width = `${(100 * (seg.end - seg.start)) / d}%`;
-    const bg = colour(seg.chord);
-    if (bg) div.style.backgroundColor = bg;
-    div.textContent = seg.name;
-    div.title = `${seg.name} (${seg.chord}), ${seg.start.toFixed(2)} - ${seg.end.toFixed(2)} s`;
+    const div = segmentDiv(seg, d);
     row.track.insertBefore(div, mask);
     return div;
   });
   markNarrow(row);
+}
+
+function segmentDiv(seg, d) {
+  const div = document.createElement("div");
+  div.className = "seg" + (rootPitch(seg.chord) === null ? " nc" : "");
+  div.style.backgroundColor = colour(seg.chord) || "";
+  div.textContent = seg.name;
+  placeSegment(div, seg, d);
+  return div;
+}
+
+function placeSegment(div, seg, d) {
+  div.style.left = `${(100 * seg.start) / d}%`;
+  div.style.width = `${(100 * (seg.end - seg.start)) / d}%`;
+  div.title = `${seg.name} (${seg.chord}), ${seg.start.toFixed(2)} - ${seg.end.toFixed(2)} s`;
+  div.classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < 8 + 7 * seg.name.length);
+}
+
+function appendLabels(row, from, labels) {
+  // Live mode: frames from, from + 1, ... of the session arrived. Frame f stands for the time from
+  // halfway after frame f - 1 to halfway before frame f + 1, as the segments of the precomputed mode;
+  // a frame with the previous frame's chord extends its block, so only the last block is touched.
+  const d = view.sample.duration, h = view.sample.metadata.frameSeconds, start = view.live.from;
+  const mask = row.track.querySelector(".mask");
+  labels.forEach((label, k) => {
+    const f = from + k;
+    const t0 = f === 0 ? start : start + (f - 0.5) * h;
+    const t1 = Math.min(d, start + (f + 0.5) * h);
+    if (t0 >= d) return;
+    const chord = view.live.labelNames[label];
+    const last = row.segs.at(-1);
+    if (last && last.chord === chord && Math.abs(last.end - t0) < 1e-6) {
+      last.end = t1;
+      placeSegment(row.divs.at(-1), last, d);
+    } else {
+      const seg = { start: t0, end: t1, chord, name: chordName(chord) };
+      row.segs.push(seg);
+      const div = segmentDiv(seg, d);
+      row.track.insertBefore(div, mask);
+      row.divs.push(div);
+    }
+    row.knownEnd = t1;
+  });
 }
 
 function markNarrow(row) {
@@ -357,10 +409,11 @@ function selectPoint(id) {
   view.point = point;
   view.wantedPoint = point.id;
   $("points").querySelector(`input[value="${point.id}"]`).checked = true;
-  buildRow(rows.decoded, point.segments, point.decisionDelaySeconds);
+  buildRow(rows.decoded, view.mode === "live" ? [] : point.segments, point.decisionDelaySeconds);
   const sub = document.createElement("span");
   sub.className = "sub";
-  sub.textContent = `look-ahead ${point.lookaheadSeconds.toFixed(2)} s, ${point.segments.length} chord segments`;
+  sub.textContent = view.mode === "live" ? `look-ahead ${point.lookaheadSeconds.toFixed(2)} s`
+    : `look-ahead ${point.lookaheadSeconds.toFixed(2)} s, ${point.segments.length} chord segments`;
   $("decoded-name").replaceChildren(
     point.pSelf === null ? "Decoded: no decoder, the network alone" : `Decoded: HMM / Viterbi, fixed lag of ${point.lagFrames} frames`,
     sub);
@@ -389,15 +442,44 @@ function updateDelayNote() {
     const items = [`network look-ahead ${ms(networkFrames)}`];
     if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
     items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
-    parts.textContent = `${D} s = ` + items.join(" + ");
+    if (view.mode === "live") items.push(`network and server margin ${Math.round(LIVE_MARGIN * 1000)} ms`);
+    parts.textContent = `${(playbackDelay()).toFixed(2)} s = ` + items.join(" + ");
+    if (view.mode === "live") {
+      title.textContent = `Applied delay: the audio is held back by ${playbackDelay().toFixed(2)} s.`;
+      text.textContent = `After Play, Restart or a seek, your browser streams the recording to the demo `
+        + `server, which decodes it live; you hear it ${playbackDelay().toFixed(2)} s later, so each chord `
+        + `is on screen as you hear it.`;
+    }
   } else {
     title.textContent = "No delay: the audio plays at once.";
     text.textContent = `Chords now appear when a live decoder would output them: the decoded chord `
       + `${p.decisionDelaySeconds.toFixed(2)} s after you hear it, the network's own `
       + `${sample.framewiseDecisionDelaySeconds.toFixed(2)} s after.`;
   }
-  panel.replaceChildren(title, text, ...(parts.textContent ? [parts] : []));
+  const measured = document.createElement("p");
+  measured.className = "parts";
+  measured.id = "measured";
+  panel.replaceChildren(title, text, ...(parts.textContent ? [parts] : []), ...(view.mode === "live" ? [measured] : []));
+  showMeasured();
   $("input-head").hidden = !$("delay").checked;
+}
+
+function showMeasured() {
+  // Live mode: when this session's chords reached the page, after their moment of audio.
+  const el = $("measured");
+  if (!el || !view.live) return;
+  const a = view.live.arrival;
+  if (!a) { el.textContent = "This session: waiting for the first chords."; return; }
+  const range = `${a.min.toFixed(2)} to ${a.max.toFixed(2)} s`;
+  const budget = playbackDelay() - view.sample.metadata.frameSeconds / 2;
+  el.textContent = $("delay").checked
+    ? `This session: each chord reached the page ${range} after its moment of audio; the delay leaves `
+      + `${budget.toFixed(2)} s, so every chord is on screen in time.`
+    : `This session: each chord reached the page ${range} after its moment of audio, so you see it that late.`;
+  if ($("delay").checked && a.max > budget) {
+    el.textContent = `This session: some chords reached the page ${a.max.toFixed(2)} s after their moment of `
+      + `audio, more than the ${budget.toFixed(2)} s the delay leaves: those were shown late.`;
+  }
 }
 
 function layout() {
@@ -405,7 +487,10 @@ function layout() {
   const d = view.sample ? view.sample.duration : 0;
   $("timeline").style.width = `${Math.max(d * PX_PER_SECOND, $("scroller").clientWidth)}px`;
   view.width = rows.decoded.track.getBoundingClientRect().width;
-  if (view.sample) { markNarrow(rows.decoded); markNarrow(rows.framewise); markNarrow(reference); }
+  if (view.sample) {
+    for (const row of [rows.decoded, rows.framewise]) row.segs.forEach((seg, i) => placeSegment(row.divs[i], seg, d));
+    markNarrow(reference);
+  }
   render();
 }
 
@@ -470,8 +555,9 @@ function clearSample() {
   audio.load();
   if (view.audioUrl) URL.revokeObjectURL(view.audioUrl);
   cancelPreroll();
+  stopSession();
   document.body.classList.remove("analyzing");
-  Object.assign(view, { sample: null, point: null, timeText: "", audioUrl: null, primed: false });
+  Object.assign(view, { sample: null, point: null, timeText: "", audioUrl: null, primed: false, pcm: null });
   for (const row of Object.values(rows)) {
     const mask = row.track.querySelector(".mask");
     mask.style.transform = "";
@@ -495,9 +581,7 @@ function clearSample() {
 }
 
 let loadGeneration = 0;
-let analysisAbort = null;
-const ANALYSIS_TIMEOUT_MS = 300000;           // a 9.5 min stereo WAV took 103 s on the Mac
-const upload = { formats: [], maxBytes: 0, file: null, sample: null };   // the uploaded file and its result
+const upload = { file: null, sample: null, pcm: null };   // the listener's own file, decoded once
 
 function checkSample(sample, title) {
   // Refuse outputs that are missing or do not cover the recording: nothing partial is shown.
@@ -511,15 +595,16 @@ function checkSample(sample, title) {
   }
 }
 
-function showSample(sample, audioBlob) {
-  // Build everything for one analysed recording and its audio (a Blob or the uploaded File).
+function showSample(sample, audioBlob, pcm) {
+  // Build everything for one recording and its audio (a Blob or the uploaded File); pcm for live mode.
   view.sample = sample;
+  view.pcm = pcm;
   view.audioUrl = URL.createObjectURL(audioBlob);
   $("seek").max = sample.duration;
   $("timeline").style.width = `${Math.max(sample.duration * PX_PER_SECOND, $("scroller").clientWidth)}px`;
   view.width = rows.decoded.track.getBoundingClientRect().width;
   buildRuler(sample.duration);
-  buildRow(rows.framewise, sample.framewise, sample.framewiseDecisionDelaySeconds);
+  buildRow(rows.framewise, view.mode === "live" ? [] : sample.framewise, sample.framewiseDecisionDelaySeconds);
   buildReference(sample);
   buildPoints(sample);
   $("points").disabled = false;
@@ -531,9 +616,9 @@ function showSample(sample, audioBlob) {
 async function loadSample(entry) {
   // A prepared sample. The audio is fetched whole and played from a blob URL: it is then seekable on
   // any static server, including python -m http.server, which does not answer byte-range requests.
-  // A newer load (another sample or a file picked meanwhile) makes this one drop its results.
+  // Live mode also decodes it for streaming. A newer load (another sample or a file picked meanwhile)
+  // makes this one drop its results.
   const generation = ++loadGeneration;
-  if (analysisAbort) analysisAbort.abort();
   clearSample();
   $("file-name").textContent = "";
   setStatus(`Loading ${entry.title}...`);
@@ -542,69 +627,47 @@ async function loadSample(entry) {
   const response = await fetch(`samples/${sample.audio}`);
   if (!response.ok) throw new Error(`samples/${sample.audio}: HTTP ${response.status}`);
   const blob = await response.blob();
+  const pcm = view.mode === "live" ? (await decodeForModel(blob, view.server.metadata.sampleRate)).pcm : null;
   if (generation !== loadGeneration) return;
-  showSample(sample, blob);
+  showSample(sample, blob, pcm);
   history.replaceState(null, "", `#${sample.id}`);
 }
 
-function extension(name) {
-  const i = name.lastIndexOf(".");
-  return i < 0 ? "" : name.slice(i).toLowerCase();
-}
-
-async function analyzeFile(file) {
-  // An uploaded file: checked here, analysed by scripts/demo_server.py, played from the local copy.
+async function openFile(file) {
+  // The listener's own file: decoded by the browser, streamed live to the demo server as it plays.
   const generation = ++loadGeneration;
-  if (analysisAbort) analysisAbort.abort();
   clearSample();
   upload.file = file;
   upload.sample = null;
+  upload.pcm = null;
   setUploadOption(file.name);
   $("file-name").textContent = file.name;
-  if (!upload.formats.includes(extension(file.name))) {
-    throw new Error(`${file.name}: unsupported file type. Supported: ${upload.formats.join(", ")}.`);
-  }
-  if (file.size > upload.maxBytes) {
-    throw new Error(`${file.name}: larger than ${Math.round(upload.maxBytes / 2 ** 20)} MB.`);
-  }
   if (file.size === 0) throw new Error(`${file.name}: the file is empty.`);
-  const controller = new AbortController();
-  analysisAbort = controller;
-  const timeout = setTimeout(() => controller.abort("timeout"), ANALYSIS_TIMEOUT_MS);
-  const t0 = performance.now();
-  const tick = setInterval(() => {
-    if (generation === loadGeneration) {
-      setStatus(`Analyzing ${file.name}... ${Math.round((performance.now() - t0) / 1000)} s`);
-    }
-  }, 500);
-  setStatus(`Analyzing ${file.name}...`);
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error(`${file.name}: larger than ${MAX_UPLOAD_BYTES / 2 ** 20} MB.`);
+  setStatus(`Decoding ${file.name}...`);
   document.body.classList.add("analyzing");
+  let decoded;
   try {
-    let response;
-    try {
-      response = await fetch("api/analyze", {
-        method: "POST", body: file, signal: controller.signal,
-        headers: { "Content-Type": "application/octet-stream", "X-Filename": encodeURIComponent(file.name) },
-      });
-    } catch (e) {
-      if (generation !== loadGeneration) return;
-      throw new Error(controller.signal.reason === "timeout"
-        ? `${file.name}: the analysis took more than ${ANALYSIS_TIMEOUT_MS / 1000} s and was stopped.`
-        : `${file.name}: the demo server did not answer (${e.message}).`);
-    }
-    const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
-    if (generation !== loadGeneration) return;
-    if (!response.ok) throw new Error(body.error || `${file.name}: the analysis failed (HTTP ${response.status}).`);
-    checkSample(body, file.name);
-    upload.sample = body;
-    showSample(body, file);
-    history.replaceState(null, "", "#upload");
-  } finally {
-    clearTimeout(timeout);
-    clearInterval(tick);
-    if (generation === loadGeneration) document.body.classList.remove("analyzing");
-    if (analysisAbort === controller) analysisAbort = null;
+    decoded = await decodeForModel(file, view.server.metadata.sampleRate);
+  } catch {
+    throw new Error(`${file.name}: this browser cannot decode it as audio.`);
   }
+  if (generation !== loadGeneration) return;
+  document.body.classList.remove("analyzing");
+  if (decoded.duration < 1 || decoded.duration > view.server.maxSeconds) {
+    throw new Error(`${file.name}: ${decoded.duration.toFixed(1)} s long; the demo takes 1 s to `
+      + `${view.server.maxSeconds / 60} min.`);
+  }
+  const s = view.server;
+  upload.sample = {
+    id: "upload", title: file.name, audio: null, duration: decoded.duration,
+    points: s.points.map((p) => ({ ...p, segments: [] })), defaultPoint: s.defaultPoint,
+    framewise: [], framewiseDecisionDelaySeconds: s.framewiseDecisionDelaySeconds,
+    reference: null, referenceSource: null, metadata: s.metadata, source: { dataset: "your file" },
+  };
+  upload.pcm = decoded.pcm;
+  showSample(upload.sample, file, decoded.pcm);
+  history.replaceState(null, "", "#upload");
 }
 
 function setUploadOption(name) {
@@ -616,26 +679,102 @@ function setUploadOption(name) {
   select.value = "upload";
 }
 
-async function initUpload() {
-  // Uploads need scripts/demo_server.py; the page alone (a static server) offers only the samples.
+async function initServer() {
+  // Live mode when scripts/demo_server.py answers; otherwise the precomputed samples only.
   try {
-    const health = await fetchJSON("api/health");
-    upload.formats = health.formats;
-    upload.maxBytes = health.maxBytes;
-    $("file").accept = health.formats.join(",");
+    view.server = await fetchJSON("api/health");
+    if (!view.server.live) throw new Error("no live decoding");
+    view.mode = "live";
     $("file").disabled = false;
     $("upload").classList.remove("unavailable");
-    $("upload-help").textContent = `${health.formats.map((f) => f.slice(1).toUpperCase()).join(", ")}, up to `
-      + `${Math.round(health.maxBytes / 2 ** 20)} MB and ${Math.round(health.maxSeconds / 60)} min. `
-      + `Analysed by the same model on this computer; nothing leaves it.`;
+    $("upload-help").textContent = `Any audio file your browser can play (WAV, MP3, FLAC, Ogg, M4A...), up to `
+      + `${MAX_UPLOAD_BYTES / 2 ** 20} MB and ${view.server.maxSeconds / 60} min. Streamed to the demo server `
+      + `and decoded live as it plays.`;
+    $("notice").textContent = "Decoded live: your browser streams the recording to the demo server, which runs "
+      + "the model as you listen and sends back each chord as soon as it is decided.";
   } catch {
-    $("upload-help").textContent = "Analysing your own file needs the demo server: "
-      + "python scripts/demo_server.py (see demo/README.md).";
+    view.server = null;
+    view.mode = "precomputed";
+    $("upload-help").textContent = "Your own files need the demo server: python scripts/demo_server.py "
+      + "(see demo/README.md).";
+    $("notice").textContent = "The demo server is not running, so these chords were computed ahead of time. "
+      + "Each one appears when the live system would have shown it, never earlier.";
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------
+// Live sessions
+
+function startSession() {
+  // A new live session from what you hear now: the rows start empty and fill as the server decides.
+  stopSession();
+  const from = audio.currentTime;
+  const session = new LiveSession({
+    pcm: view.pcm, sampleRate: view.server.metadata.sampleRate, from,
+    onReady: (names) => { if (view.live && view.live.session === session) view.live.labelNames = names; },
+    onLabels: (point, first, labels) => {
+      if (!view.live || view.live.session !== session) return;
+      receiveLabels(point, first, labels);
+    },
+    onDone: () => {
+      if (!view.live || view.live.session !== session) return;
+      for (const row of Object.values(rows)) row.knownEnd = view.sample.duration;
+      render();
+    },
+    onError: (message) => {
+      if (!view.live || view.live.session !== session) return;
+      stopSession();
+      cancelPreroll();
+      view.primed = false;
+      pauseQuietly();
+      $("play").textContent = "Play";
+      setStatus(message, true);
+    },
+  });
+  view.live = { session, from, labelNames: [], arrival: null, sender: null };
+  for (const row of Object.values(rows)) buildRow(row, [], row.delay);
+  rows.decoded.knownEnd = rows.framewise.knownEnd = from;
+  // Stream on a timer, not on animation frames, so the audio keeps flowing when the tab is hidden.
+  view.live.sender = setInterval(() => {
+    if (!view.sample) return;
+    const d = view.sample.duration;
+    const heard = heardTime(Math.min(audio.currentTime, d), d);
+    session.sendUntil(heard >= d - 1e-6 ? Infinity : heard);   // at the end, every sample (the decoded
+  }, 20);                                                       // length can differ from the player's by a few)
+  showMeasured();
+}
+
+function stopSession() {
+  // End the live session; what it decided goes with it (a new session starts from scratch).
+  if (!view.live) return;
+  clearInterval(view.live.sender);
+  view.live.session.close();
+  view.live = null;
+  if (view.sample) for (const row of Object.values(rows)) buildRow(row, [], row.delay);
+}
+
+function receiveLabels(point, first, labels) {
+  const framewise = view.sample.points.find((p) => p.pSelf === null);
+  if (point === framewise.id) appendLabels(rows.framewise, first, labels);
+  if (point === view.point.id) {
+    appendLabels(rows.decoded, first, labels);
+    // When each chord reached the page, counted from its frame's moment of audio (what the delay must cover).
+    const h = view.sample.metadata.frameSeconds;
+    const d = view.sample.duration;
+    const heard = heardTime(Math.min(audio.currentTime, d), d);
+    if (heard < d) {
+      const after = heard - (view.live.from + (first + labels.length - 1) * h);
+      const a = view.live.arrival;
+      const before = a ? `${Math.round(a.min * 100)} ${Math.round(a.max * 100)}` : "";
+      view.live.arrival = a ? { min: Math.min(a.min, after), max: Math.max(a.max, after) } : { min: after, max: after };
+      const now = view.live.arrival;
+      if (`${Math.round(now.min * 100)} ${Math.round(now.max * 100)}` !== before) showMeasured();   // 10 ms steps
+    }
   }
 }
 
 async function init() {
-  initUpload();
+  await initServer();
   let index;
   try {
     index = await fetchJSON("samples/index.json");
@@ -656,13 +795,13 @@ async function init() {
     });
   };
   const load = (entry) => { const p = loadSample(entry); return guard(p); };
-  const analyze = (file) => { const p = analyzeFile(file); return guard(p); };
+  const analyze = (file) => { const p = openFile(file); return guard(p); };
   select.addEventListener("change", () => {
     if (select.value === "upload") {
-      if (upload.sample) {                                // back to the file analysed before
+      if (upload.sample) {                                // back to the file decoded before
         ++loadGeneration;
         clearSample();
-        showSample(upload.sample, upload.file);
+        showSample(upload.sample, upload.file, upload.pcm);
       } else if (upload.file) {
         analyze(upload.file);
       }
@@ -706,7 +845,9 @@ function cancelPreroll() {
 
 function play() {
   // Start playback; with the delay on and the input not yet ahead, hold the audio back first.
-  if (audio.ended) { audio.currentTime = 0; view.primed = false; }
+  // Live mode: the input is a session on the demo server, started here if there is none.
+  if (audio.ended) { audio.currentTime = 0; view.primed = false; stopSession(); }
+  if (view.mode === "live" && !view.live) startSession();
   const D = playbackDelay();
   if (D === 0 || view.primed) { startAudio(); return; }
   cancelPreroll();
@@ -733,6 +874,7 @@ function restartInput() {
   // pre-roll again; while paused, the next Play does.
   const running = !audio.paused || view.preroll;
   cancelPreroll();
+  stopSession();
   view.primed = false;
   if (running) { pauseQuietly(); play(); }
   render();
@@ -741,6 +883,7 @@ function restartInput() {
 function togglePlay() {
   if (view.preroll) {                       // stopped during the pre-roll: the input stops too
     cancelPreroll();
+    stopSession();
     view.primed = false;
     $("play").textContent = "Play";
     setStatus(`Paused: ${view.sample.title}`);

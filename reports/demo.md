@@ -119,6 +119,43 @@ chord; trained on the RWC-P and GuitarSet training songs, the samples are valida
 precomputed and revealed as live, and a seek is not a restart; uploads are analysed locally, lossy
 formats change the chords slightly, no reference for them; no scores on the page.
 
+## After review: live decoding on the server
+
+The upload analysis of Phase 4 computed a whole file at once (79 s of features and 3.9 GB of memory for
+9.5 min of audio). After review the server decodes live instead, as the system was meant to run, and
+the upload route is gone.
+
+**How.** The page decodes the recording with the browser's own decoder, mixes it to mono, resamples it
+to 22,050 Hz (an `OfflineAudioContext`) and streams it as 16-bit PCM over a WebSocket (`/api/live`), at
+playback speed: never past what the system has heard. `scripts/demo_server.py` (Tornado, already in the
+environment as a Jupyter dependency) gives each connection its own `play_along.Analysis` (block-by-block
+features, the causal CRNN, the three points' decoders, the model shared) and sends every label as soon
+as it is decided; at the end of the recording the page sends "end" and the server flushes the decoders
+(`Analysis.finish`, new). The page draws each label as it arrives, only the last block changing; the
+precomputed JSON is still used for the reference and the pipeline settings, and as the fallback when no
+server answers (the notice says which mode is on). A seek, Restart, a new look-ahead or the delay
+checkbox start a new session from what you hear: a restarted live system knows nothing of the past, so
+the rows start empty there. This removes the "a seek is not a restart" caveat of the precomputed mode.
+
+**Same chords.** Streamed in blocks and finished, `Analysis` gives exactly the whole-file labels at every
+point (`tests/test_play_along.py`, on synthetic audio with a seeded model). Through the server, the Rock
+take streamed from Python as 16-bit PCM gives the prepared sample's 16 decoded segments, chord for chord;
+in the browser (its own decoder and resampler) the first segments of the Funk take match the JSON's.
+
+**Cost.** One session on the M1 Pro, one thread: the 26 s Rock take as fast as it can be sent in 2.7 s,
+about 10 ms per 93 ms frame; memory stays small whatever the length. MAX_SESSIONS = 8 at once, 10 min per
+session.
+
+**Delay.** Live, the playback delay is the point's (0.79 s at lag 4) plus a 0.15 s margin for the network
+and the server: 0.94 s. Measured locally, each chord reached the page 0.63 to 0.67 s after its moment of
+audio, a frame sooner than the decision delay of the precomputed mode (0.74 s): the page streams every
+20 ms, so the server does not wait for a whole 2,048-sample block as the prototype's input did. The panel
+shows this measurement for every session and says so if a chord came later than the delay allows.
+
+**Own files.** Anything the browser can play (Chrome: WAV, MP3, FLAC, Ogg, M4A / AAC, which the server's
+libsndfile could not read), up to 100 MB and 10 min. A file the browser cannot decode gets "this browser
+cannot decode it as audio".
+
 ## Acceptance checks (spec section 11)
 
 | Criterion | Result | Evidence |
@@ -141,10 +178,10 @@ formats change the chords slightly, no reference for them; no scores on the page
 | No unimplemented stage claimed | pass | no "no chord", no beat tracking or chroma; Viterbi "not used" at 0.28 s |
 | Reference only when verified | pass | GuitarSet lead-sheet annotations for the samples, none for uploads |
 | Reference distinct from predictions | pass | separate row, different style, "reference labels, not model output" |
-| A supported upload is analysed | pass | WAV, FLAC, Ogg, MP3 |
-| Invalid file gives a clear message | pass | M4A, a text file, a broken WAV, a 0.5 s file |
-| Failed analysis shows no stale result | pass | the page is cleared before the analysis; `tests/test_demo_server.py` covers the 500 |
-| New file replaces old results | pass | picks during an analysis: the last one wins, the spinner stops |
+| A supported upload is analysed | pass | WAV, FLAC, Ogg, MP3 (Phase 4); live: an M4A decoded by the browser and streamed, chords to the end of the file |
+| Invalid file gives a clear message | pass | a broken WAV ("this browser cannot decode it as audio"), too large or too long files |
+| Failed analysis shows no stale result | pass | the page is cleared first; a server error stops the session and shows its message (`tests/test_demo_server.py`: refused audio, busy server, too long) |
+| New file replaces old results | pass | every pick clears the page and closes the running session; an older load drops its result |
 | No flicker or rerender during playback | pass | 0 blocks rebuilt during playback |
 | Repeated playback | pass | played to the end twice, then again from the start (with the delay) |
 | No console errors in the normal flow | pass, with a note | none from the page with the demo server; refused uploads log their 400 response, and the browser pane requests `/favicon.ico` itself |
@@ -177,19 +214,22 @@ In the browser (Funk, Rock and SS takes):
   between frames, as the WCSR cuts them. Whether the causal features' frame time convention would put
   the frame elsewhere was not checked; the prototype's delay (`play_along.required_delay`) has no half
   frame.
-- **Seeking is not a restart.** After a seek the page shows the decisions of the continuous run; a live
-  system started at that point would begin with an empty decoder and running level.
-- **After a seek while paused**, the input restarts, so the last D seconds before the playhead are masked
-  until Play: the live system has not decided them yet.
-- **Hosting.** The upload needs `scripts/demo_server.py` (Python, the model, this repo's data for the
-  config); publishing the demo beyond this computer would need that server deployed, or the samples only.
+- **Precomputed mode only: seeking is not a restart.** Without the server, after a seek the page shows
+  the decisions of the continuous run; live mode restarts the session instead.
+- **The margin.** 0.15 s covers a local server with room to spare; a remote one adds its round trip. The
+  panel's measurement says when it is not enough; the margin could then follow the measurement.
+- **Precomputed decision delay.** It counts one frame more than live streaming needs (see "Delay"
+  above): never early, a frame late.
+- **Hosting.** Live decoding needs `scripts/demo_server.py` (Python, the model, the configs and the
+  Billboard counts) on a machine with about 10 ms of CPU per frame per listener; without it the page
+  falls back to the precomputed samples.
 - **Narrow blocks** hide their name (tooltip, and the large chord when it is the current one); the spec
   asks for text labels always.
 
 ## Reproduce
 
 ```bash
-PYTHONPATH=src python -m pytest tests/test_demo.py tests/test_demo_server.py
+PYTHONPATH=src python -m pytest tests/test_demo.py tests/test_demo_server.py tests/test_play_along.py
 PYTHONPATH=src python scripts/demo_export.py 00_Funk2-108-Eb_comp 00_Rock3-148-C_comp 00_SS3-98-C_comp
-PYTHONPATH=src python scripts/demo_server.py          # http://localhost:8000, with uploads
+PYTHONPATH=src python scripts/demo_server.py          # http://localhost:8000, live decoding
 ```

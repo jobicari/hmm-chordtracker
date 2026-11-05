@@ -63,6 +63,24 @@ def playback_delay(point: str, sr: int, hop: int) -> float:
     return required_delay(point, 0.0, sr, hop) + 0.5 * hop / sr
 
 
+def point_info(sr: int, hop: int) -> list[dict]:
+    """The settings and delays of every operating point, as the page reads them (without segments)."""
+    return [{
+        "id": point,
+        "decoder": decoder_name(point),
+        "lagFrames": OPERATING_POINTS[point]["lag"],
+        "pSelf": OPERATING_POINTS[point]["p_self"],
+        "lookaheadSeconds": round(total_lookahead(point) * hop / sr, 3),
+        "decisionDelaySeconds": round(required_delay(point, 0.0, sr, hop), 3),
+        "playbackDelaySeconds": round(playback_delay(point, sr, hop), 3),
+    } for point in OPERATING_POINTS]
+
+
+def framewise_decision_delay(sr: int, hop: int) -> float:
+    """The delay after which the network's own label of a frame is known (the 0.28 s point's)."""
+    return round(required_delay(FRAMEWISE_POINT, 0.0, sr, hop), 3)
+
+
 def result(sample_id: str, title: str, audio: str, duration: float, points: dict[str, np.ndarray],
            framewise: np.ndarray, labels: list[str], reference: ChordAnnotation | None, reference_source: str | None,
            source: dict, metadata: dict) -> dict:
@@ -86,19 +104,11 @@ def result(sample_id: str, title: str, audio: str, duration: float, points: dict
         "title": title,
         "audio": audio,
         "duration": round(float(duration), 3),
-        "points": [{
-            "id": point,
-            "decoder": decoder_name(point),
-            "lagFrames": OPERATING_POINTS[point]["lag"],
-            "pSelf": OPERATING_POINTS[point]["p_self"],
-            "lookaheadSeconds": round(total_lookahead(point) * hop / sr, 3),
-            "decisionDelaySeconds": round(required_delay(point, 0.0, sr, hop), 3),
-            "playbackDelaySeconds": round(playback_delay(point, sr, hop), 3),
-            "segments": path_segments(points[point], labels, times, duration),
-        } for point in OPERATING_POINTS],
+        "points": [{**info, "segments": path_segments(points[info["id"]], labels, times, duration)}
+                   for info in point_info(sr, hop)],
         "defaultPoint": DEFAULT_POINT,
         "framewise": path_segments(framewise, labels, times, duration),
-        "framewiseDecisionDelaySeconds": round(required_delay(FRAMEWISE_POINT, 0.0, sr, hop), 3),
+        "framewiseDecisionDelaySeconds": framewise_decision_delay(sr, hop),
         "reference": segments(reference) if reference is not None else None,
         "referenceSource": reference_source if reference is not None else None,
         "metadata": {**metadata, "frameCount": int(len(framewise)), "frameSeconds": round(hop / sr, 6),

@@ -93,3 +93,33 @@ def test_the_system_frames_count_from_the_onset():
     hop_s = HOP / SR
     at = lambda t: pa.shown(labels, None, 2.0, t, 0.0, 0.0, SR, HOP)["system"]
     assert at(2.0 + 2.5 * hop_s) == "C" and at(2.0 + 7.5 * hop_s) == "G" and at(1.0) == ""
+
+
+def test_finishing_a_recording_gives_the_whole_file_labels():
+    """Streamed in blocks and finished, every point has exactly the labels of the whole-file computation."""
+    from chordtracker import online_hmm, streaming_features, train_v7_2, transitions
+    from chordtracker.data_v5 import Song
+
+    torch.manual_seed(0)
+    model = model_v6.ChordCRNN(bidirectional=False).eval()
+    cfg = {"audio": {"sr": SR, "mono": True, "harmonic_margin": 4.0, "harmonic_median_frames": 9},
+           "cqt": {"hop_length": HOP, "fmin": "F#1", "bins_per_octave": 24, "n_bins": 168, "tuning_seconds": 10.0},
+           "compression": {"enabled": True, "level_percentile": 99, "gamma": 10}}
+    rng = np.random.default_rng(0)
+    Q = rng.random((24, 24))
+    np.fill_diagonal(Q, 0)
+    Q /= Q.sum(axis=1, keepdims=True)
+    prior = np.full(24, 1 / 24)
+    t = np.arange(int(SR * 4)) / SR
+    y = (0.1 * np.sin(2 * np.pi * np.where(t < 2, 220, 330) * t) + 0.01 * rng.standard_normal(len(t))).astype(np.float32)
+    a = pa.Analysis(cfg, model, prior, Q)
+    for i in range(0, len(y), 2048):
+        a.step(y[i:i + 2048])
+    a.finish()
+    cqt = streaming_features.offline_log_cqt(y, cfg)
+    post = train_v7_2.song_posteriors(model, Song("x", cqt, np.full(cqt.shape[1], -1)), pa.INPUT_LOOKAHEAD)
+    assert a.labels["0.28 s"] == list(post.argmax(axis=0))
+    for point in ("0.46 s", "0.65 s"):
+        v = pa.OPERATING_POINTS[point]
+        whole = online_hmm.fixed_lag_viterbi(post, transitions.transition(Q, v["p_self"]), prior, [v["lag"]])[v["lag"]]
+        assert a.labels[point] == list(whole)
