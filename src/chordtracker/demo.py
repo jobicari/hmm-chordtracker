@@ -4,7 +4,9 @@ scripts/demo_export.py runs the listening prototype's chain on a validation take
 module builds, one JSON file per sample (the spec's TrackerResult):
 
     duration        seconds of audio
-    decoded         HMM output: fixed-lag Viterbi of the prototype's 0.65 s point   [segment, ...]
+    points          the prototype's three operating points (play_along.OPERATING_POINTS): the network
+                    alone (0.28 s), fixed-lag Viterbi lag 2 (0.46 s) and lag 4 (0.65 s); each with its
+                    segments and the delay after which a frame's label is known
     framewise       the network alone: argmax of every frame, runs merged, nothing smoothed
     reference       the take's annotation (GuitarSet), or None
     metadata        sample rate, hop, frame count, model, decoder settings: read from the run, not typed
@@ -14,16 +16,17 @@ module builds, one JSON file per sample (the spec's TrackerResult):
 Times are seconds of the recording. Frame t sits at t * hop / sr (acoustic_hmm.frame_times). A run of
 equal frames becomes one segment whose boundaries lie halfway between frames, exactly as the WCSR cuts
 them (evaluate.path_to_annotation); the first starts at 0 and the last ends at the audio's duration.
-Labels are aligned: frame t's label is what the live system outputs for frame t, a total look-ahead
-later; with playback delayed by that look-ahead it is on screen when frame t is heard.
+Labels are aligned: frame t's label is what the live system outputs for frame t, known at input time
+t * hop / sr + decisionDelaySeconds and never changed afterwards (a fixed-lag decision is final), so
+revealing each label at that time shows exactly what a live decoder would have shown.
 """
 import numpy as np
 
 from chordtracker import evaluate
 from chordtracker.data.data import ChordAnnotation
-from chordtracker.play_along import OPERATING_POINTS, chord_name, total_lookahead
+from chordtracker.play_along import OPERATING_POINTS, chord_name, required_delay, total_lookahead
 
-DECODED_POINT = "0.65 s"        # fixed-lag Viterbi, lag 4
+DEFAULT_POINT = "0.65 s"        # fixed-lag Viterbi, lag 4: the steadiest point by ear (reports/play_along.md)
 FRAMEWISE_POINT = "0.28 s"      # the network alone
 
 
@@ -42,32 +45,51 @@ def path_segments(path: np.ndarray, labels: list[str], times: np.ndarray, durati
     return segments(evaluate.path_to_annotation(path, labels, times, duration))
 
 
-def result(sample_id: str, title: str, audio: str, duration: float, decoded: np.ndarray, framewise: np.ndarray,
-           labels: list[str], reference: ChordAnnotation | None, reference_source: str | None, source: dict,
-           metadata: dict) -> dict:
-    """The JSON of one sample. decoded, framewise: (T,) label indices, one per frame of the same run."""
-    if len(decoded) != len(framewise):
-        raise ValueError(f"decoded has {len(decoded)} frames, framewise {len(framewise)}: not the same run")
+def decoder_name(point: str) -> str:
+    """"0.65 s" -> "fixed-lag Viterbi (lag 4 frames, p_self 0.98)"; the 0.28 s point is the network alone."""
+    v = OPERATING_POINTS[point]
+    if v["p_self"] is None:
+        return "network alone (no decoder look-ahead)"
+    return f"fixed-lag Viterbi (lag {v['lag']} frames, p_self {v['p_self']})"
+
+
+def result(sample_id: str, title: str, audio: str, duration: float, points: dict[str, np.ndarray],
+           framewise: np.ndarray, labels: list[str], reference: ChordAnnotation | None, reference_source: str | None,
+           source: dict, metadata: dict) -> dict:
+    """The JSON of one sample.
+
+    points: {"0.28 s": path, "0.46 s": path, "0.65 s": path}, the label path of every operating point;
+    framewise: the argmax path. All (T,) label indices of the same run. Each point also gets the delay
+    after which a frame's label is known (play_along.required_delay: total look-ahead + one frame), so
+    the page can reveal every label when a live decoder would have output it.
+    """
+    lengths = {len(framewise)} | {len(p) for p in points.values()}
+    if len(lengths) != 1:
+        raise ValueError(f"the paths have different lengths {sorted(lengths)}: not the same run")
+    if set(points) != set(OPERATING_POINTS):
+        raise ValueError(f"expected the points {sorted(OPERATING_POINTS)}, got {sorted(points)}")
     hop, sr = metadata["hopLength"], metadata["sampleRate"]
-    times = np.arange(len(decoded)) * hop / sr
-    point = OPERATING_POINTS[DECODED_POINT]
+    times = np.arange(len(framewise)) * hop / sr
     return {
         "id": sample_id,
         "title": title,
         "audio": audio,
         "duration": round(float(duration), 3),
-        "decoded": path_segments(decoded, labels, times, duration),
+        "points": [{
+            "id": point,
+            "decoder": decoder_name(point),
+            "lagFrames": OPERATING_POINTS[point]["lag"],
+            "pSelf": OPERATING_POINTS[point]["p_self"],
+            "lookaheadSeconds": round(total_lookahead(point) * hop / sr, 3),
+            "decisionDelaySeconds": round(required_delay(point, 0.0, sr, hop), 3),
+            "segments": path_segments(points[point], labels, times, duration),
+        } for point in OPERATING_POINTS],
+        "defaultPoint": DEFAULT_POINT,
         "framewise": path_segments(framewise, labels, times, duration),
+        "framewiseDecisionDelaySeconds": round(required_delay(FRAMEWISE_POINT, 0.0, sr, hop), 3),
         "reference": segments(reference) if reference is not None else None,
         "referenceSource": reference_source if reference is not None else None,
-        "metadata": {
-            **metadata,
-            "frameCount": int(len(decoded)),
-            "frameSeconds": round(hop / sr, 6),
-            "decoderName": f"fixed-lag Viterbi (lag {point['lag']} frames, p_self {point['p_self']})",
-            "decodedLookaheadSeconds": round(total_lookahead(DECODED_POINT) * hop / sr, 3),
-            "framewiseLookaheadSeconds": round(total_lookahead(FRAMEWISE_POINT) * hop / sr, 3),
-            "vocabulary": sorted(set(labels)),
-        },
+        "metadata": {**metadata, "frameCount": int(len(framewise)), "frameSeconds": round(hop / sr, 6),
+                     "vocabulary": sorted(set(labels))},
         "source": source,
     }
