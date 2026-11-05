@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chord Tracker - demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Chord Tracker</h1>
+    <p class="tagline">A chord-tracking system comparing framewise chord classification with HMM/Viterbi temporal decoding.</p>
+    <p class="methods">Log-CQT features · CRNN chord classifier · HMM · Fixed-lag Viterbi</p>
+  </header>
+
+  <main>
+    <section class="input">
+      <label class="picker">Prepared sample
+        <select id="sample" disabled></select>
+      </label>
+      <span id="status" class="status" role="status">Loading samples...</span>
+    </section>
+
+    <section class="player">
+      <div class="now">
+        <span class="caption">Decoded chord (HMM/Viterbi)</span>
+        <span id="now" class="chord-big"></span>
+        <span class="caption">Next: <span id="next" class="chord-next">-</span></span>
+      </div>
+      <div class="transport">
+        <div class="buttons">
+          <button id="play" type="button" disabled>Play</button>
+          <button id="restart" type="button" disabled>Restart</button>
+          <span id="time" class="time">0:00.0 / 0:00.0</span>
+        </div>
+        <input id="seek" class="seek" type="range" min="0" max="0" step="0.01" value="0" disabled
+               aria-label="Seek">
+      </div>
+    </section>
+
+    <section class="timeline-section">
+      <h2>Decoded chord timeline <span class="sub">HMM / Viterbi output, not ground truth</span></h2>
+      <div id="scroller" class="scroller">
+        <div id="timeline" class="timeline" aria-label="Decoded chord timeline: click to seek">
+          <div id="ruler" class="ruler"></div>
+          <div id="track" class="track"></div>
+          <div id="playhead" class="playhead"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <audio id="audio" preload="auto"></audio>
+  <script src="app.js"></script>
+</body>
+</html>

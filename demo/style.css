@@ -1,0 +1,96 @@
+:root {
+  --bg: #fafafa;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #d2d2d7;
+  --accent: #d70015;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+body { margin: 0; }
+
+header { padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid var(--line); }
+h1 { font-size: 1.3rem; margin: 0 0 .3rem; font-weight: 600; }
+.tagline { margin: 0 0 .35rem; }
+.methods { margin: 0; color: var(--muted); font-size: .85rem; }
+
+main { padding: 1.25rem 1.5rem 2rem; max-width: 72rem; margin: 0 auto; }
+
+.input { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; }
+.picker { display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .9rem; }
+.picker select { font: inherit; color: var(--fg); padding: .3rem .4rem; max-width: 34rem; }
+.status { color: var(--muted); font-size: .85rem; }
+.status.error { color: var(--accent); font-weight: 500; }
+
+/* Player: fixed sizes, so a chord change never moves the layout. */
+.player { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 2.5rem; margin: 1.5rem 0 1.25rem; }
+.now { display: flex; flex-direction: column; min-width: 15rem; }
+.caption { color: var(--muted); font-size: .85rem; }
+.chord-big { font-size: 4.5rem; line-height: 1.1; font-weight: 600; min-height: 5rem; }
+.chord-next { color: var(--fg); font-weight: 600; }
+.transport { flex: 1; min-width: 18rem; display: flex; flex-direction: column; gap: .6rem; padding-bottom: .4rem; }
+.buttons { display: flex; align-items: center; gap: .6rem; }
+.buttons button {
+  font: inherit;
+  padding: .4rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: .4rem;
+  background: #fff;
+  cursor: pointer;
+}
+#play { min-width: 5.5rem; }
+.buttons button:disabled { cursor: default; opacity: .5; }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); margin-left: .4rem; }
+.seek { width: 100%; accent-color: var(--accent); }
+
+/* Decoded timeline: blocks positioned by time, a ruler, a playhead; scrolls when the recording is long. */
+h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .6rem; }
+h2 .sub { font-weight: 400; color: var(--muted); font-size: .85rem; margin-left: .5rem; }
+.scroller { overflow-x: auto; padding-bottom: .3rem; }
+.timeline { position: relative; user-select: none; cursor: pointer; min-width: 100%; }
+.ruler { position: relative; height: 1.3rem; border-bottom: 1px solid var(--line); }
+.tick { position: absolute; bottom: 0; height: .35rem; border-left: 1px solid var(--muted); }
+.tick span {
+  position: absolute;
+  bottom: .4rem;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: .7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tick.first span { transform: none; }
+.tick.last span { transform: translateX(-100%); }
+.track { position: relative; height: 3rem; margin-top: .4rem; background: #ececf0; border-radius: .25rem; overflow: hidden; }
+.seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  border-right: 1px solid rgba(255, 255, 255, .8);
+  font-size: .8rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 0 .25rem;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: .82;
+}
+.seg.nc { background-color: #b0b0b8; }
+.seg.narrow { color: transparent; padding: 0; }
+.seg.active { opacity: 1; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 3px rgba(0, 0, 0, .35); }
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  pointer-events: none;
+  will-change: transform;
+}
