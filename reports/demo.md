@@ -8,7 +8,7 @@ with it** lets a reviewer who has never seen the code see what the system does. 
 Phase 0 (inspection) and Phase 1 (stable prepared-sample flow) of the demo specification, reworked after
 review into a real-time view: the chords appear as the live system would output them, with the framewise
 row (the spec's Phase 2) brought forward to show what the decoder smooths. Phase 3 (pipeline section and
-reference row) is done; upload (Phase 4) is not started.
+reference row) and Phase 4 (upload, errors, acceptance checks) are done.
 
 ## Phase 0: what the repo had
 
@@ -91,6 +91,64 @@ min7...: 6 of 14 on the Funk take) striped, with their actual label. The referen
 not decided by the system); its active block follows what you hear. A sample without annotations gets a
 disabled checkbox and "Reference annotations are not available for this recording."
 
+## Phase 4: upload, errors and acceptance
+
+**Upload.** Analysing a file needs the model, so `scripts/demo_server.py` serves `demo/` and adds
+`POST /api/analyze` (the file's bytes, its name in a header) and `GET /api/health` (formats and limits).
+The analysis is `demo_export.Analyzer`, the same chain and model as the prepared samples, one file at a
+time, on 127.0.0.1 only; the upload is deleted afterwards. Uploading the Rock take's WAV gives exactly
+the prepared sample's segments for all three points and the framewise row. The page offers a file
+button and a drop zone, shows the file name, an "Analyzing name... 3 s" status with a spinner, and
+plays the browser's own copy of the file; the result has no reference ("not available"). Served by
+`python -m http.server` alone, the upload is greyed out with a note on how to start the server.
+
+**Formats.** Only what was tested is offered: WAV, FLAC, Ogg Vorbis and MP3. Converted from a GuitarSet
+take with ffmpeg, each loads here with the original's duration (25.941 s) and no time offset
+(cross-correlation with the WAV: 0 samples), and Chrome reports the same duration for the MP3 and Ogg.
+AAC / M4A cannot be read by this environment's libsndfile, so it is refused. Limits: 50 MB, 1 s to
+10 min. The lossy files give slightly different chords (Ogg: 17 instead of 16 segments at 0.46 s).
+
+**Errors and stale results.** Wrong type or size is refused in the browser before upload; unreadable
+audio, a too short or too long file and a failed analysis come back from the server as a message; the
+request is stopped after 180 s. Every new choice (a sample or a file) clears the page first, aborts a
+running analysis and makes any older load drop its result; the uploaded file stays in the list as
+"Your file: name" and comes back without a new analysis.
+
+**Notes and limitations.** A short section at the end of the page: major / minor triads only, always a
+chord; trained on the RWC-P and GuitarSet training songs, the samples are validation takes; chords are
+precomputed and revealed as live, and a seek is not a restart; uploads are analysed locally, lossy
+formats change the chords slightly, no reference for them; no scores on the page.
+
+## Acceptance checks (spec section 11)
+
+| Criterion | Result | Evidence |
+|---|---|---|
+| Page opens in a usable initial state | pass | the default sample loads, controls enable on "Ready" |
+| Prepared sample loads without an upload | pass | the first sample (or the one in the URL) loads on open |
+| Audio and outputs matched | pass | the page refuses rows that do not cover the recording; audio duration = JSON duration (35.548 s) |
+| Decoded timeline spans the recording | pass | every row starts at 0 and ends at the audio's end |
+| Play / pause | pass | below |
+| Current time and duration correct | pass | "0:35.5 / 0:35.5" at the end, from `audio.currentTime` and the JSON |
+| Playhead follows playback time | pass | playhead and masks vs `audio.currentTime` every ~16 ms: 0 mismatches |
+| Chord changes at the decoded boundaries | pass | 0 ms between what you hear and what is shown (within 1 ms at the end, the JSON's times are rounded to the ms) |
+| Seeking consistent | pass | click, drag and seek bar: audio, playhead, seek bar, time and chords agree |
+| Pause / resume keeps the timeline | pass | resume plays at once, no reset |
+| Framewise and Viterbi rows labelled | pass | "Decoded: HMM / Viterbi, fixed lag of 4 frames", "Framewise: network alone, no decoder" |
+| Same axis, same recording, same playhead | pass | one timeline, one playhead, all rows from the same posteriors |
+| Framewise not altered | pass | `tests/test_demo.py`: single-frame runs kept |
+| Missing output reported | pass | a truncated row is refused with a message |
+| Pipeline lists implemented stages in order | pass | 8 stages, values from the run |
+| No unimplemented stage claimed | pass | no "no chord", no beat tracking or chroma; Viterbi "not used" at 0.28 s |
+| Reference only when verified | pass | GuitarSet lead-sheet annotations for the samples, none for uploads |
+| Reference distinct from predictions | pass | separate row, different style, "reference labels, not model output" |
+| A supported upload is analysed | pass | WAV, FLAC, Ogg, MP3 |
+| Invalid file gives a clear message | pass | M4A, a text file, a broken WAV, a 0.5 s file |
+| Failed analysis shows no stale result | pass | the page is cleared before the analysis; `tests/test_demo_server.py` covers the 500 |
+| New file replaces old results | pass | picks during an analysis: the last one wins, the spinner stops |
+| No flicker or rerender during playback | pass | 0 blocks rebuilt during playback |
+| Repeated playback | pass | played to the end twice, then again from the start (with the delay) |
+| No console errors in the normal flow | pass, with a note | none from the page with the demo server; refused uploads log their 400 response, and the browser pane requests `/favicon.ico` itself |
+
 ## What was checked
 
 `tests/test_demo.py`: segment boundaries halfway between frames, segments cover the recording without
@@ -123,14 +181,15 @@ In the browser (Funk, Rock and SS takes):
   system started at that point would begin with an empty decoder and running level.
 - **After a seek while paused**, the input restarts, so the last D seconds before the playhead are masked
   until Play: the live system has not decided them yet.
-- **Upload (Phase 4)** needs a small local server that runs `demo_export`'s chain on the file.
+- **Hosting.** The upload needs `scripts/demo_server.py` (Python, the model, this repo's data for the
+  config); publishing the demo beyond this computer would need that server deployed, or the samples only.
 - **Narrow blocks** hide their name (tooltip, and the large chord when it is the current one); the spec
   asks for text labels always.
 
 ## Reproduce
 
 ```bash
-PYTHONPATH=src python -m pytest tests/test_demo.py
+PYTHONPATH=src python -m pytest tests/test_demo.py tests/test_demo_server.py
 PYTHONPATH=src python scripts/demo_export.py 00_Funk2-108-Eb_comp 00_Rock3-148-C_comp 00_SS3-98-C_comp
-python -m http.server -d demo 8000
+PYTHONPATH=src python scripts/demo_server.py          # http://localhost:8000, with uploads
 ```

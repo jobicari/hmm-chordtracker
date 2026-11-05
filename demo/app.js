@@ -416,6 +416,7 @@ function clearSample() {
   audio.load();
   if (view.audioUrl) URL.revokeObjectURL(view.audioUrl);
   cancelPreroll();
+  document.body.classList.remove("analyzing");
   Object.assign(view, { sample: null, point: null, timeText: "", audioUrl: null, primed: false });
   for (const row of Object.values(rows)) {
     const mask = row.track.querySelector(".mask");
@@ -439,29 +440,26 @@ function clearSample() {
 }
 
 let loadGeneration = 0;
+let analysisAbort = null;
+const ANALYSIS_TIMEOUT_MS = 180000;
+const upload = { formats: [], maxBytes: 0, file: null, sample: null };   // the uploaded file and its result
 
-async function loadSample(entry) {
-  // The audio is fetched whole and played from a blob URL: it is then seekable on any static server,
-  // including python -m http.server, which does not answer byte-range requests. A newer load
-  // (another sample picked meanwhile) makes this one drop its results.
-  const generation = ++loadGeneration;
-  clearSample();
-  setStatus(`Loading ${entry.title}...`);
-  const sample = await fetchJSON(`samples/${entry.file}`);
+function checkSample(sample, title) {
+  // Refuse outputs that are missing or do not cover the recording: nothing partial is shown.
   if (!Array.isArray(sample.points) || sample.points.length === 0 || !Array.isArray(sample.framewise)) {
-    throw new Error(`${entry.title}: the decoded or framewise output is missing.`);
+    throw new Error(`${title}: the decoded or framewise output is missing.`);
   }
   for (const [name, segs] of [["framewise", sample.framewise], ...sample.points.map((p) => [p.id, p.segments])]) {
     if (!coversRecording(segs, sample.duration)) {
-      throw new Error(`${entry.title}: the ${name} output does not cover this recording; it is not shown.`);
+      throw new Error(`${title}: the ${name} output does not cover this recording; it is not shown.`);
     }
   }
-  const response = await fetch(`samples/${sample.audio}`);
-  if (!response.ok) throw new Error(`samples/${sample.audio}: HTTP ${response.status}`);
-  const blob = await response.blob();
-  if (generation !== loadGeneration) return;
+}
+
+function showSample(sample, audioBlob) {
+  // Build everything for one analysed recording and its audio (a Blob or the uploaded File).
   view.sample = sample;
-  view.audioUrl = URL.createObjectURL(blob);
+  view.audioUrl = URL.createObjectURL(audioBlob);
   $("seek").max = sample.duration;
   $("timeline").style.width = `${Math.max(sample.duration * PX_PER_SECOND, $("scroller").clientWidth)}px`;
   view.width = rows.decoded.track.getBoundingClientRect().width;
@@ -473,10 +471,116 @@ async function loadSample(entry) {
   selectPoint(view.wantedPoint || sample.defaultPoint);
   audio.src = view.audioUrl;
   audio.load();
+}
+
+async function loadSample(entry) {
+  // A prepared sample. The audio is fetched whole and played from a blob URL: it is then seekable on
+  // any static server, including python -m http.server, which does not answer byte-range requests.
+  // A newer load (another sample or a file picked meanwhile) makes this one drop its results.
+  const generation = ++loadGeneration;
+  if (analysisAbort) analysisAbort.abort();
+  clearSample();
+  $("file-name").textContent = "";
+  setStatus(`Loading ${entry.title}...`);
+  const sample = await fetchJSON(`samples/${entry.file}`);
+  checkSample(sample, entry.title);
+  const response = await fetch(`samples/${sample.audio}`);
+  if (!response.ok) throw new Error(`samples/${sample.audio}: HTTP ${response.status}`);
+  const blob = await response.blob();
+  if (generation !== loadGeneration) return;
+  showSample(sample, blob);
   history.replaceState(null, "", `#${sample.id}`);
 }
 
+function extension(name) {
+  const i = name.lastIndexOf(".");
+  return i < 0 ? "" : name.slice(i).toLowerCase();
+}
+
+async function analyzeFile(file) {
+  // An uploaded file: checked here, analysed by scripts/demo_server.py, played from the local copy.
+  const generation = ++loadGeneration;
+  if (analysisAbort) analysisAbort.abort();
+  clearSample();
+  upload.file = file;
+  upload.sample = null;
+  setUploadOption(file.name);
+  $("file-name").textContent = file.name;
+  if (!upload.formats.includes(extension(file.name))) {
+    throw new Error(`${file.name}: unsupported file type. Supported: ${upload.formats.join(", ")}.`);
+  }
+  if (file.size > upload.maxBytes) {
+    throw new Error(`${file.name}: larger than ${Math.round(upload.maxBytes / 2 ** 20)} MB.`);
+  }
+  if (file.size === 0) throw new Error(`${file.name}: the file is empty.`);
+  const controller = new AbortController();
+  analysisAbort = controller;
+  const timeout = setTimeout(() => controller.abort("timeout"), ANALYSIS_TIMEOUT_MS);
+  const t0 = performance.now();
+  const tick = setInterval(() => {
+    if (generation === loadGeneration) {
+      setStatus(`Analyzing ${file.name}... ${Math.round((performance.now() - t0) / 1000)} s`);
+    }
+  }, 500);
+  setStatus(`Analyzing ${file.name}...`);
+  document.body.classList.add("analyzing");
+  try {
+    let response;
+    try {
+      response = await fetch("api/analyze", {
+        method: "POST", body: file, signal: controller.signal,
+        headers: { "Content-Type": "application/octet-stream", "X-Filename": encodeURIComponent(file.name) },
+      });
+    } catch (e) {
+      if (generation !== loadGeneration) return;
+      throw new Error(controller.signal.reason === "timeout"
+        ? `${file.name}: the analysis took more than ${ANALYSIS_TIMEOUT_MS / 1000} s and was stopped.`
+        : `${file.name}: the demo server did not answer (${e.message}).`);
+    }
+    const body = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    if (generation !== loadGeneration) return;
+    if (!response.ok) throw new Error(body.error || `${file.name}: the analysis failed (HTTP ${response.status}).`);
+    checkSample(body, file.name);
+    upload.sample = body;
+    showSample(body, file);
+    history.replaceState(null, "", "#upload");
+  } finally {
+    clearTimeout(timeout);
+    clearInterval(tick);
+    if (generation === loadGeneration) document.body.classList.remove("analyzing");
+    if (analysisAbort === controller) analysisAbort = null;
+  }
+}
+
+function setUploadOption(name) {
+  // The uploaded file appears in the sample list, selected, so the list never names another recording.
+  const select = $("sample");
+  let option = select.querySelector('option[value="upload"]');
+  if (!option) { option = new Option("", "upload"); select.add(option); }
+  option.textContent = `Your file: ${name}`;
+  select.value = "upload";
+}
+
+async function initUpload() {
+  // Uploads need scripts/demo_server.py; the page alone (a static server) offers only the samples.
+  try {
+    const health = await fetchJSON("api/health");
+    upload.formats = health.formats;
+    upload.maxBytes = health.maxBytes;
+    $("file").accept = health.formats.join(",");
+    $("file").disabled = false;
+    $("upload").classList.remove("unavailable");
+    $("upload-help").textContent = `${health.formats.map((f) => f.slice(1).toUpperCase()).join(", ")}, up to `
+      + `${Math.round(health.maxBytes / 2 ** 20)} MB and ${Math.round(health.maxSeconds / 60)} min. `
+      + `Analysed by the same model on this computer; nothing leaves it.`;
+  } catch {
+    $("upload-help").textContent = "Analysing your own file needs the demo server: "
+      + "python scripts/demo_server.py (see demo/README.md).";
+  }
+}
+
 async function init() {
+  initUpload();
   let index;
   try {
     index = await fetchJSON("samples/index.json");
@@ -488,15 +592,44 @@ async function init() {
   for (const s of index.samples) select.add(new Option(s.title, s.id));
   select.disabled = false;
   const pick = (id) => index.samples.find((s) => s.id === id);
-  const load = (entry) => {
-    const generation = loadGeneration + 1;
-    return loadSample(entry).catch((e) => {
+  const guard = (promise) => {
+    const generation = loadGeneration;                    // the load just started
+    return promise.catch((e) => {
       if (generation !== loadGeneration) return;          // a newer load replaced this one
       clearSample();
       setStatus(e.message, true);
     });
   };
-  select.addEventListener("change", () => load(pick(select.value)));
+  const load = (entry) => { const p = loadSample(entry); return guard(p); };
+  const analyze = (file) => { const p = analyzeFile(file); return guard(p); };
+  select.addEventListener("change", () => {
+    if (select.value === "upload") {
+      if (upload.sample) {                                // back to the file analysed before
+        ++loadGeneration;
+        clearSample();
+        showSample(upload.sample, upload.file);
+      } else if (upload.file) {
+        analyze(upload.file);
+      }
+    } else {
+      load(pick(select.value));
+    }
+  });
+  $("file").addEventListener("change", () => { if ($("file").files[0]) analyze($("file").files[0]); $("file").value = ""; });
+  const zone = $("upload");
+  zone.addEventListener("dragover", (e) => { if (!$("file").disabled) { e.preventDefault(); zone.classList.add("over"); } });
+  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+  zone.addEventListener("drop", (e) => {
+    zone.classList.remove("over");
+    if ($("file").disabled) return;
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length !== 1) { setStatus("Drop one audio file at a time.", true); return; }
+    analyze(files[0]);
+  });
+  // A file dropped outside the zone must not make the browser leave the page.
+  document.addEventListener("dragover", (e) => e.preventDefault());
+  document.addEventListener("drop", (e) => e.preventDefault());
   const wanted = pick(location.hash.slice(1)) || index.samples[0];
   select.value = wanted.id;
   new ResizeObserver(layout).observe($("scroller"));

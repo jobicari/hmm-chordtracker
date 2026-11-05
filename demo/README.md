@@ -15,10 +15,12 @@ page only decides when to reveal it.
 
 ```bash
 PYTHONPATH=src python scripts/demo_export.py 00_Funk2-108-Eb_comp 00_Rock3-148-C_comp 00_SS3-98-C_comp
-python -m http.server -d demo 8000
+PYTHONPATH=src python scripts/demo_server.py
 ```
 
-Then open http://localhost:8000. Space plays and pauses; click or drag on the timeline, or use the seek
+Then open http://localhost:8000. The server also analyses a file you upload (WAV, FLAC, Ogg Vorbis or
+MP3, up to 50 MB and 10 min) with the same model, on this computer. Without uploads, any static server
+works: `python -m http.server -d demo 8000`. Space plays and pauses; click or drag on the timeline, or use the seek
 bar, to seek.
 
 `demo/samples/` is git-ignored: a copy of each GuitarSet recording (CC BY 4.0) and its JSON

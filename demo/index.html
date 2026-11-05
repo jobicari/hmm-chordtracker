@@ -19,9 +19,18 @@
       The page shows each chord only from the moment the live system would have output it, never earlier.</p>
 
     <section class="settings">
-      <label class="field">Prepared sample
+      <label class="field">Recording
         <select id="sample" disabled></select>
       </label>
+      <div id="upload" class="field upload unavailable">
+        <span>Or analyse your own file</span>
+        <div class="upload-row">
+          <label class="file-button"><input id="file" type="file" disabled> Choose a file</label>
+          <span class="drop-hint">or drop it here</span>
+          <span id="file-name" class="file-name"></span>
+        </div>
+        <span id="upload-help" class="upload-help"></span>
+      </div>
       <fieldset class="field points" id="points" disabled>
         <legend>Look-ahead</legend>
       </fieldset>
@@ -82,6 +91,23 @@
         <summary>Analysis pipeline: how each chord is computed</summary>
         <ol id="pipeline-stages"></ol>
       </details>
+    </section>
+
+    <section class="notes">
+      <h2>Notes and limitations</h2>
+      <ul>
+        <li><strong>Chords:</strong> major and minor triads only, and always a chord: no "no chord", no sevenths
+          or other qualities. A seventh chord is shown as its triad at best.</li>
+        <li><strong>Training:</strong> the network was trained on the RWC Popular Music and GuitarSet training
+          takes. The prepared samples are GuitarSet validation takes, which it did not train on.</li>
+        <li><strong>Real time:</strong> the chords were computed ahead of time and are revealed when the live system
+          would output them. After a seek, the page shows the decisions of an uninterrupted run; a live system
+          restarted at that point would need a few seconds to settle (running level, tuning, memory).</li>
+        <li><strong>Your files:</strong> analysed on this computer by the demo server with the same model; some
+          formats are lossy, which changes the chords slightly. No reference annotations exist for them.</li>
+        <li><strong>No scores here:</strong> the page shows outputs only. Accuracy figures, measured on validation and
+          test songs, are in the project's reports.</li>
+      </ul>
     </section>
   </main>
 

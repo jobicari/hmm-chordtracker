@@ -191,3 +191,41 @@ main { padding: 1rem 1.5rem 2rem; max-width: 72rem; margin: 0 auto; }
 .pipeline ol { margin: .6rem 0 0; padding-left: 1.4rem; max-width: 52rem; font-size: .88rem; line-height: 1.45; }
 .pipeline li { margin-bottom: .5rem; }
 .pipeline li strong { font-weight: 600; }
+
+/* Upload: a file button and a drop zone; greyed out without the demo server. */
+.upload { border: 1px dashed var(--line); border-radius: .4rem; padding: .45rem .7rem; max-width: 26rem; }
+.upload.over { border-color: var(--input); background: #eef4fc; }
+.upload-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.file-button {
+  font-size: .9rem;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: .4rem;
+  background: #fff;
+  padding: .3rem .7rem;
+  cursor: pointer;
+}
+.file-button input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.file-button:has(input:focus-visible) { outline: 2px solid var(--input); outline-offset: 1px; }
+.upload.unavailable .file-button, .upload.unavailable .drop-hint { opacity: .5; cursor: default; }
+.drop-hint { font-size: .85rem; }
+.file-name { font-size: .85rem; color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
+.upload-help { font-size: .78rem; line-height: 1.35; }
+body.analyzing .status::before {
+  content: "";
+  display: inline-block;
+  width: .7rem;
+  height: .7rem;
+  margin-right: .4rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--input);
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.notes { margin-top: 1.5rem; max-width: 52rem; }
+.notes h2 { font-size: .95rem; font-weight: 600; margin: 0 0 .4rem; }
+.notes ul { margin: 0; padding-left: 1.2rem; font-size: .85rem; line-height: 1.45; color: var(--fg); }
+.notes li { margin-bottom: .35rem; }
