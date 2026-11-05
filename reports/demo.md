@@ -47,13 +47,18 @@ the live system would have output it. A fixed-lag decision is final, so this is 
 With h one frame (92.9 ms) and D a row's decision delay, frame f is decided once the system has heard
 f h + D. Two clocks, both from `audio.currentTime` (s):
 
-    heard        s + D_point when "Delay playback" is on (the live set-up: playback runs D behind the
-                 input), s when it is off; the end of the recording once reached (the decoder flushes)
+    heard        delay on: after Play, Restart or a seek the audio really waits P = D + h / 2 (0.79 s
+                 at lag 4) while the input runs alone, then heard = s + P, also across pause and
+                 resume; delay off: heard = s. The end of the recording once reached (the decoder flushes)
     shown(row)   up to min(s, end of the last decided frame); a striped mask covers the rest
 
-With the delay on, the chord shown is the one being heard (at most half a frame late, see below). With
-it off, the decoded chord comes D late (0.74 s at lag 4) and the framewise one 0.37 s late. A dashed
-line marks what the system has heard, a red one what you hear.
+The extra half frame in P is there because frame f is drawn from (f - 1/2) h, halfway from the previous
+frame, but decided at f h + D: with D alone each new chord would appear up to 46 ms after it starts being
+heard; with P every chord is on screen when it is heard. With the delay off, the decoded chord comes D
+late (0.74 s at lag 4) and the framewise one 0.37 s late. A dashed line marks what the system has heard,
+a red one what you hear. A panel under the settings states the delay applied, that the audio is held
+back by it, and what it is made of (network look-ahead + decoder lag + one frame + half a frame), all
+read from the JSON.
 
 **Page.** Header with the comparison; a notice that the chords were computed ahead of time; sample,
 look-ahead (three buttons) and the delay checkbox, with a sentence that states the delay or its absence;
@@ -73,7 +78,9 @@ In the browser (Funk, Rock and SS takes):
 
 | Check | Result |
 |---|---|
-| Reveal rule over the Funk take, every 13.7 ms, 3 points x delay on / off x 2 rows (31,140 checks): no frame shown before f h + D, and none withheld once decided and reached | 0 early, 0 withheld; with the delay on the decoded row trails what you hear by at most 46 ms (half a frame), with it off by D + 46 ms |
+| Reveal rule over the Funk take, every 13.7 ms, 3 points x delay on / off x 2 rows (31,140 checks, with the delay at D): no frame shown before f h + D, and none withheld once decided and reached | 0 early, 0 withheld |
+| Delay on, P = D + h / 2: Play from 0 | audio started 792 ms after Play (P = 789 ms); then 0 ms between what you hear and what is shown, 0 early, over 2.5 s |
+| Pause and resume; seek while playing; look-ahead change while playing; pause during the wait | resume plays at once; a seek and a look-ahead change wait again (the new P, 0.42 s at 0.28 s); a pause during the wait stops it |
 | During playback (3 points x delay on / off): chord texts, single active block, mask positions vs the JSON, every ~16 ms | 0 mismatches |
 | Blocks rebuilt during playback | never |
 | Playing to the end with the delay off | the decoder flushes: the whole row shown, last chord, status "Ended" |
@@ -82,14 +89,14 @@ In the browser (Funk, Rock and SS takes):
 
 ## Open questions
 
-- **Half a frame.** Frame f stands for the time from (f - 1/2) h to (f + 1/2) h (the WCSR's segments),
-  but is decided only once f h + D has been heard, so with the delay on the first 46 ms of each frame are
-  still masked. Whether the delay should include that half frame, or the frame time convention of the
-  causal features differs, was not checked.
+- **Half a frame.** The delay includes half a frame so that chords are on time with segments cut halfway
+  between frames, as the WCSR cuts them. Whether the causal features' frame time convention would put
+  the frame elsewhere was not checked; the prototype's delay (`play_along.required_delay`) has no half
+  frame.
 - **Seeking is not a restart.** After a seek the page shows the decisions of the continuous run; a live
   system started at that point would begin with an empty decoder and running level.
-- **The delay is stated, not played.** The page plays the audio at once and moves the system's clock
-  ahead instead; a real delayed start (silence for D seconds after Play) was left out.
+- **After a seek while paused**, the input restarts, so the last D seconds before the playhead are masked
+  until Play: the live system has not decided them yet.
 - **Reference annotations (Phase 3).** GuitarSet's chords as played (sevenths, half-diminished...) or
   reduced to major/minor as the WCSR judges them?
 - **Upload (Phase 4)** needs a small local server that runs `demo_export`'s chain on the file.

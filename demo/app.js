@@ -7,8 +7,9 @@
 // live decoder would have shown. The page decides no chord itself.
 //
 // Two clocks, both from audio.currentTime (s, what you hear):
-//   heard      = s + delay, what the system has received; delay = the point's decision delay when
-//                "Delay playback" is on (the live set-up: playback runs that far behind the input), else 0
+//   heard      = what the system has received. With "Delay playback" on, the audio really waits the
+//                point's playback delay after Play, Restart or a seek while the input runs (pre-roll),
+//                then heard = s + delay, also across pause / resume; with it off, heard = s
 //   known(row) = up to the last frame f with f * h + the row's decision delay <= heard (h = one frame,
 //                93 ms, so the mask moves one frame at a time, as the live output does); once the input
 //                reaches the end of the recording the decoder flushes and everything is known
@@ -30,7 +31,8 @@ const rows = {
   decoded: { track: $("track-decoded"), segs: [], divs: [], active: undefined, delay: 0, nowEl: $("now") },
   framewise: { track: $("track-framewise"), segs: [], divs: [], active: undefined, delay: 0, nowEl: $("now-framewise") },
 };
-const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null };
+const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
+               primed: false, preroll: null, internalPause: false };
 
 // ---------------------------------------------------------------------------------------------------
 // Chords
@@ -67,7 +69,18 @@ function segmentAt(segs, t) {
 // Clocks
 
 function playbackDelay() {
-  return $("delay").checked && view.point ? view.point.decisionDelaySeconds : 0;
+  // With "Delay playback" on: the point's decision delay + half a frame, so that every label is
+  // decided by the time its segment starts being heard (chordtracker.demo.playback_delay); else 0.
+  return $("delay").checked && view.point ? view.point.playbackDelaySeconds : 0;
+}
+
+function heardTime(s, d) {
+  // What the system has received. Delay on: after a start (Play from a fresh position, Restart, a seek)
+  // the input runs alone for the delay while the audio waits (pre-roll), then stays that far ahead of
+  // the audio, also across pause / resume. Delay off: the input is what you hear.
+  const D = playbackDelay();
+  if (view.preroll) return Math.min(view.preroll.from + Math.min((performance.now() - view.preroll.t0) / 1000, D), d);
+  return Math.min(view.primed && D > 0 ? s + D : s, d);
 }
 
 function knownUntil(row, heard, d) {
@@ -166,6 +179,7 @@ function selectPoint(id) {
   const sample = view.sample;
   if (!sample) return;
   const point = sample.points.find((p) => p.id === id) || sample.points.find((p) => p.id === sample.defaultPoint);
+  const changed = view.point !== null && view.point !== point;
   view.point = point;
   view.wantedPoint = point.id;
   $("points").querySelector(`input[value="${point.id}"]`).checked = true;
@@ -177,17 +191,38 @@ function selectPoint(id) {
     point.pSelf === null ? "Decoded: no decoder, the network alone" : `Decoded: HMM / Viterbi, fixed lag of ${point.lagFrames} frames`,
     sub);
   updateDelayNote();
-  render();
+  if (changed) restartInput(); else render();
 }
 
 function updateDelayNote() {
-  if (!view.point) { $("delay-note").textContent = ""; return; }
-  const D = view.point.decisionDelaySeconds.toFixed(2);
-  $("delay-note").textContent = $("delay").checked
-    ? `Playback is delayed by ${D} s: the system receives the recording ${D} s before you hear it, so each `
-      + `chord is decided by the time you hear it (the look-ahead plus one frame of audio).`
-    : `Playback is not delayed: each decoded chord appears ${D} s after you hear it, and the network's `
-      + `own label ${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s after.`;
+  // The delay panel: the delay applied, what it does, and what it is made of, all from the JSON.
+  const panel = $("delay-note");
+  if (!view.point) { panel.replaceChildren(); return; }
+  const p = view.point, sample = view.sample;
+  const h = sample.metadata.frameSeconds;
+  const ms = (frames) => `${Math.round(frames * h * 1000)} ms`;
+  const title = document.createElement("strong");
+  const text = document.createElement("p");
+  const parts = document.createElement("p");
+  parts.className = "parts";
+  if ($("delay").checked) {
+    const D = p.playbackDelaySeconds.toFixed(2);
+    const networkFrames = Math.round(p.lookaheadSeconds / h) - p.lagFrames;
+    title.textContent = `Applied delay: ${D} s. The audio is held back by ${D} s.`;
+    text.textContent = `When you press Play, Restart or seek, the system starts listening at once and you hear `
+      + `the music ${D} s later, as in a live set-up. By the time you hear a moment, the decoder has already `
+      + `decided its chord, so every chord is shown when you hear it, exactly as a live decoder would show it.`;
+    const items = [`${ms(networkFrames)} the network reads ahead (${networkFrames} frames)`];
+    if (p.lagFrames > 0) items.push(`${ms(p.lagFrames)} the Viterbi decoder waits (lag of ${p.lagFrames} frames)`);
+    items.push(`${ms(1)} for the last frame of audio to arrive`, `${ms(0.5)} so a chord is ready where its segment starts`);
+    parts.textContent = `${D} s = ` + items.join(" + ") + ".";
+  } else {
+    title.textContent = "No delay: the audio plays at once.";
+    text.textContent = `Each decoded chord is shown when a live decoder would output it, `
+      + `${p.decisionDelaySeconds.toFixed(2)} s after you hear it (the network's own chord `
+      + `${sample.framewiseDecisionDelaySeconds.toFixed(2)} s after). Turn the delay on to see them on time.`;
+  }
+  panel.replaceChildren(title, text, ...(parts.textContent ? [parts] : []));
   $("input-head").hidden = !$("delay").checked;
 }
 
@@ -217,7 +252,7 @@ function render() {
   if (!sample || !view.point) return;
   const d = sample.duration;
   const s = Math.min(audio.currentTime, d);
-  const heard = Math.min(s + playbackDelay(), d);
+  const heard = heardTime(s, d);
   const x = (s / d) * view.width;
   $("playhead").style.transform = `translateX(${x}px)`;
   $("input-head").style.transform = `translateX(${(heard / d) * view.width}px)`;
@@ -226,7 +261,7 @@ function render() {
   if (text !== view.timeText) { view.timeText = text; $("time").textContent = text; }
   for (const row of Object.values(rows)) renderRow(row, revealedUntil(row, s, heard, d));
 
-  if (!audio.paused) {
+  if (!audio.paused || view.preroll) {
     // Keep the playhead in view when the timeline scrolls: jump only when it leaves the visible part.
     const scroller = $("scroller");
     if (x < scroller.scrollLeft || x > scroller.scrollLeft + scroller.clientWidth - 20) {
@@ -237,7 +272,7 @@ function render() {
 
 function loop() {
   render();
-  if (!audio.paused) requestAnimationFrame(loop);
+  if (!audio.paused || view.preroll) requestAnimationFrame(loop);
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -259,7 +294,8 @@ function clearSample() {
   audio.removeAttribute("src");
   audio.load();
   if (view.audioUrl) URL.revokeObjectURL(view.audioUrl);
-  Object.assign(view, { sample: null, point: null, timeText: "", audioUrl: null });
+  cancelPreroll();
+  Object.assign(view, { sample: null, point: null, timeText: "", audioUrl: null, primed: false });
   for (const row of Object.values(rows)) {
     const mask = row.track.querySelector(".mask");
     mask.style.transform = "";
@@ -338,15 +374,68 @@ async function init() {
 // ---------------------------------------------------------------------------------------------------
 // Controls
 
+function startAudio() {
+  audio.play().catch((e) => setStatus(`Playback failed: ${e.message}`, true));
+}
+
+function cancelPreroll() {
+  if (!view.preroll) return;
+  clearTimeout(view.preroll.timer);
+  view.preroll = null;
+}
+
+function play() {
+  // Start playback; with the delay on and the input not yet ahead, hold the audio back first.
+  if (audio.ended) { audio.currentTime = 0; view.primed = false; }
+  const D = playbackDelay();
+  if (D === 0 || view.primed) { startAudio(); return; }
+  cancelPreroll();
+  view.preroll = { from: audio.currentTime, t0: performance.now(), timer: null };
+  view.preroll.timer = setTimeout(() => {
+    view.preroll = null;
+    view.primed = true;
+    startAudio();
+  }, D * 1000);
+  $("play").textContent = "Pause";
+  setStatus(`Playback delayed ${D.toFixed(2)} s: the system is listening ahead...`);
+  requestAnimationFrame(loop);
+}
+
+function pauseQuietly() {
+  // Stop the audio without reporting "Paused" (the playback restarts at once).
+  if (audio.paused) return;
+  view.internalPause = true;
+  audio.pause();
+}
+
+function restartInput() {
+  // The input starts again from what you hear (a seek, a new delay or look-ahead): while playing,
+  // pre-roll again; while paused, the next Play does.
+  const running = !audio.paused || view.preroll;
+  cancelPreroll();
+  view.primed = false;
+  if (running) { pauseQuietly(); play(); }
+  render();
+}
+
 function togglePlay() {
-  if (audio.paused) audio.play().catch((e) => setStatus(`Playback failed: ${e.message}`, true));
-  else audio.pause();
+  if (view.preroll) {                       // stopped during the pre-roll: the input stops too
+    cancelPreroll();
+    view.primed = false;
+    $("play").textContent = "Play";
+    setStatus(`Paused: ${view.sample.title}`);
+    render();
+  } else if (audio.paused) {
+    play();
+  } else {
+    audio.pause();
+  }
 }
 
 function seek(t) {
   if (!view.sample) return;
   audio.currentTime = Math.max(0, Math.min(t, view.sample.duration));
-  render();
+  restartInput();
 }
 
 audio.addEventListener("canplay", () => {
@@ -360,6 +449,7 @@ audio.addEventListener("play", () => {
   requestAnimationFrame(loop);
 });
 audio.addEventListener("pause", () => {
+  if (view.internalPause) { view.internalPause = false; return; }
   $("play").textContent = "Play";
   if (view.sample) setStatus(`${audio.ended ? "Ended" : "Paused"}: ${view.sample.title}`);
   render();
@@ -373,7 +463,7 @@ audio.addEventListener("error", () => {
 
 $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
-$("delay").addEventListener("change", () => { updateDelayNote(); render(); });
+$("delay").addEventListener("change", () => { updateDelayNote(); restartInput(); });
 
 const seekBar = $("seek");
 seekBar.addEventListener("pointerdown", () => { view.seeking = true; });
