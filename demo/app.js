@@ -328,19 +328,18 @@ function updateDelayNote() {
   if ($("delay").checked) {
     const D = p.playbackDelaySeconds.toFixed(2);
     const networkFrames = Math.round(p.lookaheadSeconds / h) - p.lagFrames;
-    title.textContent = `Applied delay: ${D} s. The audio is held back by ${D} s.`;
-    text.textContent = `When you press Play, Restart or seek, the system starts listening at once and you hear `
-      + `the music ${D} s later, as in a live set-up. By the time you hear a moment, the decoder has already `
-      + `decided its chord, so every chord is shown when you hear it, exactly as a live decoder would show it.`;
-    const items = [`${ms(networkFrames)} the network reads ahead (${networkFrames} frames)`];
-    if (p.lagFrames > 0) items.push(`${ms(p.lagFrames)} the Viterbi decoder waits (lag of ${p.lagFrames} frames)`);
-    items.push(`${ms(1)} for the last frame of audio to arrive`, `${ms(0.5)} so a chord is ready where its segment starts`);
-    parts.textContent = `${D} s = ` + items.join(" + ") + ".";
+    title.textContent = `Applied delay: the audio is held back by ${D} s.`;
+    text.textContent = `After Play, Restart or a seek, the system listens ${D} s ahead of what you hear, `
+      + `so each chord is shown as you hear it, exactly as a live decoder would show it.`;
+    const items = [`network look-ahead ${ms(networkFrames)}`];
+    if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
+    items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
+    parts.textContent = `${D} s = ` + items.join(" + ");
   } else {
     title.textContent = "No delay: the audio plays at once.";
-    text.textContent = `Each decoded chord is shown when a live decoder would output it, `
-      + `${p.decisionDelaySeconds.toFixed(2)} s after you hear it (the network's own chord `
-      + `${sample.framewiseDecisionDelaySeconds.toFixed(2)} s after). Turn the delay on to see them on time.`;
+    text.textContent = `Chords now appear when a live decoder would output them: the decoded chord `
+      + `${p.decisionDelaySeconds.toFixed(2)} s after you hear it, the network's own `
+      + `${sample.framewiseDecisionDelaySeconds.toFixed(2)} s after.`;
   }
   panel.replaceChildren(title, text, ...(parts.textContent ? [parts] : []));
   $("input-head").hidden = !$("delay").checked;
