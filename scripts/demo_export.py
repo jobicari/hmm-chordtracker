@@ -82,27 +82,44 @@ def pipeline_settings(cfg: dict, run: Path) -> dict:
     }
 
 
-def export(song_id: str, cfg: dict, run: Path, model, prior: np.ndarray, Q: np.ndarray) -> dict:
+class Analyzer:
+    """The listening prototype's chain, loaded once: audio file -> the JSON of chordtracker.demo.result."""
+
+    def __init__(self):
+        base = run_v5.load_config(paths.REPO_ROOT / "configs" / "v7_2.yaml")
+        self.cfg = run_v7_2.cell_config(base, "C2", INPUT_LOOKAHEAD, 0)
+        self.run = run_v7_2.run_dir("C2", INPUT_LOOKAHEAD, 0)
+        self.model = train_v7_2.load(self.run / "model.pt", False, 0.5).cpu()
+        self.prior = np.array(json.loads((self.run / "prior.json").read_text()))
+        self.Q = run_v5.change_prior(self.cfg)
+
+    def analyze(self, audio_path: Path, sample_id: str, title: str, audio: str | None,
+                reference=None, reference_source: str | None = None, source: dict | None = None) -> dict:
+        cfg = self.cfg
+        sr, hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
+        duration = sf.info(str(audio_path)).duration
+        y, _ = librosa.load(str(audio_path), sr=sr, mono=True)
+        cqt = streaming_features.offline_log_cqt(y, cfg)
+        post = train_v7_2.song_posteriors(self.model, Song(sample_id, cqt, np.full(cqt.shape[1], -1)),
+                                          INPUT_LOOKAHEAD)
+        framewise = post.argmax(axis=0)
+        points = {}
+        for name, v in OPERATING_POINTS.items():          # the same decisions the streaming decoders make
+            points[name] = framewise if v["p_self"] is None else online_hmm.fixed_lag_viterbi(
+                post, transitions.transition(self.Q, v["p_self"]), self.prior, [v["lag"]])[v["lag"]]
+        metadata = {"sampleRate": sr, "hopLength": hop, "featureName": FEATURE,
+                    "model": str(self.run.relative_to(paths.REPO_ROOT)),
+                    "inputLookaheadFrames": INPUT_LOOKAHEAD, "pipeline": pipeline_settings(cfg, self.run)}
+        return demo.result(sample_id, title, audio, duration, points, framewise, LABELS, reference,
+                           reference_source, source or {}, metadata)
+
+
+def export(song_id: str, analyzer: Analyzer) -> dict:
     take = take_of(song_id)
-    sr, hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
-    y, _ = librosa.load(str(take.audio), sr=sr, mono=True)
-    cqt = streaming_features.offline_log_cqt(y, cfg)
-    post = train_v7_2.song_posteriors(model, Song(take.key, cqt, np.full(cqt.shape[1], -1)), INPUT_LOOKAHEAD)
-    framewise = post.argmax(axis=0)
-    points = {}
-    for name, v in OPERATING_POINTS.items():          # the same decisions the streaming decoders make
-        points[name] = framewise if v["p_self"] is None else online_hmm.fixed_lag_viterbi(
-            post, transitions.transition(Q, v["p_self"]), prior, [v["lag"]])[v["lag"]]
     audio = f"{song_id}.wav"
     OUT.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(take.audio, OUT / audio)
-    duration = sf.info(str(take.audio)).duration
-    metadata = {"sampleRate": sr, "hopLength": hop, "featureName": FEATURE,
-                "model": str(run.relative_to(paths.REPO_ROOT)),
-                "inputLookaheadFrames": INPUT_LOOKAHEAD, "pipeline": pipeline_settings(cfg, run)}
-    out = demo.result(song_id, title_of(song_id), audio, duration, points, framewise, LABELS,
-                      take.annotation, REFERENCE_SOURCE, SOURCE,
-                      metadata)
+    out = analyzer.analyze(take.audio, song_id, title_of(song_id), audio, take.annotation, REFERENCE_SOURCE, SOURCE)
     (OUT / f"{song_id}.json").write_text(json.dumps(out, indent=1))
     return out
 
@@ -121,14 +138,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("takes", nargs="+", help="GuitarSet validation take ids, e.g. 00_Funk2-108-Eb_comp")
     args = parser.parse_args()
-    base = run_v5.load_config(paths.REPO_ROOT / "configs" / "v7_2.yaml")
-    cfg = run_v7_2.cell_config(base, "C2", INPUT_LOOKAHEAD, 0)
-    run = run_v7_2.run_dir("C2", INPUT_LOOKAHEAD, 0)
-    model = train_v7_2.load(run / "model.pt", False, 0.5).cpu()
-    prior = np.array(json.loads((run / "prior.json").read_text()))
-    Q = run_v5.change_prior(cfg)
+    analyzer = Analyzer()
     for song_id in args.takes:
-        s = export(song_id, cfg, run, model, prior, Q)
+        s = export(song_id, analyzer)
         print(song_id, f"{s['duration']} s,", ", ".join(f"{p['id']}: {len(p['segments'])} segments" for p in s["points"]),
               flush=True)
     write_index()
