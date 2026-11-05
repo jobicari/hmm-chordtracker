@@ -53,6 +53,16 @@ def decoder_name(point: str) -> str:
     return f"fixed-lag Viterbi (lag {v['lag']} frames, p_self {v['p_self']})"
 
 
+def playback_delay(point: str, sr: int, hop: int) -> float:
+    """Playback delay for which every label is on screen when its time is heard.
+
+    Frame f is shown from (f - 1/2) h (its segment starts halfway from the previous frame) but decided
+    only at input time f h + the decision delay, so playback waits half a frame more than that delay.
+    At 0.65 s: (7 + 1) frames + 1/2 frame = 0.789 s.
+    """
+    return required_delay(point, 0.0, sr, hop) + 0.5 * hop / sr
+
+
 def result(sample_id: str, title: str, audio: str, duration: float, points: dict[str, np.ndarray],
            framewise: np.ndarray, labels: list[str], reference: ChordAnnotation | None, reference_source: str | None,
            source: dict, metadata: dict) -> dict:
@@ -61,7 +71,8 @@ def result(sample_id: str, title: str, audio: str, duration: float, points: dict
     points: {"0.28 s": path, "0.46 s": path, "0.65 s": path}, the label path of every operating point;
     framewise: the argmax path. All (T,) label indices of the same run. Each point also gets the delay
     after which a frame's label is known (play_along.required_delay: total look-ahead + one frame), so
-    the page can reveal every label when a live decoder would have output it.
+    the page can reveal every label when a live decoder would have output it, and the playback delay
+    that puts every label on screen in time (playback_delay).
     """
     lengths = {len(framewise)} | {len(p) for p in points.values()}
     if len(lengths) != 1:
@@ -82,6 +93,7 @@ def result(sample_id: str, title: str, audio: str, duration: float, points: dict
             "pSelf": OPERATING_POINTS[point]["p_self"],
             "lookaheadSeconds": round(total_lookahead(point) * hop / sr, 3),
             "decisionDelaySeconds": round(required_delay(point, 0.0, sr, hop), 3),
+            "playbackDelaySeconds": round(playback_delay(point, sr, hop), 3),
             "segments": path_segments(points[point], labels, times, duration),
         } for point in OPERATING_POINTS],
         "defaultPoint": DEFAULT_POINT,

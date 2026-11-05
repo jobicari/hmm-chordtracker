@@ -56,6 +56,7 @@ def test_every_point_has_its_lookahead_and_decision_delay():
         assert p["lagFrames"] == lag
         assert p["lookaheadSeconds"] == round(total * STEP, 3)
         assert p["decisionDelaySeconds"] == round((total + 1) * STEP, 3)      # + the frame's own block
+        assert p["playbackDelaySeconds"] == round((total + 1.5) * STEP, 3)    # + half a frame: on time
     assert point(r, "0.28 s")["pSelf"] is None and point(r, "0.65 s")["pSelf"] == 0.98
     assert r["framewiseDecisionDelaySeconds"] == point(r, "0.28 s")["decisionDelaySeconds"]
     assert r["defaultPoint"] == "0.65 s"
