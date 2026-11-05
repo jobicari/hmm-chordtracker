@@ -31,6 +31,9 @@ const rows = {
   decoded: { track: $("track-decoded"), segs: [], divs: [], active: undefined, delay: 0, nowEl: $("now") },
   framewise: { track: $("track-framewise"), segs: [], divs: [], active: undefined, delay: 0, nowEl: $("now-framewise") },
 };
+// Reference annotations: not model output, so never masked; the active block follows what you hear.
+const reference = { track: $("track-reference"), segs: [], divs: [], active: undefined, nowEl: $("now-reference") };
+const MAJMIN = new Set(["maj", "min"]);
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false };
 
@@ -147,6 +150,115 @@ function markNarrow(row) {
     row.divs[i].classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < 8 + 7 * seg.name.length));
 }
 
+function quality(chord) {
+  // "G#:min7/5" -> "min7"; "A" -> "maj"; "N" -> null.
+  if (chord === "N" || chord === "X") return null;
+  return (chord.split(":")[1] || "maj").split("/")[0].split("(")[0] || "maj";
+}
+
+function buildReference(sample) {
+  // The reference row, or a note that there is none. Out-of-vocabulary chords are striped.
+  const box = $("show-reference");
+  reference.track.replaceChildren();
+  reference.active = undefined;
+  if (!Array.isArray(sample.reference) || sample.reference.length === 0) {
+    reference.segs = [];
+    reference.divs = [];
+    box.checked = false;
+    box.disabled = true;
+    $("reference-note").textContent = "Reference annotations are not available for this recording.";
+    showReference();
+    return;
+  }
+  const d = sample.duration;
+  reference.segs = sample.reference;
+  reference.divs = sample.reference.map((seg) => {
+    const div = document.createElement("div");
+    const q = quality(seg.chord);
+    div.className = "seg ref" + (q === null ? " nc" : "") + (q !== null && !MAJMIN.has(q) ? " out" : "");
+    div.style.left = `${(100 * seg.start) / d}%`;
+    div.style.width = `${(100 * (Math.min(seg.end, d) - seg.start)) / d}%`;
+    const bg = colour(seg.chord);
+    if (bg) div.style.setProperty("--root", bg);
+    div.textContent = seg.name;
+    div.title = `Reference: ${seg.name} (${seg.chord}), ${seg.start.toFixed(2)} - ${seg.end.toFixed(2)} s`;
+    reference.track.appendChild(div);
+    return div;
+  });
+  box.disabled = false;
+  $("reference-sub").textContent = "reference labels, not model output";
+  showReference();
+}
+
+function showReference() {
+  const on = $("show-reference").checked && reference.segs.length > 0;
+  document.querySelectorAll(".ref-only").forEach((el) => { el.hidden = !on; });
+  if (reference.segs.length > 0) {
+    $("reference-note").textContent = on
+      ? `Reference: ${view.sample.referenceSource}. They show the chords written for the take, `
+        + `aligned to this recording; the system was not given them.`
+      : "";
+  }
+  if (on) markNarrow(reference);
+  render();
+}
+
+function renderReference(s) {
+  if (reference.segs.length === 0) return;
+  const i = segmentAt(reference.segs, s);
+  if (i === reference.active) return;
+  if (reference.active >= 0) reference.divs[reference.active].classList.remove("active");
+  if (i >= 0) reference.divs[i].classList.add("active");
+  reference.active = i;
+  reference.nowEl.textContent = i >= 0 ? reference.segs[i].name : "";
+  reference.nowEl.title = i >= 0 ? reference.segs[i].chord : "";
+}
+
+function buildPipeline() {
+  // The stages in the order the code runs them, with the values of this run (metadata.pipeline).
+  const m = view.sample.metadata, P = m.pipeline, p = view.point;
+  const ms = Math.round(m.frameSeconds * 1000);
+  const stages = [
+    ["Audio input", `The recording, mono, resampled to ${P.sampleRate.toLocaleString("en")} Hz. A live `
+      + `system receives it in blocks of ${m.hopLength.toLocaleString("en")} samples (${ms} ms), one per frame.`],
+    ["Harmonic part, from past audio only", `A short-time Fourier transform (${P.harmonic.nFft} samples, `
+      + `hop ${P.harmonic.stftHop}) splits sustained notes from drum-like hits: a note counts as sustained `
+      + `from the median of its last ${P.harmonic.medianFrames} STFT frames (margin ${P.harmonic.margin}). `
+      + `This needs ${P.harmonic.lookaheadFrames} frame of future audio.`],
+    ["Log constant-Q spectrum", `${P.cqt.binsPerOctave} bins per octave (${P.cqt.nBins} bins), one column `
+      + `per ${ms} ms frame, each bin delayed so it reads only past audio. Tuning is estimated on the first `
+      + `${P.cqt.tuningSeconds} s; values are divided by the running ${P.compression.levelPercentile}th `
+      + `percentile and compressed as log(1 + ${P.compression.gamma} x). Computed column by column, as live.`],
+    ["Acoustic model (CRNN)", `For each frame, a window of ${P.network.windowFrames} columns `
+      + `(${P.cqt.networkBins} bins, ${P.cqt.networkLowest} to ${P.cqt.networkHighest}) that ends `
+      + `${P.network.inputLookaheadFrames} frames ahead goes through convolution layers; a GRU `
+      + `(${P.network.gruHidden} units) then reads the frames in order, past only. Output: a probability for `
+      + `each of ${P.network.classes} chords (12 major, 12 minor; there is no "no chord"). Model ${P.network.model}.`],
+    ["Framewise output", "The most probable chord of each frame, alone. This is the Framewise row: it "
+      + "changes whenever the network's top choice does, hence the flicker."],
+    ["HMM", `${P.hmm.states} states, one per chord. Evidence: the network's probability of a chord divided `
+      + `by how often it occurred in training. Transitions: stay on the chord with probability p_self, or `
+      + `move as in chord-change counts from ${P.hmm.changeCountsSource} (alpha ${P.hmm.alpha}, tau `
+      + `${P.hmm.tau}), the same for every key.`],
+    ["Fixed-lag Viterbi", p.pSelf === null
+      ? "Not used at the 0.28 s look-ahead: the decoded row is the network alone. Pick 0.46 s or 0.65 s to "
+        + "add the decoder."
+      : `The most likely chord path, decided with a lag of ${p.lagFrames} frames: frame t's chord is fixed `
+        + `once frame t + ${p.lagFrames} has arrived and never changes afterwards. p_self ${p.pSelf}. `
+        + `This is the Decoded row.`],
+    ["Segments and display", `Runs of one chord become segments, cut halfway between frames. Each chord `
+      + `appears once decided: ${p.decisionDelaySeconds.toFixed(2)} s after its frame for the decoded row, `
+      + `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s for the framewise row.`],
+  ];
+  $("pipeline-stages").replaceChildren(...stages.map(([title, text]) => {
+    const li = document.createElement("li");
+    const b = document.createElement("strong");
+    b.textContent = title + ". ";
+    li.append(b, text);
+    return li;
+  }));
+}
+
 function buildRuler(d) {
   const ruler = $("ruler");
   ruler.replaceChildren();
@@ -198,6 +310,7 @@ function selectPoint(id) {
     point.pSelf === null ? "Decoded: no decoder, the network alone" : `Decoded: HMM / Viterbi, fixed lag of ${point.lagFrames} frames`,
     sub);
   updateDelayNote();
+  buildPipeline();
   if (changed) restartInput(); else render();
 }
 
@@ -238,7 +351,7 @@ function layout() {
   const d = view.sample ? view.sample.duration : 0;
   $("timeline").style.width = `${Math.max(d * PX_PER_SECOND, $("scroller").clientWidth)}px`;
   view.width = rows.decoded.track.getBoundingClientRect().width;
-  if (view.sample) { markNarrow(rows.decoded); markNarrow(rows.framewise); }
+  if (view.sample) { markNarrow(rows.decoded); markNarrow(rows.framewise); markNarrow(reference); }
   render();
 }
 
@@ -267,6 +380,7 @@ function render() {
   const text = `${formatTime(s)} / ${formatTime(d)}`;
   if (text !== view.timeText) { view.timeText = text; $("time").textContent = text; }
   for (const row of Object.values(rows)) renderRow(row, revealedUntil(row, s, heard, d));
+  renderReference(s);
 
   if (!audio.paused || view.preroll) {
     // Keep the playhead in view when the timeline scrolls: jump only when it leaves the visible part.
@@ -311,6 +425,11 @@ function clearSample() {
     row.nowEl.textContent = "";
   }
   $("ruler").replaceChildren();
+  reference.track.replaceChildren();
+  Object.assign(reference, { segs: [], divs: [], active: undefined });
+  reference.nowEl.textContent = "";
+  $("reference-note").textContent = "";
+  $("pipeline-stages").replaceChildren();
   $("decoded-name").textContent = "Decoded";
   $("delay-note").textContent = "";
   $("time").textContent = "0:00.0 / 0:00.0";
@@ -348,6 +467,7 @@ async function loadSample(entry) {
   view.width = rows.decoded.track.getBoundingClientRect().width;
   buildRuler(sample.duration);
   buildRow(rows.framewise, sample.framewise, sample.framewiseDecisionDelaySeconds);
+  buildReference(sample);
   buildPoints(sample);
   $("points").disabled = false;
   selectPoint(view.wantedPoint || sample.defaultPoint);
@@ -476,6 +596,7 @@ audio.addEventListener("error", () => {
 $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
 $("delay").addEventListener("change", () => { updateDelayNote(); restartInput(); });
+$("show-reference").addEventListener("change", showReference);
 
 const seekBar = $("seek");
 seekBar.addEventListener("pointerdown", () => { view.seeking = true; });

@@ -7,8 +7,8 @@ virtual audio cable. **A web page that plays a prepared recording and shows the 
 with it** lets a reviewer who has never seen the code see what the system does. This report covers
 Phase 0 (inspection) and Phase 1 (stable prepared-sample flow) of the demo specification, reworked after
 review into a real-time view: the chords appear as the live system would output them, with the framewise
-row (the spec's Phase 2) brought forward to show what the decoder smooths. The pipeline and reference
-rows (Phase 3) and upload (Phase 4) are not started.
+row (the spec's Phase 2) brought forward to show what the decoder smooths. Phase 3 (pipeline section and
+reference row) is done; upload (Phase 4) is not started.
 
 ## Phase 0: what the repo had
 
@@ -19,7 +19,7 @@ rows (Phase 3) and upload (Phase 4) are not started.
 | Where framewise outputs are | Not stored. Each run script recomputes the network's frame posteriors in memory (`train_v7_2.song_posteriors`, `run_v7.frame_paths`); the prototype computes them block by block (`play_along.Analysis`). `results/<version>/<split>/` keeps only per-song scores (`per_song.csv`) and summaries. |
 | Where HMM/Viterbi outputs are | Not stored either: `online_hmm.fixed_lag_viterbi` (whole song) or `online_hmm.FixedLagViterbi` (live) decode them in memory. The model and its training prior are in `results/v7_2/c2_la2_seed0/`. |
 | Timing | One label per frame of 2,048 samples at 22,050 Hz (92.9 ms); frame t sits at t x hop / sr (`acoustic_hmm.frame_times`). Runs of frames become segments with boundaries halfway between frames (`evaluate.path_to_annotation`), which is also how the WCSR is computed. Both outputs share that frame grid. Labels are aligned: frame t's label is known its total look-ahead later (0.28 s for the network alone, 0.65 s for the fixed-lag Viterbi at lag 4), so a live display needs playback delayed by that much (reports/v7_1.md, "The target set-up"). |
-| Prepared audio and verified annotations | GuitarSet (CC BY 4.0, `data/guitarset/`, git-ignored): mono mic recordings and their annotations, the ones every version is scored on, so recording and annotation are known to match. The Isophonics Beatles annotations (`data/beatles/`) have no audio in the repo (the prototype takes the music from Spotify) and RWC-P audio is not redistributable, so neither can back the demo. |
+| Prepared audio and verified annotations | GuitarSet (CC BY 4.0, `data/guitarset/`, git-ignored): mono mic recordings and their lead-sheet chord annotations, the ones every version is scored on, so recording and annotation are known to match. The Isophonics Beatles annotations (`data/beatles/`) have no audio in the repo (the prototype takes the music from Spotify) and RWC-P audio is not redistributable, so neither can back the demo. |
 | Cause of the flickering | No page existed, so no rendering flicker to trace. The flicker the project knows is in the output: the network alone changes chord about twice as often as the music (64 vs 22 changes per minute on the Funk take below), in runs of one or two frames; the fixed-lag Viterbi halves that. A page would add its own flicker if it redrew the chord or the timeline on every playback update. |
 | Smallest Phase 1 plan | Export the outputs of a few GuitarSet validation takes with the real chain to JSON next to the audio, in the spec's result shape; a static page (no framework, no build) that plays the audio, draws the decoded timeline once, and on each playback update moves only the playhead and changes the chord text when the active segment changes. |
 
@@ -68,6 +68,29 @@ once per sample (the decoded row again when the look-ahead changes); during play
 the seek bar and texts that change are written. Audio is played from a blob URL, so it can be seeked on
 `python -m http.server` (no byte ranges there: Chrome reports a seekable range of 0 - 0 for a plain URL).
 
+## Phase 3: pipeline and reference
+
+**Pipeline.** An expandable section lists the stages in the order the code runs them: audio input,
+harmonic part from past audio (`features_v7_1.causal_harmonic`), log constant-Q spectrum computed
+column by column (`streaming_features`), the CRNN (`model_v6`, causal GRU), the framewise output, the
+HMM (evidence = posterior / training prior, `online_hmm.evidence`; transitions from the Billboard
+chord-change counts, `transitions`), the fixed-lag Viterbi, and the segments and their display. Every
+number in it comes from the sample's `metadata.pipeline`, which `demo_export.pipeline_settings` reads
+from the run's config, the code's constants and the counts file; the Viterbi stage follows the chosen
+look-ahead (at 0.28 s it says the decoder is not used).
+
+**Reference.** The `.lab` files behind every score are GuitarSet's *lead-sheet* chords (the first chord
+annotation of each JAMS file, `GuitarSetAdapter(labels="instructed")`), not the performed ones; checked
+on the Funk take (labels and times equal to JAMS annotation 0, different from annotation 1). The first
+version of this report called them performed chords; that was wrong and is corrected here and on the
+page. They are aligned to the recording (the same timing every WCSR uses). A "Show reference
+annotations" checkbox (off by default) adds a row under the two prediction rows: white blocks with dark
+text and a coloured base line, so they do not look like model output; labelled "reference labels, not
+model output", with the source under the timeline; chords outside the 24 major / minor chords (7, hdim7,
+min7...: 6 of 14 on the Funk take) striped, with their actual label. The reference is not masked (it is
+not decided by the system); its active block follows what you hear. A sample without annotations gets a
+disabled checkbox and "Reference annotations are not available for this recording."
+
 ## What was checked
 
 `tests/test_demo.py`: segment boundaries halfway between frames, segments cover the recording without
@@ -86,6 +109,8 @@ In the browser (Funk, Rock and SS takes):
 | Same recording and run (Phase 2): every row of the three samples starts at 0, has no gap, ends at the audio's duration; the page refuses a row that does not (checked with a truncated row) | all rows pass; the truncated one is refused |
 | Playing to the end with the delay off | the decoder flushes: the whole row shown, last chord, status "Ended" |
 | Three sample picks 5 ms apart | the last pick wins; nothing of the others shown; look-ahead and delay settings kept |
+| Phase 3: reference toggle off by default; on, its blocks match the JSON; reference chord and active block vs the JSON every ~16 ms over 4 s of playback, with the decoded row's on-time check in the same run | 0 mismatches, 0 early, 0 ms late, no block rebuilt |
+| Phase 3: a sample without reference; pipeline at 0.28 s and 0.46 s | checkbox disabled with the "not available" note; the Viterbi stage says "not used" at 0.28 s and gives lag 2 at 0.46 s |
 | Console | no page errors; the browser pane itself requests `/favicon.ico` (404) although the page declares no icon file |
 
 ## Open questions
@@ -98,8 +123,6 @@ In the browser (Funk, Rock and SS takes):
   system started at that point would begin with an empty decoder and running level.
 - **After a seek while paused**, the input restarts, so the last D seconds before the playhead are masked
   until Play: the live system has not decided them yet.
-- **Reference annotations (Phase 3).** GuitarSet's chords as played (sevenths, half-diminished...) or
-  reduced to major/minor as the WCSR judges them?
 - **Upload (Phase 4)** needs a small local server that runs `demo_export`'s chain on the file.
 - **Narrow blocks** hide their name (tooltip, and the large chord when it is the current one); the spec
   asks for text labels always.

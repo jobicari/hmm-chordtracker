@@ -25,7 +25,10 @@
       <fieldset class="field points" id="points" disabled>
         <legend>Look-ahead</legend>
       </fieldset>
-      <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
+      <div class="checks">
+        <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
+        <label class="check"><input id="show-reference" type="checkbox" disabled> Show reference annotations</label>
+      </div>
     </section>
     <div id="delay-note" class="delay-panel" aria-live="polite"></div>
     <p id="status" class="status" role="status">Loading samples...</p>
@@ -35,6 +38,7 @@
         <span class="caption">Chord now</span>
         <span id="now" class="chord-big"></span>
         <span class="caption">Network alone now: <span id="now-framewise" class="chord-small"></span></span>
+        <span class="caption ref-only" hidden>Reference now: <span id="now-reference" class="chord-small"></span></span>
       </div>
       <div class="transport">
         <div class="buttons">
@@ -58,13 +62,26 @@
             <div class="row-name">Framewise <span class="sub">network alone, no decoder</span></div>
             <div class="track" id="track-framewise"><div class="mask"></div></div>
           </div>
+          <div class="row reference ref-only" hidden>
+            <div class="row-name">Reference annotations <span id="reference-sub" class="sub"></span></div>
+            <div class="track" id="track-reference"></div>
+          </div>
           <div id="input-head" class="input-head" title="What the system has heard"></div>
           <div id="playhead" class="playhead" title="What you hear"></div>
         </div>
       </div>
       <p class="legend"><span class="key playhead-key"></span> what you hear
         <span class="key input-key"></span> what the system has heard
-        <span class="key mask-key"></span> not decided yet</p>
+        <span class="key mask-key"></span> not decided yet
+        <span class="ref-only" hidden><span class="key out-key"></span> reference chord outside the system's 24 major / minor chords</span></p>
+      <p id="reference-note" class="reference-note"></p>
+    </section>
+
+    <section class="pipeline">
+      <details id="pipeline">
+        <summary>Analysis pipeline: how each chord is computed</summary>
+        <ol id="pipeline-stages"></ol>
+      </details>
     </section>
   </main>
 
