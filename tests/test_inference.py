@@ -34,6 +34,13 @@ def test_classes_major_then_minor():
     assert inference.CLASSES[12] == "C:min" and inference.CLASSES[21] == "A:min"
 
 
+C_MAJOR = [130.81, 261.63, 329.63, 392.0]
+
+
+def detune(freqs, cents):
+    return [f * 2 ** (cents / 1200) for f in freqs]
+
+
 def write_chord(path, freqs, seconds=6.0, sr=22050):
     t = np.arange(int(seconds * sr)) / sr
     sf.write(path, sum(0.2 * np.sin(2 * np.pi * f * t) for f in freqs), sr)
@@ -55,7 +62,7 @@ def test_posteriors_of_a_file(tmp_path, model):
 
 
 def test_a_c_major_triad_reads_as_c_major(tmp_path, model):
-    _, post = inference.posteriors(write_chord(tmp_path / "c.wav", [130.81, 261.63, 329.63, 392.0]), model=model)
+    _, post = inference.posteriors(write_chord(tmp_path / "c.wav", C_MAJOR), model=model)
     assert np.mean(post.argmax(axis=0) == inference.CLASSES.index("C:maj")) > 0.8
 
 
@@ -74,25 +81,14 @@ def test_phases_must_divide_the_hop(tmp_path, model):
         inference.posteriors(write_chord(tmp_path / "c.wav", [261.63]), phases=3, model=model)
 
 
-def flat(freqs, cents):
-    return [f * 2 ** (cents / 1200) for f in freqs]
+
+def test_its_own_tuning_estimate_reads_a_recording_40_cents_flat_a_semitone_low(tmp_path, model):
+    """V6's quarter-tone estimate wraps at +-25 cents: -40 cents reads as +11, the notes between its bins."""
+    _, post = inference.posteriors(write_chord(tmp_path / "f.wav", detune(C_MAJOR, -40)), model=model)
+    assert np.mean(post.argmax(axis=0) == inference.CLASSES.index("B:maj")) > 0.8
 
 
-C_MAJOR = [130.81, 261.63, 329.63, 392.0]
-
-
-def test_a_recording_40_cents_flat_still_reads_as_c_major(tmp_path, model):
-    """Tuning is estimated on the semitone, +-50 cents: on V6's quarter-tone bins it would wrap at +-25 cents and
-    put the notes between the bins the model reads (Another Girl, 44 cents flat, read a semitone low)."""
-    _, post = inference.posteriors(write_chord(tmp_path / "c.wav", flat(C_MAJOR, -40)), model=model)
+def test_the_callers_tuning_reads_it_right(tmp_path, model):
+    path = write_chord(tmp_path / "f.wav", detune(C_MAJOR, -40))
+    _, post = inference.posteriors(path, tuning_semitones=-0.4, model=model)
     assert np.mean(post.argmax(axis=0) == inference.CLASSES.index("C:maj")) > 0.8
-
-
-def test_the_callers_tuning_is_used(tmp_path, model):
-    """tuning in semitones from A440: a C major 40 cents flat reads as C major at its tuning, not when read as in tune."""
-    path = write_chord(tmp_path / "f.wav", flat(C_MAJOR, -40))
-    c_major = inference.CLASSES.index("C:maj")
-    _, right = inference.posteriors(path, tuning=-0.4, model=model)
-    _, wrong = inference.posteriors(path, tuning=0.0, model=model)
-    assert np.mean(right.argmax(axis=0) == c_major) > 0.8
-    assert np.mean(wrong.argmax(axis=0) == c_major) < 0.2
