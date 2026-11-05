@@ -21,7 +21,7 @@ dependencies = [
     "notebook>=7.6.3",
     "numpy>=2.5.4",
     "pandas>=3.0.6",
-    "pysoundfile>=0.9.0.post1",
+    "soundfile>=0.13.1",
     "pyyaml",
     "requests>=2.34.2",
     "scikit-learn>=1.9.1",
@@ -40,3 +40,6 @@ pythonpath = ["src"]
 addopts = "-m 'not slow'"
 markers = ["slow: needs the real GuitarSet in data/guitarset (run with: pytest -m slow)"]
 filterwarnings = ["ignore:Passing a schema to Validator.iter_errors:DeprecationWarning:jsonschema.*"]
+
+[tool.setuptools.package-data]
+chordtracker = ["weights/*.pt"]   # the frozen V6 weights, for chordtracker.inference
