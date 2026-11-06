@@ -5,6 +5,7 @@
     change_matrix(counts, vocab, prior, alpha, tau)   (n, n) Q from Billboard counts (transitions.source billboard)
     label_counts(target_sequences, n_qualities)   (n_q, n_q, 12) changes counted in frame targets
     label_change_matrix(counts, alpha, tau)       (n, n) Q from those counts (transitions.source train)
+    tempered_prior(prior, power)                  prior ** power, renormalised: what the decoder divides by
 
 The Billboard counts (results/v3/billboard_counts.json, transitions.change_counts) know only maj and
 min. V8 keeps them and splits each move among the qualities of the target's family by their share
@@ -88,3 +89,14 @@ def label_change_matrix(counts: np.ndarray, alpha: float = 1.0, tau: float = 1.0
     Q = (counts[q_of[:, None], q_of[None, :], (root_of[None, :] - root_of[:, None]) % 12] + alpha) ** tau
     np.fill_diagonal(Q, 0.0)
     return Q / Q.sum(axis=1, keepdims=True)
+
+
+def tempered_prior(prior: np.ndarray, power: float = 1.0) -> np.ndarray:
+    """prior ** power, summing to 1: the decoder's evidence is log P(class | frame) - log of this.
+
+    power 1 divides out the whole training prior (V5-V7); power 0 divides by a uniform prior, so the
+    evidence is the network's posterior as it is. In between, rare classes are raised less.
+    Example: prior [0.75, 0.25], power 0.5 -> [0.634, 0.366].
+    """
+    p = np.where(prior > 0, prior, 0.0) ** power
+    return p / p.sum()

@@ -84,3 +84,11 @@ def test_label_change_matrix_follows_the_counts_in_every_key():
     assert Q[0, 24] / Q[0, 7] == pytest.approx(2.0)
     assert Q[2, 26] / Q[2, 9] == pytest.approx(2.0)
     assert Q[0, 12] / Q[0, 7] == pytest.approx(1 / 5)   # a move never seen: alpha only
+
+
+def test_tempered_prior_goes_from_uniform_to_the_prior():
+    prior = np.array([0.75, 0.25])
+    np.testing.assert_allclose(transitions_v8.tempered_prior(prior, 1.0), prior)
+    np.testing.assert_allclose(transitions_v8.tempered_prior(prior, 0.0), [0.5, 0.5])
+    half = transitions_v8.tempered_prior(prior, 0.5)
+    assert half.sum() == pytest.approx(1.0) and 0.5 < half[0] < 0.75

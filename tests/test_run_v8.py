@@ -41,3 +41,8 @@ def test_train_source_builds_q_from_the_label_counts():
     assert Q.shape == (60, 60) and Q[0, 24] == Q[0].max()
     assert run_v8.results_dir(cfg) == "val_train_tau1"
     assert run_v8.results_dir({"transitions": {"tau": 1}}) == "val"
+
+
+def test_prior_power_names_its_results_folder():
+    assert run_v8.results_dir({"transitions": {"tau": 1}, "decoder": {"prior_power": 0.5}}) == "val_pp0.5"
+    assert run_v8.results_dir({"transitions": {"tau": 1}, "decoder": {"prior_power": 1}}) == "val"

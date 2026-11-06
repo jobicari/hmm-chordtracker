@@ -12,7 +12,9 @@ Vocabularies: majmin (V7.3's targets, data_v5.target), A, B, B9 (data_v8). Decod
 and transition matrix of the vocabulary. transitions.source (or --transitions) chooses the matrix:
 billboard (transitions_v8.change_matrix; run_v5.change_prior for majmin) or train (moves counted in
 the training targets, transitions_v8.label_change_matrix, counts kept in the run directory). Results go
-to <run>/val for billboard and <run>/val_<source>_tau<tau> otherwise.
+to <run>/val for billboard and <run>/val_<source>_tau<tau> otherwise. decoder.prior_power (or
+--prior-power) tempers the prior the decoders divide by (transitions_v8.tempered_prior); a power other
+than 1 adds _pp<power> to the results folder.
 Scores: aligned WCSR with mir_eval majmin and sevenths, pooled per set (rwc, guitarset, choco; ChoCo
 also per partition), never pooled across sets; plus a quality confusion matrix of the frames.
 Sevenths reads B's maj6 as maj, so A, B and B9 are scored on the same chords. Test is not run here.
@@ -51,6 +53,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--out", type=Path, help="run directory; default results/v8/<vocab>_seed<seed>")
     parser.add_argument("--transitions", choices=["billboard", "train"], help="override transitions.source")
     parser.add_argument("--tau", type=float, help="override transitions.tau")
+    parser.add_argument("--prior-power", type=float, help="override decoder.prior_power")
     args = parser.parse_args(argv)
     if args.from_run and (args.train or args.vocab != "majmin"):
         parser.error("--from-run scores a saved 24-class model: use --vocab majmin and no --train")
@@ -107,7 +110,9 @@ def label_counts(run: Path, cfg: dict, vocab: str, first) -> np.ndarray:
 def results_dir(cfg: dict) -> str:
     t = cfg["transitions"]
     source = t.get("source", "billboard")
-    return "val" if source == "billboard" else f"val_{source}_tau{t['tau']:g}"
+    name = "val" if source == "billboard" else f"val_{source}_tau{t['tau']:g}"
+    power = cfg.get("decoder", {}).get("prior_power", 1.0)
+    return name if power == 1 else f"{name}_pp{power:g}"
 
 
 def frame_paths(post: np.ndarray, Q: np.ndarray, prior: np.ndarray, d: dict):
@@ -175,6 +180,8 @@ def main(argv=None) -> None:
         cfg["transitions"]["source"] = args.transitions
     if args.tau is not None:
         cfg["transitions"]["tau"] = args.tau
+    if args.prior_power is not None:
+        cfg["decoder"]["prior_power"] = args.prior_power
     first = (lambda xs: xs[:args.limit]) if args.limit else (lambda xs: xs)
     out = args.out or paths.REPO_ROOT / "results" / "v8" / f"{args.vocab}_seed{args.seed}"
     out.mkdir(parents=True, exist_ok=True)
@@ -202,13 +209,14 @@ def main(argv=None) -> None:
     prior = np.array(json.loads((run / "prior.json").read_text()))
     counts = label_counts(out, cfg, args.vocab, first) if cfg["transitions"].get("source") == "train" else None
     Q = decoder_parts(cfg, args.vocab, prior, counts)
+    decode_prior = transitions_v8.tempered_prior(prior, cfg["decoder"].get("prior_power", 1.0))
     per_song, confusions = [], {}
     for dataset, ts in val_takes.items():
         for take in ts:
             song = load_song(take, cfg, args.vocab)
             post = train_v7_2.song_posteriors(model, song, cfg["train"]["input_lookahead"])
             group = take.key.split("/")[1].rsplit("_", 1)[0] if dataset == "choco" else dataset
-            rows, conf = score_song(post, song, take, cfg, args.vocab, Q, prior, dataset, group)
+            rows, conf = score_song(post, song, take, cfg, args.vocab, Q, decode_prior, dataset, group)
             per_song += rows
             for k, c in conf.items():
                 confusions[(dataset, *k)] = confusions.get((dataset, *k), 0) + c
