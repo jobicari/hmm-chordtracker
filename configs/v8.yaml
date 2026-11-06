@@ -1,0 +1,41 @@
+# V8: richer chord vocabulary. V7.3's CRNN at c2_la2_seed0 (C2 grid, input look-ahead 2), trained on
+# RWC-P + GuitarSet + the curated ChoCo export. Step 1 sets the data; the vocabulary comes in step 2.
+version: v8
+base_config: v2.yaml          # compression (99th pct, gamma 10)
+
+data:
+  choco_export: ~/github/choco_corpus_prep/export   # outside the repo, read in place; see data/choco/SOURCE.txt
+
+audio:
+  sr: 22050
+  mono: true
+  harmonic_margin: 4.0
+  harmonic_median_frames: 9
+
+cqt:
+  hop_length: 2048
+  fmin: F#1                   # the C2 grid: the network sees C2 to B7
+  bins_per_octave: 24
+  n_bins: 168
+  tuning_seconds: 10.0        # RWC-P and GuitarSet (live-path estimate); ChoCo uses the manifest's tuning
+
+train:                        # V7.2 at c2_la2_seed0
+  seed: 0
+  lr: 0.001
+  max_epochs: 50
+  patience: 5
+  dropout: 0.5
+  excerpt_frames: 128
+  batch_excerpts: 8
+  input_lookahead: 2
+
+transitions:
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  p_self_grid: [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98]
+  lags: [0, 1, 2, 4, 8, 16, 32]
+
+harmonic_lookahead_frames: 1
