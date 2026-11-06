@@ -2,7 +2,9 @@
 
     training_prior(targets, n_classes)            P(class): train target frequencies in all 12 keys
     families(vocab)                               each quality's family: 0 = major third (or none), 1 = minor
-    change_matrix(counts, vocab, prior, alpha, tau)   (n, n) Q, zero diagonal, rows summing to 1
+    change_matrix(counts, vocab, prior, alpha, tau)   (n, n) Q from Billboard counts (transitions.source billboard)
+    label_counts(target_sequences, n_qualities)   (n_q, n_q, 12) changes counted in frame targets
+    label_change_matrix(counts, alpha, tau)       (n, n) Q from those counts (transitions.source train)
 
 The Billboard counts (results/v3/billboard_counts.json, transitions.change_counts) know only maj and
 min. V8 keeps them and splits each move among the qualities of the target's family by their share
@@ -15,6 +17,14 @@ proportion the training data holds them. Families: maj, 7, maj7, maj6, 9 and sus
 with major) are family 0; min and min7 family 1. A change of quality on the same root (C:maj ->
 C:7) is a change, from counts[f, f, 0], which Billboard leaves at 0: it gets alpha only.
 With only maj and min in the prior this is transitions.change_matrix's chord block.
+
+transitions.source train counts the moves in the training targets instead, by (quality_from,
+quality_to, root interval), so every key shares the counts of the others:
+
+    Q[i, j]  proportional to  (counts[quality(i), quality(j), root(j) - root(i)] + alpha) ** tau
+
+A same-root quality change (C:maj -> C:7) then has its own count, and so has every move out of a
+seventh (G:7 -> C:maj).
 """
 import numpy as np
 
@@ -51,5 +61,30 @@ def change_matrix(counts: np.ndarray, vocab: str, prior: np.ndarray, alpha: floa
     q_of, root_of = np.arange(n) // 12, np.arange(n) % 12
     Q = (counts[fam[q_of][:, None], fam[q_of][None, :], (root_of[None, :] - root_of[:, None]) % 12] + alpha) ** tau
     Q = Q * share[q_of][None, :]
+    np.fill_diagonal(Q, 0.0)
+    return Q / Q.sum(axis=1, keepdims=True)
+
+
+def label_counts(target_sequences: list[np.ndarray], n_qualities: int) -> np.ndarray:
+    """(n_q, n_q, 12) chord changes in frame targets (class = quality * 12 + root, -1 = no target).
+
+    A run of equal frames is one chord; a frame without a target breaks the sequence, so the chords
+    on either side of it are not a change. Example: [0, 0, 24, 24, 7] (C:maj, C:7, G:maj in A)
+    counts [maj, 7, 0] and [7, maj, 7].
+    """
+    counts = np.zeros((n_qualities, n_qualities, 12))
+    for y in target_sequences:
+        y = np.asarray(y)
+        a, b = y[:-1], y[1:]
+        move = (a != b) & (a >= 0) & (b >= 0)
+        np.add.at(counts, (a[move] // 12, b[move] // 12, (b[move] % 12 - a[move] % 12) % 12), 1)
+    return counts
+
+
+def label_change_matrix(counts: np.ndarray, alpha: float = 1.0, tau: float = 1.0) -> np.ndarray:
+    """(n, n) Q over 12 * n_q classes from label_counts' array; zero diagonal, rows summing to 1."""
+    n = 12 * counts.shape[0]
+    q_of, root_of = np.arange(n) // 12, np.arange(n) % 12
+    Q = (counts[q_of[:, None], q_of[None, :], (root_of[None, :] - root_of[:, None]) % 12] + alpha) ** tau
     np.fill_diagonal(Q, 0.0)
     return Q / Q.sum(axis=1, keepdims=True)

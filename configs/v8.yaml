@@ -30,6 +30,7 @@ train:                        # V7.2 at c2_la2_seed0
   input_lookahead: 2
 
 transitions:
+  source: billboard          # billboard (counts below) or train (moves counted in the training targets)
   counts: results/v3/billboard_counts.json
   alpha: 1
   tau: 1

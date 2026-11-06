@@ -5,10 +5,14 @@ with a richer vocabulary, then decode and score on validation.
     python scripts/run_v8.py --vocab majmin --train --seed 0     # V7.3's 24 classes on the new data
     python scripts/run_v8.py --vocab majmin --from-run results/v7_2/c2_la2_seed0 --out results/v8/v7_3_as_is
     python scripts/run_v8.py --vocab A --train --limit 2 --max-epochs 1 --out <dir>   # dry run
+    python scripts/run_v8.py --vocab A --seed 0 --transitions train   # decode results/v8/A_seed0 again
 
 Vocabularies: majmin (V7.3's targets, data_v5.target), A, B, B9 (data_v8). Decoders are V7's
 (frame-argmax, forward-filter, fixed-lag-viterbi at every lag, offline-frame-viterbi) with the prior
-and transition matrix of the vocabulary (transitions_v8; run_v5.change_prior for majmin).
+and transition matrix of the vocabulary. transitions.source (or --transitions) chooses the matrix:
+billboard (transitions_v8.change_matrix; run_v5.change_prior for majmin) or train (moves counted in
+the training targets, transitions_v8.label_change_matrix, counts kept in the run directory). Results go
+to <run>/val for billboard and <run>/val_<source>_tau<tau> otherwise.
 Scores: aligned WCSR with mir_eval majmin and sevenths, pooled per set (rwc, guitarset, choco; ChoCo
 also per partition), never pooled across sets; plus a quality confusion matrix of the frames.
 Sevenths reads B's maj6 as maj, so A, B and B9 are scored on the same chords. Test is not run here.
@@ -45,6 +49,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--limit", type=int, help="dry run: only the first N songs of every set")
     parser.add_argument("--max-epochs", type=int, help="dry run: override train.max_epochs")
     parser.add_argument("--out", type=Path, help="run directory; default results/v8/<vocab>_seed<seed>")
+    parser.add_argument("--transitions", choices=["billboard", "train"], help="override transitions.source")
+    parser.add_argument("--tau", type=float, help="override transitions.tau")
     args = parser.parse_args(argv)
     if args.from_run and (args.train or args.vocab != "majmin"):
         parser.error("--from-run scores a saved 24-class model: use --vocab majmin and no --train")
@@ -72,13 +78,36 @@ def load_song(take, cfg: dict, vocab: str):
     return song if vocab == "majmin" else data_v8.retarget(song, take.annotation, cfg, vocab)
 
 
-def decoder_parts(cfg: dict, vocab: str, prior: np.ndarray) -> np.ndarray:
-    """Q for the vocabulary from the Billboard counts."""
+def decoder_parts(cfg: dict, vocab: str, prior: np.ndarray, label_counts: np.ndarray | None = None) -> np.ndarray:
+    """Q for the vocabulary: from the Billboard counts, or from label_counts when transitions.source is train."""
+    t = cfg["transitions"]
+    if t.get("source", "billboard") == "train":
+        return transitions_v8.label_change_matrix(label_counts, alpha=t["alpha"], tau=t["tau"])
     if vocab == "majmin":
         return run_v5.change_prior(cfg)
-    t = cfg["transitions"]
     counts = np.array(json.loads((paths.REPO_ROOT / t["counts"]).read_text())["counts"], dtype=float)
     return transitions_v8.change_matrix(counts, vocab, prior, alpha=t["alpha"], tau=t["tau"])
+
+
+def train_takes(cfg: dict, first) -> list:
+    return (first(data_v5.rwc_takes("train")) + first(data_v5.guitarset_takes("train"))
+            + first(data_choco.choco_takes("train", cfg)))
+
+
+def label_counts(run: Path, cfg: dict, vocab: str, first) -> np.ndarray:
+    """Changes in the training targets (transitions_v8.label_counts), kept in run/label_counts_<vocab>.json."""
+    path = run / f"label_counts_{vocab}.json"
+    if not path.exists():
+        targets = [load_song(t, cfg, vocab).targets for t in train_takes(cfg, first)]
+        counts = transitions_v8.label_counts(targets, len(qualities(vocab)))
+        path.write_text(json.dumps({"qualities": qualities(vocab), "counts": counts.tolist()}))
+    return np.array(json.loads(path.read_text())["counts"])
+
+
+def results_dir(cfg: dict) -> str:
+    t = cfg["transitions"]
+    source = t.get("source", "billboard")
+    return "val" if source == "billboard" else f"val_{source}_tau{t['tau']:g}"
 
 
 def frame_paths(post: np.ndarray, Q: np.ndarray, prior: np.ndarray, d: dict):
@@ -142,6 +171,10 @@ def main(argv=None) -> None:
     cfg["train"]["seed"] = args.seed
     if args.max_epochs:
         cfg["train"]["max_epochs"] = args.max_epochs
+    if args.transitions:
+        cfg["transitions"]["source"] = args.transitions
+    if args.tau is not None:
+        cfg["transitions"]["tau"] = args.tau
     first = (lambda xs: xs[:args.limit]) if args.limit else (lambda xs: xs)
     out = args.out or paths.REPO_ROOT / "results" / "v8" / f"{args.vocab}_seed{args.seed}"
     out.mkdir(parents=True, exist_ok=True)
@@ -149,9 +182,7 @@ def main(argv=None) -> None:
                  "choco": first(data_choco.choco_takes("val", cfg))}
 
     if args.train:
-        train_takes = (first(data_v5.rwc_takes("train")) + first(data_v5.guitarset_takes("train"))
-                       + first(data_choco.choco_takes("train", cfg)))
-        train_songs = [load_song(t, cfg, args.vocab) for t in train_takes]
+        train_songs = [load_song(t, cfg, args.vocab) for t in train_takes(cfg, first)]
         val_songs = {n: [load_song(t, cfg, args.vocab) for t in ts] for n, ts in val_takes.items()}
         print(f"train: {len(train_songs)} songs, vocab {args.vocab} ({n_classes(args.vocab)} classes), "
               f"seed {args.seed}", flush=True)
@@ -169,7 +200,8 @@ def main(argv=None) -> None:
     else:
         model = model_for(run, n_classes(args.vocab), cfg)
     prior = np.array(json.loads((run / "prior.json").read_text()))
-    Q = decoder_parts(cfg, args.vocab, prior)
+    counts = label_counts(out, cfg, args.vocab, first) if cfg["transitions"].get("source") == "train" else None
+    Q = decoder_parts(cfg, args.vocab, prior, counts)
     per_song, confusions = [], {}
     for dataset, ts in val_takes.items():
         for take in ts:
@@ -187,7 +219,7 @@ def main(argv=None) -> None:
                "config": cfg, "rows": rows, "choco_partitions": groups,
                "confusion": [{"dataset": k[0], "system": k[1], "p_self": k[2], "lag": k[3], "frames": v.tolist()}
                              for k, v in confusions.items()]}
-    experiment.write_results(summary, per_song, out / "val")
+    experiment.write_results(summary, per_song, out / results_dir(cfg))
     for r in rows:
         if r["system"] == run_v7.ARGMAX:
             print(f"  {r['dataset']:9s} network alone: majmin {100 * r['majmin']:.2f}%  sevenths {100 * r['sevenths']:.2f}%")

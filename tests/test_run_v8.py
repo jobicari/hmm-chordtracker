@@ -31,3 +31,13 @@ def test_summarize_pools_per_set_and_averages_the_sets():
     by = {r["dataset"]: r for r in rows}
     assert by["rwc"]["majmin"] == 0.75 and by["choco"]["majmin"] == 1.0
     assert by["mean"]["majmin"] == 0.875 and by["mean"]["sevenths"] == 0.4375
+
+
+def test_train_source_builds_q_from_the_label_counts():
+    counts = np.zeros((5, 5, 12))
+    counts[0, 2, 0] = 9
+    cfg = {"transitions": {"source": "train", "alpha": 1, "tau": 1}}
+    Q = run_v8.decoder_parts(cfg, "A", np.full(60, 1 / 60), counts)
+    assert Q.shape == (60, 60) and Q[0, 24] == Q[0].max()
+    assert run_v8.results_dir(cfg) == "val_train_tau1"
+    assert run_v8.results_dir({"transitions": {"tau": 1}}) == "val"

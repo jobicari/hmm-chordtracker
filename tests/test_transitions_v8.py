@@ -1,5 +1,6 @@
 """Behaviour of the V8 prior and transition matrix: every key equally likely, rows that sum to 1, moves
-split by quality share, and V3's matrix back when the prior holds only maj and min."""
+split by quality share, V3's matrix back when the prior holds only maj and min, and moves counted
+from training targets."""
 import numpy as np
 import pytest
 
@@ -56,3 +57,30 @@ def test_same_root_quality_change_gets_alpha_only():
     raw_same = 1.0 * (1 / 3)                   # alpha, times 7's share of the maj family (maj, 7, maj7)
     raw_fifth = (counts[0, 0, 7] + 1.0) * (1 / 3)
     assert Q[0, 24] / Q[0, 24 + 7] == pytest.approx(raw_same / raw_fifth)
+
+
+def test_label_counts_count_changes_by_quality_and_interval():
+    counts = transitions_v8.label_counts([np.array([0, 0, 24, 24, 7]), np.array([12, -1, 12, 5])], 5)
+    assert counts[0, 2, 0] == 1                # C:maj -> C:7, same root
+    assert counts[2, 0, 7] == 1                # C:7 -> G:maj, up a fifth
+    assert counts[1, 0, 5] == 1                # C:min -> F:maj; the -1 gap between two C:min is no change
+    assert counts.sum() == 3
+
+
+@pytest.mark.parametrize("n_q", [2, 5, 8])
+def test_label_change_matrix_rows_sum_to_one_with_a_zero_diagonal(n_q):
+    counts = np.random.default_rng(2).integers(0, 50, size=(n_q, n_q, 12)).astype(float)
+    Q = transitions_v8.label_change_matrix(counts)
+    assert Q.shape == (12 * n_q, 12 * n_q)
+    np.testing.assert_allclose(Q.sum(axis=1), 1.0)
+    assert np.all(np.diag(Q) == 0) and np.all(Q[~np.eye(len(Q), dtype=bool)] > 0)
+
+
+def test_label_change_matrix_follows_the_counts_in_every_key():
+    """C:maj -> C:7 counted 9 times and C:maj -> G:maj 4 times: 10 : 5 with alpha 1, from D as from C."""
+    counts = np.zeros((5, 5, 12))
+    counts[0, 2, 0], counts[0, 0, 7] = 9, 4
+    Q = transitions_v8.label_change_matrix(counts, alpha=1.0)
+    assert Q[0, 24] / Q[0, 7] == pytest.approx(2.0)
+    assert Q[2, 26] / Q[2, 9] == pytest.approx(2.0)
+    assert Q[0, 12] / Q[0, 7] == pytest.approx(1 / 5)   # a move never seen: alpha only
