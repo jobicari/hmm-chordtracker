@@ -107,13 +107,31 @@ version's report has the question, the method, the val analysis and the limitati
 | `src/chordtracker/hold.py` | V7.3: the hold rule against flicker |
 | `scripts/v7_3_check.py`, `v7_3_speed.py`, `v7_3_hold.py` | V7.3: same chords as the cache on validation; time per block of the live chain; the hold rule on validation |
 | `src/chordtracker/play_along.py`, `scripts/play_along.py` | Listening prototype: what to show when, the live analysis in its own process; the player (input device or file, delayed playback, window, keys, log) |
-| `src/chordtracker/demo.py`, `scripts/demo_export.py`, `scripts/demo_server.py`, `demo/` | Demo website: outputs of GuitarSet validation takes exported with the prototype's chain; a static page that plays one and reveals its chords as the live system would, framewise vs fixed-lag Viterbi ([reports/demo.md](reports/demo.md)) |
+| `src/chordtracker/demo.py`, `scripts/demo_export.py`, `scripts/demo_server.py`, `demo/` | Demo website: outputs of GuitarSet validation takes exported with the prototype's chain; a page that plays a recording and shows its chords live, decoded on the demo server as it plays, framewise vs fixed-lag Viterbi ([reports/demo.md](reports/demo.md)) |
+| `src/chordtracker/inference.py`, `src/chordtracker/weights/` | The frozen V6 (bidirectional, seed 1) as a library: whole-song posteriors of an audio file, its settings and weights packaged (see [Use from another project](#use-from-another-project)) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |
 | `results/<version>/<split>/` | `summary.json` and `per_song.csv` of each run |
 | `figures/<version>/val/` | the saved report figures (val only) |
 | `reports/<version>.md` | each version's write-up: question, setup, val analysis, test score, findings |
+
+## Use from another project
+
+The frozen V6 ships with the package: install it from git and read a recording's chord posteriors.
+
+```python
+from chordtracker import inference
+
+times, post = inference.posteriors("song.wav", phases=4)    # (n,), (24, n) in inference.CLASSES order
+```
+
+`phases=4` reads the song four times, a quarter hop apart, for a frame every 23 ms instead of 93 ms
+(finer sampling, not finer timing). The model runs on the CPU and is loaded once per process.
+
+The tuning is estimated as V6's features do, on quarter-tone bins: it wraps at +-25 cents, so a recording
+30-50 cents off A440 reads its chords a semitone off. A caller that knows the tuning passes it,
+`tuning_semitones=-0.44` for a recording 44 cents flat.
 
 ## Setup
 
