@@ -27,11 +27,9 @@ So a V0 WCSR answers "did the model find the right triad?", not "did it find the
 Every SongScore keeps both effects visible instead of dropping them silently:
     reduced_s   scored seconds whose reference chord was simplified to its triad (C:7 -> C:maj)
     excluded_s  seconds that could not be scored at all (B:hdim7)
-Improving on this later (ROADMAP "Later": 7ths/diminished vocabulary): a model that outputs
-sevenths adds "sevenths": mir_eval.chord.sevenths to METRICS and is scored with metric="sevenths",
-and in_v0_vocabulary gives way to a check against that version's vocabulary. reduced_s and
-excluded_s then show how much of the lead sheet the bigger vocabulary still does not cover.
-Until then, report WCSR together with reduced_s and excluded_s.
+Sevenths (V8): METRICS also holds mir_eval.chord.sevenths (maj, min, 7, maj7, min7; extensions folded,
+the bass ignored, anything else excluded). reduced_s keeps the V0 meaning (outside maj/min), so under
+sevenths it counts the 7ths too; report WCSR together with excluded_s.
 """
 from dataclasses import dataclass
 
@@ -40,7 +38,7 @@ import numpy as np
 
 from chordtracker.data.data import ChordAnnotation
 
-METRICS = {"majmin": mir_eval.chord.majmin, "root": mir_eval.chord.root}
+METRICS = {"majmin": mir_eval.chord.majmin, "sevenths": mir_eval.chord.sevenths, "root": mir_eval.chord.root}
 V0_QUALITIES = {"maj", "min"}
 
 
