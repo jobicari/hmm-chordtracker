@@ -1,0 +1,334 @@
+/* Chord Tracker demo: dark theme. Colours are variables; chord colours come from app.js (hue by root). */
+:root {
+  color-scheme: dark;
+  --bg: #0f1116;
+  --surface: #171a22;
+  --surface-2: #1e222c;
+  --fg: #e8eaf0;
+  --muted: #9aa2b1;
+  --line: #2c313d;
+  --accent: #ff5d62;            /* what you hear */
+  --input: #5ea8ff;             /* what the system has heard */
+  --info-bg: #15233a;
+  --track: #222632;
+  --mask-a: #20242f;
+  --mask-b: #2a2f3b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+body { margin: 0; }
+p { margin: 0; }
+
+.wrap { max-width: 72rem; margin: 0 auto; padding-left: 2rem; padding-right: 2rem; }
+
+/* Header */
+header { border-bottom: 1px solid var(--line); background: var(--surface); }
+header .wrap { padding-top: 1.6rem; padding-bottom: 1.4rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .5rem; font-weight: 650; letter-spacing: -.01em; }
+.tagline { max-width: 46rem; font-size: 1.02rem; color: var(--fg); }
+.notice { margin-top: .7rem; max-width: 46rem; font-size: .9rem; color: var(--muted); }
+.notice::before {
+  content: "i";
+  display: inline-block;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-right: .5rem;
+  border-radius: 50%;
+  background: var(--input);
+  color: var(--bg);
+  font: 700 .72rem/1.05rem Georgia, serif;
+  text-align: center;
+  vertical-align: 1px;
+}
+
+main { padding-top: 1.75rem; padding-bottom: 3.5rem; }
+section + section { margin-top: 2rem; }
+
+/* Settings: one card; the recording on the left, look-ahead and options on the right, the delay underneath. */
+.controls {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1fr) minmax(0, 1.25fr);
+  gap: 1.3rem 3rem;
+  align-items: start;
+  padding: 1.3rem 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: .75rem;
+}
+.control { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.source { grid-row: span 2; }
+.label { font-size: .74rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+select, button, input { font: inherit; }
+.source select {
+  font-size: .95rem;
+  color: var(--fg);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  padding: .45rem .55rem;
+  width: 100%;
+}
+.points { border: 0; padding: 0; margin: 0; flex-direction: row; flex-wrap: wrap; gap: 0; }
+.points legend { padding: 0; margin-bottom: .5rem; float: left; width: 100%; }
+.points label {
+  font-size: .95rem;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  padding: .45rem .85rem;
+  cursor: pointer;
+  margin-left: -1px;
+  white-space: nowrap;
+}
+.points label:first-of-type { border-radius: .45rem 0 0 .45rem; margin-left: 0; }
+.points label:last-of-type { border-radius: 0 .45rem .45rem 0; }
+.points label .sub { color: var(--muted); font-size: .82rem; margin-left: .2rem; }
+.points input { position: absolute; opacity: 0; pointer-events: none; }
+.points label:has(input:checked) { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.points label:has(input:checked) .sub { color: #3b4150; }
+.points label:has(input:focus-visible) { outline: 2px solid var(--input); outline-offset: 2px; }
+.points:disabled label { cursor: default; opacity: .5; }
+.checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem 1.6rem; }
+.checks .label { flex-basis: 100%; }
+.check { display: flex; align-items: center; gap: .5rem; font-size: .95rem; }
+.check input { accent-color: var(--input); width: 1rem; height: 1rem; }
+.check:has(input:disabled) { color: var(--muted); }
+
+.delay-panel {
+  grid-column: 1 / -1;
+  padding: .85rem 1rem;
+  border-radius: .55rem;
+  background: var(--info-bg);
+  border-left: 3px solid var(--input);
+  font-size: .95rem;
+  min-height: 2.8rem;
+}
+.delay-panel strong { font-weight: 650; }
+.delay-panel p { margin-top: .3rem; color: var(--fg); }
+.delay-panel .parts { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+
+/* Player: fixed sizes, so a chord change never moves the layout. */
+.player {
+  display: grid;
+  grid-template-columns: 14rem 1fr 12rem;
+  gap: 2rem;
+  align-items: end;
+}
+.now { display: flex; flex-direction: column; }
+.caption { color: var(--muted); font-size: .85rem; }
+.chord-big { font-size: 5rem; line-height: 1.05; font-weight: 650; min-height: 5.3rem; letter-spacing: -.02em; }
+.transport { display: flex; flex-direction: column; gap: .7rem; padding-bottom: .3rem; min-width: 0; }
+.buttons { display: flex; align-items: center; gap: .7rem; }
+.buttons button {
+  font-size: .95rem;
+  color: var(--fg);
+  padding: .5rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+#play { min-width: 6rem; background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.buttons button:disabled { cursor: default; opacity: .4; }
+.buttons button:focus-visible { outline: 2px solid var(--input); outline-offset: 2px; }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); margin-left: auto; }
+.seek { width: 100%; margin: 0; accent-color: var(--accent); }
+.status { color: var(--muted); font-size: .85rem; min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.status.error { color: var(--accent); font-weight: 500; white-space: normal; }
+.others { margin: 0 0 .3rem; display: grid; gap: .7rem; }
+.others div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .5rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: .35rem;
+}
+.others dt { color: var(--muted); font-size: .85rem; }
+.others dd { margin: 0; font-size: 1.4rem; font-weight: 600; min-width: 3rem; text-align: right; min-height: 1.6rem; }
+
+/* Timelines: one shared ruler and playhead over the rows; scrolls when the recording is long. */
+.scroller { overflow-x: auto; padding-bottom: .5rem; }
+.timeline { position: relative; user-select: none; cursor: pointer; min-width: 100%; }
+.ruler { position: relative; height: 1.5rem; border-bottom: 1px solid var(--line); }
+.tick { position: absolute; bottom: 0; height: .4rem; border-left: 1px solid var(--muted); }
+.tick span {
+  position: absolute;
+  bottom: .5rem;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: .75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tick.first span { transform: none; }
+.tick.last span { transform: translateX(-100%); }
+.row { margin-top: .9rem; }
+.row-name {
+  font-size: .9rem;
+  font-weight: 600;
+  margin-bottom: .35rem;
+  padding-right: .5rem;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: max-content;
+  background: var(--bg);
+}
+.row-name .sub { font-weight: 400; color: var(--muted); margin-left: .4rem; }
+.track { position: relative; height: 2.4rem; background: var(--track); border-radius: .35rem; overflow: hidden; }
+.row.main .track { height: 3.6rem; }
+.seg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  border-right: 1px solid rgba(15, 17, 22, .7);
+  font-size: .82rem;
+  font-weight: 600;
+  color: #fff;
+  padding: 0 .35rem;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.row.main .seg { font-size: 1rem; }
+.seg.nc { background-color: #4a505e; }
+.seg.narrow { color: transparent; padding: 0; }
+.seg.active { box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px rgba(0, 0, 0, .45); }
+/* Covers what the live system has not decided yet: from its left edge to the end of the track. */
+.mask {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+  background: repeating-linear-gradient(135deg, var(--mask-a) 0 6px, var(--mask-b) 6px 12px);
+  will-change: transform;
+}
+.playhead, .input-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  margin-left: -1px;
+  z-index: 2;
+  pointer-events: none;
+  will-change: transform;
+}
+.playhead { background: var(--accent); box-shadow: 0 0 6px rgba(255, 93, 98, .6); }
+.input-head { border-left: 2px dashed var(--input); width: 0; }
+
+.legend {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-top: .8rem;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  flex-wrap: wrap;
+}
+.key { display: inline-block; width: 1.1rem; height: .85rem; margin-left: 1rem; vertical-align: middle; }
+.key:first-child { margin-left: 0; }
+.playhead-key { width: 2px; background: var(--accent); }
+.input-key { width: 0; border-left: 2px dashed var(--input); }
+.mask-key { background: repeating-linear-gradient(135deg, var(--mask-a) 0 3px, var(--mask-b) 3px 6px); border: 1px solid var(--line); }
+
+/* Reference annotations: not model output, so drawn differently (outlined blocks, a coloured base line). */
+.row.reference .track { background: var(--surface); border: 1px solid var(--line); box-sizing: border-box; }
+.seg.ref {
+  color: var(--fg);
+  background-color: var(--surface);
+  border-right: 1px solid var(--line);
+  border-bottom: 4px solid var(--root, var(--muted));
+  font-weight: 500;
+}
+.seg.ref.out { background-image: repeating-linear-gradient(135deg, transparent 0 5px, var(--mask-b) 5px 9px); }
+.seg.ref.active { box-shadow: inset 0 0 0 2px var(--fg); }
+.out-key { background: repeating-linear-gradient(135deg, var(--surface) 0 3px, var(--mask-b) 3px 6px); border: 1px solid var(--line); }
+.reference-note { font-size: .85rem; color: var(--muted); margin-top: .5rem; min-height: 1em; max-width: 52rem; }
+
+/* Below the timeline: two collapsible sections. */
+.more { display: grid; gap: 1.2rem; }
+.more details { border-top: 1px solid var(--line); padding-top: 1rem; }
+.more summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
+.more summary:focus-visible { outline: 2px solid var(--input); outline-offset: 3px; }
+.more ul, .more ol { margin: .9rem 0 0; padding-left: 1.4rem; font-size: .92rem; max-width: 52rem; }
+.more li { margin-bottom: .6rem; }
+.more li strong { font-weight: 600; }
+.stage-details { margin-top: 1rem; }
+.stage-details summary { font-size: .92rem; font-weight: 500; color: var(--muted); }
+.more .stage-details { border-top: 0; padding-top: 0; }
+
+/* Pipeline diagram (SVG built by app.js from the run's metadata). */
+.diagram { margin-top: 1.1rem; overflow-x: auto; }
+.diagram svg { display: block; width: 100%; min-width: 46rem; height: auto; }
+.diagram .box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.diagram .box.model { stroke: #7c6cf2; }
+.diagram .box.decoder { stroke: var(--input); }
+.diagram .box.out { fill: var(--surface-2); }
+.diagram .box.off { stroke-dasharray: 5 4; opacity: .6; }
+.diagram .title { fill: var(--fg); font-size: 14px; font-weight: 650; }
+.diagram .text { fill: var(--muted); font-size: 12px; }
+.diagram .num { fill: var(--muted); font-size: 11px; font-weight: 650; }
+.diagram .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.diagram .arrow-head { fill: var(--muted); }
+.diagram-caption { font-size: .85rem; color: var(--muted); margin-top: .6rem; max-width: 52rem; }
+
+/* Upload: a file button and a drop zone under the recording list; greyed out without the demo server. */
+.upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem .6rem;
+  margin-top: .35rem;
+  padding: .6rem .7rem;
+  border: 1px dashed var(--line);
+  border-radius: .5rem;
+}
+.upload.over { border-color: var(--input); background: var(--info-bg); }
+.file-button {
+  font-size: .9rem;
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: .45rem;
+  background: var(--surface-2);
+  padding: .32rem .75rem;
+  cursor: pointer;
+}
+.file-button input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.file-button:has(input:focus-visible) { outline: 2px solid var(--input); outline-offset: 2px; }
+.upload.unavailable .file-button, .upload.unavailable .drop-hint { opacity: .5; cursor: default; }
+.drop-hint { font-size: .88rem; color: var(--muted); }
+.file-name { font-size: .88rem; color: var(--fg); font-weight: 600; overflow-wrap: anywhere; }
+.upload-help { flex-basis: 100%; font-size: .8rem; color: var(--muted); }
+body.analyzing .status::before {
+  content: "";
+  display: inline-block;
+  width: .75rem;
+  height: .75rem;
+  margin-right: .45rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--input);
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Narrow windows: settings and player stack; the timeline keeps scrolling. */
+@media (max-width: 760px) {
+  .wrap { padding-left: 1.2rem; padding-right: 1.2rem; }
+  .controls { grid-template-columns: 1fr; }
+  .source { grid-row: auto; }
+  .player { grid-template-columns: 1fr 10rem; }
+  .player .transport { grid-column: 1 / -1; grid-row: 2; }
+}

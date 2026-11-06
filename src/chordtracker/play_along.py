@@ -7,7 +7,8 @@ heard. This module holds what does not depend on sound devices:
 
     OPERATING_POINTS               V7.2's points on the C2 grid with input look-ahead 2: the decoder and
                                    the total look-ahead of each
-    Analysis                       the live chain fed with blocks; per frame, the label of every point
+    Analysis                       the live chain fed with blocks; per frame, the label of every point;
+                                   finish() at the end of a recording
     Reference                      an Isophonics annotation: the chord at a time and the next one
     song_list(root)                every annotated song, by album then title, for the drop-down
     chord_name(label)              "E:min7" -> "Em7", "A" -> "A", "N" -> "N.C."
@@ -120,16 +121,33 @@ class Analysis:
     def step(self, block: np.ndarray) -> None:
         """Feed samples; append every label that has become known."""
         for column in self.features.step(block):
-            post = self.crnn.step(column[CENTRE_ROW:CENTRE_ROW + PATCH_BINS])
-            if post is None:
-                continue
-            for point, v in OPERATING_POINTS.items():
-                if v["p_self"] is None:
-                    self.labels[point].append(int(post.argmax()))
-                else:
-                    state = self.decoders[point].step(online_hmm.evidence(post[:, None], self.prior)[:, 0])
-                    if state is not None:
-                        self.labels[point].append(state)
+            self._column(column)
+
+    def finish(self) -> None:
+        """The recording has ended: compute the remaining columns, frames and decisions (silence after the end).
+
+        Afterwards every point has one label per frame, the same as the whole-file computation.
+        """
+        for column in self.features.flush():
+            self._column(column)
+        for post in self.crnn.flush():
+            self._posterior(post)
+        for point, decoder in self.decoders.items():
+            self.labels[point].extend(decoder.flush())
+
+    def _column(self, column: np.ndarray) -> None:
+        post = self.crnn.step(column[CENTRE_ROW:CENTRE_ROW + PATCH_BINS])
+        if post is not None:
+            self._posterior(post)
+
+    def _posterior(self, post: np.ndarray) -> None:
+        for point, v in OPERATING_POINTS.items():
+            if v["p_self"] is None:
+                self.labels[point].append(int(post.argmax()))
+            else:
+                state = self.decoders[point].step(online_hmm.evidence(post[:, None], self.prior)[:, 0])
+                if state is not None:
+                    self.labels[point].append(state)
 
 
 def system_at(labels: list[int], frame: int) -> tuple[str, str]:

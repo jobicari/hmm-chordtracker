@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chord Tracker - demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Chord Tracker</h1>
+      <p class="tagline">Real-time chord tracking. On its own, the neural network's chords flicker from frame to
+        frame. An HMM / Viterbi decoder that waits a few frames turns them into steady chords.</p>
+      <p id="notice" class="notice">Connecting to the demo server...</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="controls" aria-label="Settings">
+      <div class="control source">
+        <label class="label" for="sample">Recording</label>
+        <select id="sample" disabled></select>
+        <div id="upload" class="upload unavailable">
+          <label class="file-button"><input id="file" type="file" accept="audio/*" disabled> Play your own file</label>
+          <span class="drop-hint">or drop it here</span>
+          <span id="file-name" class="file-name"></span>
+          <span id="upload-help" class="upload-help"></span>
+        </div>
+      </div>
+      <fieldset class="control points" id="points" disabled>
+        <legend class="label">Look-ahead</legend>
+      </fieldset>
+      <div class="control checks">
+        <span class="label">Options</span>
+        <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
+        <label class="check"><input id="show-reference" type="checkbox" disabled> Show reference annotations</label>
+      </div>
+      <div id="delay-note" class="delay-panel" aria-live="polite"></div>
+    </section>
+
+    <section class="player">
+      <div class="now">
+        <span class="caption">Chord now</span>
+        <span id="now" class="chord-big"></span>
+      </div>
+      <div class="transport">
+        <div class="buttons">
+          <button id="play" type="button" disabled>Play</button>
+          <button id="restart" type="button" disabled>Restart</button>
+          <span id="time" class="time">0:00.0 / 0:00.0</span>
+        </div>
+        <input id="seek" class="seek" type="range" min="0" max="0" step="0.01" value="0" disabled aria-label="Seek">
+        <p id="status" class="status" role="status">Loading samples...</p>
+      </div>
+      <dl class="others">
+        <div><dt>Network alone</dt><dd id="now-framewise"></dd></div>
+        <div class="ref-only" hidden><dt>Reference</dt><dd id="now-reference"></dd></div>
+      </dl>
+    </section>
+
+    <section class="timeline-section">
+      <div id="scroller" class="scroller">
+        <div id="timeline" class="timeline" aria-label="Chord timelines: click to seek">
+          <div id="ruler" class="ruler"></div>
+          <div class="row main">
+            <div class="row-name"><span id="decoded-name">Decoded</span></div>
+            <div class="track" id="track-decoded"><div class="mask"></div></div>
+          </div>
+          <div class="row">
+            <div class="row-name">Framewise <span class="sub">network alone, no decoder</span></div>
+            <div class="track" id="track-framewise"><div class="mask"></div></div>
+          </div>
+          <div class="row reference ref-only" hidden>
+            <div class="row-name">Reference annotations <span id="reference-sub" class="sub"></span></div>
+            <div class="track" id="track-reference"></div>
+          </div>
+          <div id="input-head" class="input-head" title="What the system has heard"></div>
+          <div id="playhead" class="playhead" title="What you hear"></div>
+        </div>
+      </div>
+      <p class="legend"><span class="key playhead-key"></span> what you hear
+        <span class="key input-key"></span> what the system has heard
+        <span class="key mask-key"></span> not decided yet
+        <span class="ref-only" hidden><span class="key out-key"></span> reference chord outside the system's 24 major / minor chords</span></p>
+      <p id="reference-note" class="reference-note"></p>
+    </section>
+
+    <section class="more">
+      <details id="pipeline" class="pipeline" open>
+        <summary>Analysis pipeline: how each chord is computed</summary>
+        <div id="pipeline-diagram" class="diagram" role="img" aria-label="Analysis pipeline diagram"></div>
+        <p class="diagram-caption">The audio goes through the same stages as in the live system, one 93 ms frame
+          at a time. The network's output feeds both rows: directly (framewise) and through the decoder.</p>
+        <details class="stage-details">
+          <summary>Stage details</summary>
+          <ol id="pipeline-stages"></ol>
+        </details>
+      </details>
+
+      <details class="notes" open>
+        <summary>Notes and limitations</summary>
+        <ul>
+          <li><strong>Chords:</strong> major and minor triads only, and always a chord: no "no chord", no sevenths
+            or other qualities. A seventh chord is shown as its triad at best.</li>
+          <li><strong>Training:</strong> the network was trained on the RWC Popular Music and GuitarSet training
+            takes. The prepared samples are GuitarSet validation takes, which it did not train on.</li>
+          <li><strong>Real time:</strong> the chords were computed ahead of time and are revealed when the live system
+            would output them. After a seek, the page shows the decisions of an uninterrupted run; a live system
+            restarted at that point would need a few seconds to settle (running level, tuning, memory).</li>
+          <li><strong>Your files:</strong> analysed on this computer by the demo server with the same model; some
+            formats are lossy, which changes the chords slightly. No reference annotations exist for them.</li>
+          <li><strong>No scores here:</strong> the page shows outputs only. Accuracy figures, measured on validation and
+            test songs, are in the project's reports.</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <audio id="audio" preload="auto"></audio>
+  <script src="live.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
