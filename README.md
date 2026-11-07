@@ -31,6 +31,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V7.2 | Input look-ahead of 0 to 4 frames (window of frame t ends at t + a) and CQT from C2, for playback delayed by the total look-ahead; on validation 2 frames of input look-ahead (0.28 s in total) bring the network alone to 75.7% (V7.1 71.5%, V7 with 1.6 s 76.1%), a fixed-lag Viterbi adds up to 1.4 points and halves the flicker, C2 ties F#0 | 71.9 % (network alone, 0.28 s, C2); RWC-P 78.7 % | 71.3 % (fixed-lag Viterbi, 0.65 s); RWC-P 80.1 % | [reports/v7_2.md](reports/v7_2.md) |
 | V7.3 | The causal features computed block by block (2,048 samples at a time), as a live system receives audio; on validation the chords match the cached features within 0.05 points at 0.28 / 0.46 / 0.65 s, and the whole live chain takes 7 ms per 93 ms block; a hold rule against flicker ties the fixed-lag Viterbi | n/a (no test run: same chords as V7.2) | n/a | [reports/v7_3.md](reports/v7_3.md) |
 | Listening prototype | The live chain with delayed playback and Isophonics Beatles chords shown alongside, fed from Spotify through a virtual cable; by ear, only the 0.65 s look-ahead is steady enough, a 1 s lead was preferred, and the 24-chord vocabulary, chord stability and strong bass lines are the next problems | n/a | n/a | [reports/play_along.md](reports/play_along.md) |
+| V8 | Sevenths: 60 classes (maj, min, 7, maj7, min7) and a curated ChoCo export (344 pop and jazz recordings, 18.9 h) added to training, on V7.3's causal model and decoders; on validation the network alone gains 8.9 points sevenths on RWC-P (68.5% vs 59.6%) at the same majmin, the decoder divides by the training prior to the power 0.25 (the full prior floods the output with 7ths), maj6, sus4 and dominant 9 are not learned | 78.0 % (network alone, 0.28 s; RWC-P 80.2 %, GuitarSet 75.9 %); sevenths 62.1 %; ChoCo 83.4 % / sevenths 74.8 % | 79.4 % (fixed-lag Viterbi, 0.65 s; RWC-P 81.4 %, GuitarSet 77.4 %); sevenths 63.8 %; ChoCo 84.4 % / sevenths 76.1 % | [reports/v8.md](reports/v8.md) |
 
 ## Layout
 
@@ -106,11 +107,17 @@ version's report has the question, the method, the val analysis and the limitati
 | `src/chordtracker/streaming_features.py` | V7.3: the causal log-CQT block by block (harmonic part, direct CQT, running level, start tuning); the same computation on a whole file |
 | `src/chordtracker/hold.py` | V7.3: the hold rule against flicker |
 | `scripts/v7_3_check.py`, `v7_3_speed.py`, `v7_3_hold.py` | V7.3: same chords as the cache on validation; time per block of the live chain; the hold rule on validation |
+| `src/chordtracker/data_choco.py` | V8: the curated ChoCo export (referenced, not copied) as songs; manifest tuning from the first frame; SHA-256 check of each WAV |
+| `src/chordtracker/data_v8.py`, `model_v8.py`, `train_v8.py`, `transitions_v8.py` | V8: vocabularies A / B / B9 as targets; the n-class causal CRNN and its training; the prior, the tempered prior and the transition matrices |
+| `configs/v8.yaml` | V8: export path, V7.2's model and decoders, prior power, the points frozen on val |
+| `scripts/run_v8.py`, `scripts/v8_test.py` | V8: train + decode on val (--vocab, --seed, --transitions, --prior-power); test once over the frozen points |
+| `scripts/v8_choco_split.py` | V8: the grouped ChoCo split |
 | `src/chordtracker/play_along.py`, `scripts/play_along.py` | Listening prototype: what to show when, the live analysis in its own process; the player (input device or file, delayed playback, window, keys, log) |
 | `src/chordtracker/demo.py`, `scripts/demo_export.py`, `scripts/demo_server.py`, `demo/` | Demo website: outputs of GuitarSet validation takes exported with the prototype's chain; a page that plays a recording and shows its chords live, decoded on the demo server as it plays, framewise vs fixed-lag Viterbi ([reports/demo.md](reports/demo.md)) |
 | `src/chordtracker/inference.py`, `src/chordtracker/weights/` | The frozen V6 (bidirectional, seed 1) as a library: whole-song posteriors of an audio file, its settings and weights packaged (see [Use from another project](#use-from-another-project)) |
 | `splits/guitarset.json` | the fixed song-level split (seed 0), tracked |
 | `splits/rwc_p.json` | RWC-P 60 / 20 / 20 split by artist |
+| `splits/choco.json` | ChoCo export 237 / 47 / 60 recordings by release (isophonics, robbie-williams) or artist (uspop2002), seed 0; jaah train only |
 | `data/` | GuitarSet, RWC-P and everything generated from them (git-ignored) |
 | `results/<version>/<split>/` | `summary.json` and `per_song.csv` of each run |
 | `figures/<version>/val/` | the saved report figures (val only) |
@@ -132,6 +139,17 @@ times, post = inference.posteriors("song.wav", phases=4)    # (n,), (24, n) in i
 The tuning is estimated as V6's features do, on quarter-tone bins: it wraps at +-25 cents, so a recording
 30-50 cents off A440 reads its chords a semitone off. A caller that knows the tuning passes it,
 `tuning_semitones=-0.44` for a recording 44 cents flat.
+
+## Data and licence
+
+This project is for research and non-commercial use only, and so are its trained weights.
+
+- GuitarSet: CC BY 4.0.
+- RWC Popular Music (RWC-P): CC BY-NC 4.0; audio not included.
+- ChoCo (Chord Corpus, smashub/choco): chord labels CC BY 4.0, except the JAAH partition, CC BY-NC-SA 4.0.
+  V8 trains on a curated export of its Isophonics, USPOP2002, Robbie Williams and JAAH partitions
+  (choco_corpus_prep, commit 896a9f8), referenced through `data.choco_export` and
+  `data/choco/SOURCE.txt`. The recordings are copyrighted and are not included or redistributed.
 
 ## Setup
 
