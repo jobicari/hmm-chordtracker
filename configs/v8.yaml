@@ -28,6 +28,8 @@ train:                        # V7.2 at c2_la2_seed0
   excerpt_frames: 128
   batch_excerpts: 8
   input_lookahead: 2
+  class_weight_alpha: 0       # V9: loss weight max(train share, floor) ** -alpha per class, mean 1 (0 = V8, unweighted)
+  class_weight_floor: 0.0001
 
 transitions:
   source: billboard          # billboard (counts below) or train (moves counted in the training targets)

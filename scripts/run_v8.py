@@ -6,6 +6,7 @@ with a richer vocabulary, then decode and score on validation.
     python scripts/run_v8.py --vocab majmin --from-run results/v7_2/c2_la2_seed0 --out results/v8/v7_3_as_is
     python scripts/run_v8.py --vocab A --train --limit 2 --max-epochs 1 --out <dir>   # dry run
     python scripts/run_v8.py --vocab A --seed 0 --transitions train   # decode results/v8/A_seed0 again
+    python scripts/run_v8.py --vocab A --train --seed 1 --class-weight-alpha 0.5 --out results/v9/A_a050_seed1
 
 Vocabularies: majmin (V7.3's targets, data_v5.target), A, B, B9 (data_v8). Decoders are V7's
 (frame-argmax, forward-filter, fixed-lag-viterbi at every lag, offline-frame-viterbi) with the prior
@@ -14,7 +15,8 @@ billboard (transitions_v8.change_matrix; run_v5.change_prior for majmin) or trai
 the training targets, transitions_v8.label_change_matrix, counts kept in the run directory). Results go
 to <run>/val for billboard and <run>/val_<source>_tau<tau> otherwise. decoder.prior_power (or
 --prior-power) tempers the prior the decoders divide by (transitions_v8.tempered_prior); a power other
-than 1 adds _pp<power> to the results folder.
+than 1 adds _pp<power> to the results folder. train.class_weight_alpha (or --class-weight-alpha) weights
+the training loss by class (train_v8.class_weights; 0 = unweighted); the weights go to class_weights.json.
 Scores: aligned WCSR with mir_eval majmin and sevenths, pooled per set (rwc, guitarset, choco; ChoCo
 also per partition), never pooled across sets; plus a quality confusion matrix of the frames.
 Sevenths reads B's maj6 as maj, so A, B and B9 are scored on the same chords. Test is not run here.
@@ -54,6 +56,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--transitions", choices=["billboard", "train"], help="override transitions.source")
     parser.add_argument("--tau", type=float, help="override transitions.tau")
     parser.add_argument("--prior-power", type=float, help="override decoder.prior_power")
+    parser.add_argument("--class-weight-alpha", type=float, help="override train.class_weight_alpha")
     args = parser.parse_args(argv)
     if args.from_run and (args.train or args.vocab != "majmin"):
         parser.error("--from-run scores a saved 24-class model: use --vocab majmin and no --train")
@@ -182,6 +185,8 @@ def main(argv=None) -> None:
         cfg["transitions"]["tau"] = args.tau
     if args.prior_power is not None:
         cfg["decoder"]["prior_power"] = args.prior_power
+    if args.class_weight_alpha is not None:
+        cfg["train"]["class_weight_alpha"] = args.class_weight_alpha
     first = (lambda xs: xs[:args.limit]) if args.limit else (lambda xs: xs)
     out = args.out or paths.REPO_ROOT / "results" / "v8" / f"{args.vocab}_seed{args.seed}"
     out.mkdir(parents=True, exist_ok=True)
@@ -191,8 +196,15 @@ def main(argv=None) -> None:
     if args.train:
         train_songs = [load_song(t, cfg, args.vocab) for t in train_takes(cfg, first)]
         val_songs = {n: [load_song(t, cfg, args.vocab) for t in ts] for n, ts in val_takes.items()}
+        alpha = cfg["train"].get("class_weight_alpha", 0)
         print(f"train: {len(train_songs)} songs, vocab {args.vocab} ({n_classes(args.vocab)} classes), "
-              f"seed {args.seed}", flush=True)
+              f"seed {args.seed}, class weight alpha {alpha:g}", flush=True)
+        if alpha:
+            weights = train_v8.class_weights(np.concatenate([s.targets for s in train_songs]), n_classes(args.vocab),
+                                             alpha, cfg["train"].get("class_weight_floor", train_v8.CLASS_WEIGHT_FLOOR))
+            (out / "class_weights.json").write_text(json.dumps({"alpha": alpha, "weights": weights.tolist()}))
+            print("class weights per quality: " + "  ".join(
+                f"{q} {weights[12 * i]:.2f}" for i, q in enumerate(qualities(args.vocab))), flush=True)
         model, history = train_v8.train(train_songs, val_songs, cfg, n_classes(args.vocab))
         train_v8.save(model, out / "model.pt")
         prior = transitions_v8.training_prior(np.concatenate([s.targets for s in train_songs]), n_classes(args.vocab))

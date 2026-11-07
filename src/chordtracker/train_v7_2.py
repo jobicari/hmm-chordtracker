@@ -19,8 +19,11 @@ from chordtracker.train_v6 import load, save  # noqa: F401  (same weights format
 
 
 def run_epoch(model: nn.Module, opt: torch.optim.Optimizer, songs: list[Song], rng: np.random.Generator,
-              t: dict) -> float:
-    """One pass over this epoch's excerpts in a random order, one random shift each; returns the mean loss."""
+              t: dict, weight: torch.Tensor | None = None) -> float:
+    """One pass over this epoch's excerpts in a random order, one random shift each; returns the mean loss.
+
+    weight: one loss weight per class (train_v8.class_weights), or None for the plain cross-entropy.
+    """
     model.train()
     dev = next(model.parameters()).device
     length = t["excerpt_frames"]
@@ -33,12 +36,24 @@ def run_epoch(model: nn.Module, opt: torch.optim.Optimizer, songs: list[Song], r
         x, y = data_v7_2.make_batch(songs, starts[pick], shifts[pick], length, t["input_lookahead"])
         opt.zero_grad()
         logits = model(x.to(dev))
-        loss = nn.functional.cross_entropy(logits.reshape(-1, logits.shape[-1]), y.to(dev).reshape(-1),
-                                           ignore_index=-1)
+        loss = frame_loss(logits.reshape(-1, logits.shape[-1]), y.to(dev).reshape(-1), weight)
         loss.backward()
         opt.step()
         losses.append(loss.item())
     return float(np.mean(losses))
+
+
+def frame_loss(logits: torch.Tensor, y: torch.Tensor, weight: torch.Tensor | None = None) -> torch.Tensor:
+    """Cross-entropy of (n, n_classes) logits against (n,) targets, frames with target -1 left out.
+
+    Without weight: the mean over the frames with a target. With weight: each frame's loss times the weight
+    of its target class, summed and divided by the number of frames with a target (not by the summed
+    weights, as torch's weighted mean does), so weights with a frame-weighted mean of 1 keep the loss scale.
+    """
+    if weight is None:
+        return nn.functional.cross_entropy(logits, y, ignore_index=-1)
+    total = nn.functional.cross_entropy(logits, y, weight=weight.to(logits.device), ignore_index=-1, reduction="sum")
+    return total / (y >= 0).sum().clamp(min=1)
 
 
 def song_posteriors(model: nn.Module, song: Song, lookahead: int) -> np.ndarray:
