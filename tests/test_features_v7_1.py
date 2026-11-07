@@ -115,6 +115,29 @@ def test_the_tuning_is_estimated_on_the_first_seconds_and_used_after():
     assert f.start_tuning(y[:int(9 * SR)], CFG) is None
 
 
+@pytest.mark.parametrize("cents", [-30.0, -35.0, -40.0, 35.0])
+def test_a_tuning_beyond_25_cents_is_read_without_wrapping(cents):
+    """30-40 cents off A440: the 12-bin estimate finds it; 24 bins wrapped it by a whole bin (50 cents)."""
+    y = synthetic(cents=cents)
+    tuning, _ = f.start_tuning(y, CFG)
+    assert tuning * 50 == pytest.approx(cents, abs=5.0)
+    old = float(librosa.estimate_tuning(y=f.causal_harmonic(y[:int(10 * SR)], SR, CFG), sr=SR, bins_per_octave=24))
+    assert old * 50 == pytest.approx(cents - np.sign(cents) * 50, abs=5.0)       # the old wrap: -35 read as +15
+
+
+def test_a_flat_tone_lands_on_its_semitone_bin():
+    """A4 played 35 cents flat: with the new estimate its CQT peak is A4's bin, with the wrapped one a quarter tone off."""
+    t = np.arange(int(14 * SR)) / SR
+    y = (0.1 * np.sin(2 * np.pi * librosa.midi_to_hz(69 - 0.35) * t)).astype(np.float32)
+    new, _ = f.start_tuning(y, CFG)
+    old = float(librosa.estimate_tuning(y=f.causal_harmonic(y[:int(10 * SR)], SR, CFG), sr=SR, bins_per_octave=24))
+    a4 = 2 * (69 - librosa.note_to_midi("F#0"))                                 # 24 bins an octave: 2 per semitone
+    for tuning, bin_ in ((new, a4), (old, a4 - 1)):
+        C = np.abs(librosa.cqt(y, sr=SR, hop_length=HOP, fmin=librosa.note_to_hz("F#0"), n_bins=168,
+                               bins_per_octave=24, tuning=tuning))
+        assert int(C[:, 20:-20].mean(axis=1).argmax()) == bin_
+
+
 def test_a_shorter_median_keeps_a_new_note_sooner():
     """With a 9-frame median a new tone counts as harmonic after ~0.1 s instead of ~0.37 s."""
     n = int(4 * SR)
