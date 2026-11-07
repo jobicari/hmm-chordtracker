@@ -32,6 +32,7 @@ version's report has the question, the method, the val analysis and the limitati
 | V7.3 | The causal features computed block by block (2,048 samples at a time), as a live system receives audio; on validation the chords match the cached features within 0.05 points at 0.28 / 0.46 / 0.65 s, and the whole live chain takes 7 ms per 93 ms block; a hold rule against flicker ties the fixed-lag Viterbi | n/a (no test run: same chords as V7.2) | n/a | [reports/v7_3.md](reports/v7_3.md) |
 | Listening prototype | The live chain with delayed playback and Isophonics Beatles chords shown alongside, fed from Spotify through a virtual cable; by ear, only the 0.65 s look-ahead is steady enough, a 1 s lead was preferred, and the 24-chord vocabulary, chord stability and strong bass lines are the next problems | n/a | n/a | [reports/play_along.md](reports/play_along.md) |
 | V8 | Sevenths: 60 classes (maj, min, 7, maj7, min7) and a curated ChoCo export (344 pop and jazz recordings, 18.9 h) added to training, on V7.3's causal model and decoders; on validation the network alone gains 8.9 points sevenths on RWC-P (68.5% vs 59.6%) at the same majmin, the decoder divides by the training prior to the power 0.25 (the full prior floods the output with 7ths), maj6, sus4 and dominant 9 are not learned | 78.0 % (network alone, 0.28 s; RWC-P 80.2 %, GuitarSet 75.9 %); sevenths 62.1 %; ChoCo 83.4 % / sevenths 74.8 % | 79.4 % (fixed-lag Viterbi, 0.65 s; RWC-P 81.4 %, GuitarSet 77.4 %); sevenths 63.8 %; ChoCo 84.4 % / sevenths 76.1 % | [reports/v8.md](reports/v8.md) |
+| V9 | Class-weighted cross-entropy on V8 (weight = train share of the quality ^ -alpha, mean 1, alpha 0.25 and 0.5); null result on validation: 7 recall rises (ChoCo network alone 21.0% to 55.2% at alpha 0.5) but maj recall falls more, and sevenths drops on every set (best mean 71.06% and 70.24% vs V8's 72.99%), so V9 keeps V8 | 78.0 % (V8, not rerun) | 79.4 % (V8, not rerun) | [reports/v9.md](reports/v9.md) |
 
 ## Layout
 
@@ -108,7 +109,7 @@ version's report has the question, the method, the val analysis and the limitati
 | `src/chordtracker/hold.py` | V7.3: the hold rule against flicker |
 | `scripts/v7_3_check.py`, `v7_3_speed.py`, `v7_3_hold.py` | V7.3: same chords as the cache on validation; time per block of the live chain; the hold rule on validation |
 | `src/chordtracker/data_choco.py` | V8: the curated ChoCo export (referenced, not copied) as songs; manifest tuning from the first frame; SHA-256 check of each WAV |
-| `src/chordtracker/data_v8.py`, `model_v8.py`, `train_v8.py`, `transitions_v8.py` | V8: vocabularies A / B / B9 as targets; the n-class causal CRNN and its training; the prior, the tempered prior and the transition matrices |
+| `src/chordtracker/data_v8.py`, `model_v8.py`, `train_v8.py`, `transitions_v8.py` | V8: vocabularies A / B / B9 as targets; the n-class causal CRNN and its training; the prior, the tempered prior and the transition matrices; V9: the class weights of the loss (train.class_weight_alpha, default 0) |
 | `configs/v8.yaml` | V8: export path, V7.2's model and decoders, prior power, the points frozen on val |
 | `scripts/run_v8.py`, `scripts/v8_test.py` | V8: train + decode on val (--vocab, --seed, --transitions, --prior-power); test once over the frozen points |
 | `scripts/v8_choco_split.py` | V8: the grouped ChoCo split |
