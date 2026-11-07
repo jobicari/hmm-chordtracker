@@ -3,6 +3,7 @@
     python scripts/run_v10.py cache --run results/v8/A_seed0      # posteriors of a run -> <run>/val_posteriors.npz
     python scripts/run_v10.py ensemble                            # step 1: seed 0 + seed 1 posteriors
     python scripts/run_v10.py offsets                             # step 2: per-quality log offsets
+    python scripts/run_v10.py retune                              # step 3: val songs whose tuning estimate moved
     python scripts/run_v10.py gate                                # step 4: N where the input level is low
     python scripts/run_v10.py points --run results/v10/<run>      # the V8 points of any saved A run
 
@@ -20,7 +21,8 @@ from pathlib import Path
 
 import numpy as np
 
-from chordtracker import data_choco, decode_v10, frame_score, paths, train_v7_2, transitions, transitions_v8
+from chordtracker import (data_choco, data_v5, decode_v10, features_v7_1, frame_score, model_v10, paths, train_v7_2,
+                          transitions, transitions_v8)
 
 sys.path.insert(0, str(Path(__file__).parent))
 import run_v5  # noqa: E402  (load_config, evaluation_sets)
@@ -90,7 +92,7 @@ def load_songs() -> dict[str, dict]:
 
 def cache_posteriors(run: Path, cfg: dict) -> None:
     """<run>/val_posteriors.npz: the (60, T) network posterior of every val song (eval mode, unshifted)."""
-    model = run_v8.model_for(run, N_CLASSES, cfg)
+    model = model_v10.load(run, N_CLASSES, cfg)
     out = {}
     for takes in val_takes(cfg).values():
         for take in takes:
@@ -249,11 +251,46 @@ def average_rows(a: list[dict], b: list[dict]) -> list[dict]:
     return out
 
 
+# ---------------------------------------------------------------- step 3
+
+def step_retune(cfg: dict, songs: dict) -> None:
+    """Val songs whose tuning estimate moved by more than 5 cents (results/v10/step3_tuning): their causal
+    log-CQT again with the fixed estimate (results/v10/cache/retuned/, the shared cache is left as it is),
+    then seed 0 and seed 1 scored on val with those songs replaced. No retraining."""
+    moved = [row["key"] for row in json.loads((paths.REPO_ROOT / "results" / "v10" / "step3_tuning" / "estimates.json")
+                                              .read_text())
+             if row["split"] == "val" and abs(row["new_cents"] - row["old_cents"]) > 5]
+    takes = {t.key: t for ts in val_takes(cfg).values() for t in ts}
+    out = CACHE / "retuned"
+    out.mkdir(parents=True, exist_ok=True)
+    new_songs = {}
+    for key in moved:
+        file = out / f"{key.replace('/', '__')}.npy"
+        if not file.exists():
+            np.save(file, features_v7_1.causal_log_cqt(takes[key].audio, cfg).astype(np.float16))
+        cqt = np.load(file).astype(np.float32)
+        old = run_v8.load_song(takes[key], cfg, VOCAB)
+        assert cqt.shape == old.cqt.shape, key
+        new_songs[key] = data_v5.Song(key, cqt, old.targets)
+        print(f"{key}: mean |change| of the log-CQT {np.abs(cqt - old.cqt).mean():.4f}", flush=True)
+    tables, data = {}, {}
+    for s in SEEDS:
+        posts = load_posteriors(SEEDS[s])
+        model = model_v10.load(SEEDS[s], N_CLASSES, cfg)
+        retuned = {**posts, **{k: train_v7_2.song_posteriors(model, song, cfg["train"]["input_lookahead"])
+                               for k, song in new_songs.items()}}
+        for name, p in (("cached features", posts), ("retuned features", retuned)):
+            sc = pooled(decode_all(p, cfg, prior_of(SEEDS[s]), cfg["decoder"]["prior_power"]), songs)
+            tables[f"seed {s}, {name}"] = point_table(sc)
+            data[f"seed{s}_{name}"] = serial(sc)
+    write("step3_retune", f"Val songs re-cached: {', '.join(moved)}\n\n" + markdown("features", tables), data)
+
+
 # ---------------------------------------------------------------- main
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("step", choices=["cache", "ensemble", "offsets", "gate", "points"])
+    parser.add_argument("step", choices=["cache", "ensemble", "offsets", "retune", "gate", "points"])
     parser.add_argument("--run", type=Path, help="a saved vocabulary-A run (model.pt, prior.json)")
     parser.add_argument("--name", help="results/v10/<name> for the points step; default the run's folder name")
     args = parser.parse_args(argv)
@@ -267,6 +304,8 @@ def main(argv=None) -> None:
     songs = load_songs()
     if args.step == "ensemble":
         step_ensemble(cfg, songs)
+    elif args.step == "retune":
+        step_retune(cfg, songs)
     elif args.step == "offsets":
         import v10_offsets
         v10_offsets.run(cfg, songs)
