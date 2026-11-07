@@ -65,10 +65,11 @@ def test_the_split_picks_the_takes_with_their_labels_and_tuning(export):
     assert data_choco.choco_takes("val", cfg, split)[0].tuning_cents == -42.0
 
 
-def test_test_is_never_loaded(export):
+def test_test_is_loaded_only_by_the_frozen_run(export):
     cfg, split = export
     with pytest.raises(ValueError):
         data_choco.choco_takes("test", cfg, split)
+    assert data_choco.choco_takes("test", cfg, split, frozen=True) == []
 
 
 def test_the_audio_check_catches_a_changed_or_missing_file(export):

@@ -4,7 +4,8 @@ The export (choco_corpus_prep, `export/<partition>/`) holds one WAV, one JAMS ch
 recording's time, and one manifest row per recording. It stays where it is, outside this repository:
 cfg["data"]["choco_export"] points at it, and data/choco/SOURCE.txt records its repository and commit.
 
-    choco_takes(split, cfg)          the recordings of 'train' or 'val' (splits/choco.json) -> list[TunedTake]
+    choco_takes(split, cfg)          the recordings of 'train' or 'val' (splits/choco.json) -> list[TunedTake];
+                                     'test' only with frozen=True, for scripts/v8_test.py
     check_audio(take)                the WAV is the file the manifest names (its SHA-256)
     tuned_log_cqt_of_audio(y, cfg, tuning_cents)   causal log-CQT at a known tuning, from frame 0
     load(take, cfg)                  -> Song on the cached log-CQT, targets as data_v5.frame_targets
@@ -55,9 +56,9 @@ def manifest(cfg: dict) -> dict[str, dict]:
     return rows
 
 
-def choco_takes(split: str, cfg: dict, split_file: Path = CHOCO_SPLIT) -> list[TunedTake]:
-    """The ChoCo recordings of 'train' or 'val', with their annotation and tuning."""
-    if split == "test":
+def choco_takes(split: str, cfg: dict, split_file: Path = CHOCO_SPLIT, frozen: bool = False) -> list[TunedTake]:
+    """The ChoCo recordings of a split, with their annotation and tuning; test only for the frozen test run."""
+    if split == "test" and not frozen:
         raise ValueError("ChoCo test is evaluated once, by the frozen run script, never loaded here")
     rows = manifest(cfg)
     takes = []
