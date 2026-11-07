@@ -96,12 +96,12 @@ def test_score_fits_the_estimate_to_the_reference_span():
 
 
 def test_score_root_metric_and_unknown_metric():
-    """Root ignores quality: C:min against C:maj is right for root, wrong for majmin; "sevenths" raises."""
+    """Root ignores quality: C:min against C:maj is right for root, wrong for majmin; "tetrads" raises."""
     reference, estimate = annotation((0, 4, "C:maj")), annotation((0, 4, "C:min"))
     assert evaluate.score(reference, estimate, "root").wcsr == 1.0
     assert evaluate.score(reference, estimate, "majmin").wcsr == 0.0
     with pytest.raises(ValueError):
-        evaluate.score(reference, estimate, "sevenths")
+        evaluate.score(reference, estimate, "tetrads")
 
 
 def test_wcsr_is_nan_when_nothing_is_scored():
