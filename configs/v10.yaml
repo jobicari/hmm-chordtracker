@@ -1,5 +1,5 @@
 # V10: V8 (vocabulary A, seed 1, prior power 0.25, Billboard transitions) with decoder-side changes and
-# three training options, all judged on validation only (reports/v10_val_notes.md). With the train
+# three training options, all judged on validation only (reports/v10.md). With the train
 # options at their defaults this is configs/v8.yaml's training.
 version: v10
 base_config: v2.yaml          # compression (99th pct, gamma 10)

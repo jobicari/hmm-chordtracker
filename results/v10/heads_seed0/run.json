@@ -1,0 +1,21 @@
+{
+  "train": {
+    "seed": 0,
+    "lr": 0.001,
+    "max_epochs": 50,
+    "patience": 5,
+    "dropout": 0.5,
+    "excerpt_frames": 128,
+    "batch_excerpts": 8,
+    "input_lookahead": 2,
+    "early_stop": "frame_accuracy",
+    "aux_weight": 0.5,
+    "augment": {
+      "gain_db": 0,
+      "tilt_db": 0,
+      "noise": 0
+    }
+  },
+  "heads": true,
+  "n_qualities": 5
+}

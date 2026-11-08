@@ -1,0 +1,1402 @@
+[
+ {
+  "key": "rwc/RWC_P001",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 5.499999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P002",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -1.4999999999999987,
+  "new_cents": -2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P007",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P009",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 18.5,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "rwc/RWC_P012",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -1.0000000000000009,
+  "new_cents": -1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P013",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 5.499999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P014",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -0.5000000000000004,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P016",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P017",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 7.500000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "rwc/RWC_P018",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -2.4999999999999996,
+  "new_cents": -2.9999999999999973
+ },
+ {
+  "key": "rwc/RWC_P020",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 3.500000000000003,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "rwc/RWC_P021",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 6.5,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "rwc/RWC_P022",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -1.0000000000000009,
+  "new_cents": -1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P025",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 0.0,
+  "new_cents": -1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P026",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 6.5,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P027",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -9.5,
+  "new_cents": -8.000000000000002
+ },
+ {
+  "key": "rwc/RWC_P028",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 6.5,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "rwc/RWC_P029",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P030",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P033",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -7.000000000000001,
+  "new_cents": -8.000000000000002
+ },
+ {
+  "key": "rwc/RWC_P034",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -2.4999999999999996,
+  "new_cents": -2.9999999999999973
+ },
+ {
+  "key": "rwc/RWC_P035",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -12.0,
+  "new_cents": -13.0
+ },
+ {
+  "key": "rwc/RWC_P036",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.0000000000000009,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P038",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -3.5000000000000004,
+  "new_cents": -50.0
+ },
+ {
+  "key": "rwc/RWC_P039",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 0.0,
+  "new_cents": 0.0
+ },
+ {
+  "key": "rwc/RWC_P040",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.0000000000000009,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P042",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.0000000000000009,
+  "new_cents": 0.0
+ },
+ {
+  "key": "rwc/RWC_P043",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P044",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 2.500000000000002,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P045",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 3.0000000000000027,
+  "new_cents": -15.999999999999998
+ },
+ {
+  "key": "rwc/RWC_P046",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -1.0000000000000009,
+  "new_cents": -1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P050",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -1.9999999999999991,
+  "new_cents": -2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P052",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P053",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -4.499999999999998,
+  "new_cents": -4.999999999999999
+ },
+ {
+  "key": "rwc/RWC_P054",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 10.499999999999998,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "rwc/RWC_P055",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P058",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 0.0,
+  "new_cents": 0.0
+ },
+ {
+  "key": "rwc/RWC_P059",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.0000000000000009,
+  "new_cents": -1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P061",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -5.499999999999999,
+  "new_cents": -6.0
+ },
+ {
+  "key": "rwc/RWC_P062",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -2.4999999999999996,
+  "new_cents": -2.9999999999999973
+ },
+ {
+  "key": "rwc/RWC_P064",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 5.499999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P065",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 3.9999999999999982,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P066",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 10.999999999999998,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "rwc/RWC_P067",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "rwc/RWC_P068",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 3.500000000000003,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "rwc/RWC_P069",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 3.500000000000003,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "rwc/RWC_P071",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 0.5000000000000004,
+  "new_cents": 0.0
+ },
+ {
+  "key": "rwc/RWC_P072",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 0.0,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "rwc/RWC_P073",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -4.999999999999999,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P074",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 7.000000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "rwc/RWC_P075",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -0.5000000000000004,
+  "new_cents": -1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P076",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 17.5,
+  "new_cents": 17.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P077",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 0.0,
+  "new_cents": 0.0
+ },
+ {
+  "key": "rwc/RWC_P079",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 3.0000000000000027,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "rwc/RWC_P080",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "rwc/RWC_P083",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 1.0000000000000009,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P085",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": -1.4999999999999987,
+  "new_cents": -2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P087",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 10.000000000000004,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "rwc/RWC_P095",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 10.000000000000004,
+  "new_cents": 18.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P098",
+  "set": "rwc",
+  "split": "train",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/00_BN1-129-Eb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 7.000000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/00_BN1-147-Gb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.000000000000004,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/00_Funk3-112-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 9.000000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/00_Funk3-98-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.0,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/00_Jazz1-130-D_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.0,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/00_Jazz1-200-B_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 3.9999999999999982,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "guitarset/00_Rock1-130-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 11.5,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/00_Rock1-90-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 19.0,
+  "new_cents": 19.000000000000007
+ },
+ {
+  "key": "guitarset/00_SS1-100-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 9.000000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/00_SS1-68-E_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 4.499999999999998,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "guitarset/01_BN1-129-Eb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/01_BN1-147-Gb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.5,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/01_Funk3-112-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 8.500000000000002,
+  "new_cents": 0.0
+ },
+ {
+  "key": "guitarset/01_Funk3-98-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "guitarset/01_Jazz1-130-D_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/01_Jazz1-200-B_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.0,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/01_Rock1-130-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 5.499999999999999,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/01_Rock1-90-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 8.000000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/01_SS1-100-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/01_SS1-68-E_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 3.0000000000000027,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "guitarset/02_BN1-129-Eb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.5,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/02_BN1-147-Gb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 13.5,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/02_Funk3-112-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.499999999999998,
+  "new_cents": 15.000000000000002
+ },
+ {
+  "key": "guitarset/02_Funk3-98-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 12.0,
+  "new_cents": 12.0
+ },
+ {
+  "key": "guitarset/02_Jazz1-130-D_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": -6.5,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/02_Jazz1-200-B_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 7.500000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/02_Rock1-130-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": -24.5,
+  "new_cents": 28.000000000000004
+ },
+ {
+  "key": "guitarset/02_Rock1-90-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 14.000000000000002,
+  "new_cents": 14.000000000000002
+ },
+ {
+  "key": "guitarset/02_SS1-100-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 16.000000000000004,
+  "new_cents": 16.000000000000004
+ },
+ {
+  "key": "guitarset/02_SS1-68-E_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.999999999999998,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/03_BN1-129-Eb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.999999999999998,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/03_BN1-147-Gb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 19.5,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/03_Funk3-112-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.999999999999998,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/03_Funk3-98-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 5.499999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/03_Jazz1-130-D_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/03_Jazz1-200-B_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.499999999999998,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "guitarset/03_Rock1-130-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 7.500000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/03_Rock1-90-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 13.0,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/03_SS1-100-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 13.0,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/03_SS1-68-E_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 7.500000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/04_BN1-129-Eb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": -5.499999999999999,
+  "new_cents": -6.0
+ },
+ {
+  "key": "guitarset/04_BN1-147-Gb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 17.0,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/04_Funk3-112-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 12.0,
+  "new_cents": 12.0
+ },
+ {
+  "key": "guitarset/04_Funk3-98-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 4.499999999999998,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "guitarset/04_Jazz1-130-D_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 12.5,
+  "new_cents": 12.0
+ },
+ {
+  "key": "guitarset/04_Jazz1-200-B_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 12.0,
+  "new_cents": 12.0
+ },
+ {
+  "key": "guitarset/04_Rock1-130-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 19.0,
+  "new_cents": 18.000000000000004
+ },
+ {
+  "key": "guitarset/04_Rock1-90-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 8.000000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/04_SS1-100-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 15.000000000000002,
+  "new_cents": 15.000000000000002
+ },
+ {
+  "key": "guitarset/04_SS1-68-E_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.499999999999998,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/05_BN1-129-Eb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.499999999999998,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/05_BN1-147-Gb_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.5,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/05_Funk3-112-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 3.9999999999999982,
+  "new_cents": 4.0000000000000036
+ },
+ {
+  "key": "guitarset/05_Funk3-98-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 6.0,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "guitarset/05_Jazz1-130-D_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "guitarset/05_Jazz1-200-B_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "guitarset/05_Rock1-130-A_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 7.500000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/05_Rock1-90-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.000000000000004,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/05_SS1-100-C#_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 19.0,
+  "new_cents": 19.000000000000007
+ },
+ {
+  "key": "guitarset/05_SS1-68-E_comp",
+  "set": "guitarset",
+  "split": "train",
+  "old_cents": 10.999999999999998,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "rwc/RWC_P003",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 8.000000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "rwc/RWC_P004",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": -6.5,
+  "new_cents": -7.000000000000001
+ },
+ {
+  "key": "rwc/RWC_P010",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 2.500000000000002,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P011",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 2.500000000000002,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P015",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": -6.0,
+  "new_cents": -6.0
+ },
+ {
+  "key": "rwc/RWC_P019",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P023",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 3.9999999999999982,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P024",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": -7.499999999999998,
+  "new_cents": -6.0
+ },
+ {
+  "key": "rwc/RWC_P031",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": -24.5,
+  "new_cents": -25.0
+ },
+ {
+  "key": "rwc/RWC_P032",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 4.499999999999998,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "rwc/RWC_P037",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 4.999999999999999,
+  "new_cents": 0.0
+ },
+ {
+  "key": "rwc/RWC_P041",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": -14.000000000000002,
+  "new_cents": -14.999999999999996
+ },
+ {
+  "key": "rwc/RWC_P047",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "rwc/RWC_P078",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P082",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 3.0000000000000027,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "rwc/RWC_P084",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P088",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P090",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 1.5000000000000013,
+  "new_cents": 1.0000000000000009
+ },
+ {
+  "key": "rwc/RWC_P099",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 2.500000000000002,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "rwc/RWC_P100",
+  "set": "rwc",
+  "split": "val",
+  "old_cents": 3.0000000000000027,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "guitarset/00_BN3-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.000000000000002,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/00_BN3-154-E_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/00_Funk2-108-Eb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/00_Funk2-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 7.000000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/00_Jazz2-110-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 15.000000000000002,
+  "new_cents": 15.000000000000002
+ },
+ {
+  "key": "guitarset/00_Jazz2-187-F#_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.000000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/00_Rock3-117-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 7.500000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/00_Rock3-148-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 6.5,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/00_SS3-84-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 7.000000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/00_SS3-98-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/01_BN3-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 7.000000000000001,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/01_BN3-154-E_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 6.5,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/01_Funk2-108-Eb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 6.0,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/01_Funk2-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 5.499999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/01_Jazz2-110-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.500000000000004,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/01_Jazz2-187-F#_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.999999999999998,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/01_Rock3-117-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.500000000000004,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/01_Rock3-148-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 14.000000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/01_SS3-84-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.000000000000004,
+  "new_cents": 12.0
+ },
+ {
+  "key": "guitarset/01_SS3-98-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 3.500000000000003,
+  "new_cents": 3.0000000000000027
+ },
+ {
+  "key": "guitarset/02_BN3-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.500000000000004,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/02_BN3-154-E_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/02_Funk2-108-Eb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/02_Funk2-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 3.9999999999999982,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/02_Jazz2-110-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 13.5,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/02_Jazz2-187-F#_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/02_Rock3-117-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.000000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/02_Rock3-148-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/02_SS3-84-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.000000000000004,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/02_SS3-98-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 12.0,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/03_BN3-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.000000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/03_BN3-154-E_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 6.0,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/03_Funk2-108-Eb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.499999999999998,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/03_Funk2-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 7.000000000000001,
+  "new_cents": 7.000000000000006
+ },
+ {
+  "key": "guitarset/03_Jazz2-110-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.000000000000004,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/03_Jazz2-187-F#_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.499999999999998,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/03_Rock3-117-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.500000000000004,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/03_Rock3-148-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.499999999999998,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/03_SS3-84-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 12.0,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/03_SS3-98-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 11.5,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/04_BN3-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 11.5,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/04_BN3-154-E_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 7.9999999999999964
+ },
+ {
+  "key": "guitarset/04_Funk2-108-Eb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.500000000000004,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/04_Funk2-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 8.500000000000002,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/04_Jazz2-110-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 12.5,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/04_Jazz2-187-F#_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 12.5,
+  "new_cents": 12.0
+ },
+ {
+  "key": "guitarset/04_Rock3-117-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 12.0,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/04_Rock3-148-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 2.500000000000002,
+  "new_cents": 9.999999999999998
+ },
+ {
+  "key": "guitarset/04_SS3-84-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 13.5,
+  "new_cents": 13.0
+ },
+ {
+  "key": "guitarset/04_SS3-98-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 4.499999999999998,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/05_BN3-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.999999999999998,
+  "new_cents": 10.999999999999998
+ },
+ {
+  "key": "guitarset/05_BN3-154-E_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 6.0,
+  "new_cents": 6.000000000000005
+ },
+ {
+  "key": "guitarset/05_Funk2-108-Eb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 2.0000000000000018,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "guitarset/05_Funk2-119-G_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 2.500000000000002,
+  "new_cents": 0.0
+ },
+ {
+  "key": "guitarset/05_Jazz2-110-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 4.999999999999999,
+  "new_cents": 5.000000000000004
+ },
+ {
+  "key": "guitarset/05_Jazz2-187-F#_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 4.499999999999998,
+  "new_cents": 2.0000000000000018
+ },
+ {
+  "key": "guitarset/05_Rock3-117-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 9.500000000000004,
+  "new_cents": 8.999999999999996
+ },
+ {
+  "key": "guitarset/05_Rock3-148-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": -4.000000000000001,
+  "new_cents": -3.9999999999999982
+ },
+ {
+  "key": "guitarset/05_SS3-84-Bb_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 10.499999999999998,
+  "new_cents": 15.000000000000002
+ },
+ {
+  "key": "guitarset/05_SS3-98-C_comp",
+  "set": "guitarset",
+  "split": "val",
+  "old_cents": 7.000000000000001,
+  "new_cents": 7.000000000000006
+ }
+]

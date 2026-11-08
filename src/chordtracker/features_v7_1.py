@@ -101,14 +101,16 @@ def start_tuning(y: np.ndarray, cfg: dict) -> tuple[float, int] | None:
     """(tuning, first frame it applies to), estimated on the first tuning_seconds of audio only; None if shorter.
 
     The estimate reads y[:n] (n = tuning_seconds of samples), as V5's estimate_tuning reads the whole
-    file, at 12 bins per octave (tuning_in_bins; V10, before it 24 bins, which wrap at +/-25 cents). A column t is known once the audio up to frame t + 1 has arrived, so the estimate can be used
-    from the first column whose frame t + 1 starts at or after sample n.
+    file, at 12 bins per octave (tuning_in_bins; V10, before it 24 bins, which wrap at +/-25 cents). A
+    column t is known once the audio up to frame t + 1 has arrived, so the estimate can be used from the
+    first column whose frame t + 1 starts at or after sample n.
     """
     sr, q = cfg["audio"]["sr"], cfg["cqt"]
     n = int(q["tuning_seconds"] * sr)
     if len(y) <= n:
         return None
-    return tuning_in_bins(causal_harmonic(y[:n], sr, cfg), sr, q["bins_per_octave"]), int(np.ceil(n / q["hop_length"])) - 1
+    tuning = tuning_in_bins(causal_harmonic(y[:n], sr, cfg), sr, q["bins_per_octave"])
+    return tuning, int(np.ceil(n / q["hop_length"])) - 1
 
 
 def tuning_in_bins(y: np.ndarray, sr: int, bins_per_octave: int) -> float:
