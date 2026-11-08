@@ -39,3 +39,11 @@ def test_share_table_names_the_set():
     text = v10_offsets.share_table(rows)
     assert text.startswith("| RWC-P val, share of frames %")
     assert "| reference | 50.0 | 30.0 | 10.0 | 5.0 | 5.0 |" in text and "| seed 0, lag 8 | 62.0" in text
+
+
+def test_tuning_match_names_the_estimate_the_cache_agrees_with():
+    import v12_tuning
+    assert v12_tuning.matched(5e-5, 0.05) == "24 bins"
+    assert v12_tuning.matched(0.05, 5e-5) == "12 bins"
+    assert v12_tuning.matched(5e-5, 6e-5) == "both"
+    assert v12_tuning.matched(0.05, 0.06) == "neither"

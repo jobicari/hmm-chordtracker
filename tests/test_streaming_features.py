@@ -81,3 +81,16 @@ def test_block_by_block_on_real_training_songs():
             np.testing.assert_allclose(streamed, sf.offline_log_cqt(y, cfg), atol=1e-4, err_msg=take.key)
             cached = features_v7_1.causal_log_cqt_of_audio(y, cfg)
             assert np.abs(streamed[:, 10:-5] - cached[:, 10:-5]).mean() < 0.01, take.key
+
+
+def test_the_live_path_reads_a_tone_40_cents_sharp_on_its_semitone_bin():
+    """A4 played 40 cents sharp, block by block: A440 puts its peak a bin (50 cents) above A4 until the tuning
+    point; from then on the 12-bin estimate (+40, where 24 bins read -10) puts it on A4's bin."""
+    t = np.arange(int(14 * SR)) / SR
+    y = (0.1 * np.sin(2 * np.pi * librosa.midi_to_hz(69 + 0.40) * t)).astype(np.float32)
+    streamed, _ = stream(y, C2, block=1024)
+    a4 = 2 * (69 - librosa.note_to_midi("F#1"))
+    first = int(np.ceil(10 * SR / HOP)) - 1
+    peaks = streamed.argmax(axis=0)
+    assert (peaks[20:first - 2] == a4 + 1).all()
+    assert (peaks[first + 2:-4] == a4).all()
