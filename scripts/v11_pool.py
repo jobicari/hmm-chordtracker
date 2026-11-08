@@ -11,7 +11,8 @@ The pool is data/unlabelled_audio/ (git-ignored, read in place). Only files libs
     recording, or starts with it as whole words ('fields of gold s'): other takes, remasters, covers; RWC-P's songs were written for the database and
     GuitarSet's are its own, so neither has a title to match;
   - it is shorter than 10 s;
-  - it repeats an earlier file: same normalised title and the same duration to the second.
+  - it repeats an earlier file: same normalised title and the same duration to the second;
+  - its audio fails to decode when cached (data/v11_pool/failed.csv; pool_rows leaves it out).
 The manifest and the exclusion list stay in data/ because they list a private music library.
 Features: features_v7_1.causal_log_cqt on configs/v11.yaml's grid (C2, 24 bins per octave, live-path
 tuning estimate), the same features the play-along path computes.
@@ -111,19 +112,33 @@ def build_manifest() -> None:
             print(f"  excluded {r['path']}: {r['reason']}")
 
 
+def failed_ids() -> set[str]:
+    """Recordings whose audio did not decode when cached (data/v11_pool/failed.csv)."""
+    if not (OUT / "failed.csv").exists():
+        return set()
+    with open(OUT / "failed.csv", newline="") as f:
+        return {r["id"] for r in csv.DictReader(f)}
+
+
 def pool_rows() -> list[dict]:
+    """The manifest's recordings, less those that failed to decode."""
+    failed = failed_ids()
     with open(OUT / "manifest.csv", newline="") as f:
-        return list(csv.DictReader(f))
+        return [r for r in csv.DictReader(f) if r["id"] not in failed]
 
 
-def cache_one(row: dict, cfg: dict) -> str:
+def cache_one(row: dict, cfg: dict) -> str | None:
+    """Cache one recording; the error text if its audio does not decode (a damaged file), else None."""
     file = CACHE / f"{row['id']}.npy"
     if not file.exists():
-        cqt = features_v7_1.causal_log_cqt(POOL / row["path"], cfg)
+        try:
+            cqt = features_v7_1.causal_log_cqt(POOL / row["path"], cfg)
+        except sf.LibsndfileError as e:
+            return str(e)
         tmp = file.with_suffix(".tmp.npy")
         np.save(tmp, cqt.astype(np.float16))
         tmp.rename(file)
-    return row["id"]
+    return None
 
 
 def build_cache(jobs: int) -> None:
@@ -131,12 +146,25 @@ def build_cache(jobs: int) -> None:
     CACHE.mkdir(parents=True, exist_ok=True)
     rows = [r for r in pool_rows() if not (CACHE / f"{r['id']}.npy").exists()]
     print(f"{len(rows)} recordings to cache", flush=True)
+    failed = []
     with ProcessPoolExecutor(jobs) as ex:
-        futures = [ex.submit(cache_one, r, cfg) for r in rows]
+        futures = {ex.submit(cache_one, r, cfg): r for r in rows}
         for done, fut in enumerate(as_completed(futures), 1):
-            fut.result()
+            error = fut.result()
+            if error:
+                failed.append({"id": futures[fut]["id"], "path": futures[fut]["path"], "error": error})
+                print(f"  failed {futures[fut]['path']}: {error}", flush=True)
             if done % 50 == 0 or done == len(rows):
                 print(f"  {done} / {len(rows)}", flush=True)
+    if failed:
+        old = []
+        if (OUT / "failed.csv").exists():
+            with open(OUT / "failed.csv", newline="") as f:
+                old = list(csv.DictReader(f))
+        with open(OUT / "failed.csv", "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["id", "path", "error"])
+            w.writeheader()
+            w.writerows(old + failed)
 
 
 def main(argv=None) -> None:
