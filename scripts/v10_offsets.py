@@ -15,6 +15,9 @@ Two guards against fitting validation noise:
     (b) sets: on seed 1, fit on two sets and judge on the third (p_self chosen on the two)
 Also: the share of each predicted quality against the reference on RWC-P val, and the offsets fitted on
 each seed applied to the step 1 ensemble.
+
+run() takes the two seed runs, where to write and the lag-8 p_self of the share table, so the same method
+runs on other saved runs (scripts/run_v12.py offsets: the V11 pool student).
 """
 from concurrent.futures import ProcessPoolExecutor
 
@@ -88,23 +91,23 @@ def judged(cfg, songs, posts, prior, fitted):
     return rows, r.point_table(net), sc
 
 
-def shares(posts, prior, cfg, songs, offsets, dataset="rwc"):
-    """Per quality: reference share and predicted share (network alone, lag 8 at V8's p_self) on frames with a target."""
+def shares(posts, prior, cfg, songs, offsets, dataset="rwc", p_self=0.95):
+    """Per quality: reference share and predicted share (network alone, lag 8 at p_self) on frames with a target."""
     keys = [k for k in posts if songs[k]["set"] == dataset]
     p = with_offsets({k: posts[k] for k in keys}, offsets)
-    paths = r.decode_all(p, cfg, prior, 0.25, p_selfs=[0.95], lags=[8])
+    paths = r.decode_all(p, cfg, prior, 0.25, p_selfs=[p_self], lags=[8])
     count = {name: np.zeros(len(r.QUALITIES)) for name in ("reference", "network", "lag 8")}
     for k in keys:
         y = songs[k]["targets"]
         keep = y >= 0
         count["reference"] += np.bincount(y[keep] // 12, minlength=len(r.QUALITIES))
         count["network"] += np.bincount(paths[k][("network", None)][keep] // 12, minlength=len(r.QUALITIES))
-        count["lag 8"] += np.bincount(paths[k][("lag 8", 0.95)][keep] // 12, minlength=len(r.QUALITIES))
+        count["lag 8"] += np.bincount(paths[k][("lag 8", p_self)][keep] // 12, minlength=len(r.QUALITIES))
     return {name: (100 * c / c.sum()).tolist() for name, c in count.items()}
 
 
-def share_table(rows: dict[str, dict]) -> str:
-    lines = ["| RWC-P val, share of frames % | " + " | ".join(r.QUALITIES) + " |",
+def share_table(rows: dict[str, dict], dataset: str = "RWC-P") -> str:
+    lines = [f"| {dataset} val, share of frames % | " + " | ".join(r.QUALITIES) + " |",
              "|---|" + "---:|" * len(r.QUALITIES)]
     done_ref = False
     for name, s in rows.items():
@@ -116,23 +119,27 @@ def share_table(rows: dict[str, dict]) -> str:
     return "\n".join(lines)
 
 
-def run(cfg, songs):
-    posts = {s: r.load_posteriors(r.SEEDS[s]) for s in r.SEEDS}
-    priors = {s: r.prior_of(r.SEEDS[s]) for s in r.SEEDS}
+def run(cfg, songs, seeds=None, name="step2_offsets", write=None, share_p_self=0.95, ensembles=True, base="V8"):
+    """Both guards on the runs in `seeds` ({0: run, 1: run}; default V8's), written by `write(name, text, data)`.
+    base names the systems without offsets; ensembles adds the two-seed ensembles."""
+    seeds = r.SEEDS if seeds is None else seeds
+    write = r.write if write is None else write
+    posts = {s: r.load_posteriors(seeds[s]) for s in seeds}
+    priors = {s: r.prior_of(seeds[s]) for s in seeds}
     text, data = [], {}
 
     # (a) fit on one seed (all sets), judge on the other
-    fits = {s: fit(cfg, songs, posts[s], priors[s], r.SETS, f"seed {s}") for s in r.SEEDS}
+    fits = {s: fit(cfg, songs, posts[s], priors[s], r.SETS, f"seed {s}") for s in seeds}
     data["fits"] = fits
     tables = {}
-    for s in r.SEEDS:
-        tables[f"seed {s}, V8"] = r.point_table(r.pooled(r.decode_all(posts[s], cfg, priors[s], 0.25), songs))
-        for f in r.SEEDS:
+    for s in seeds:
+        tables[f"seed {s}, {base}"] = r.point_table(r.pooled(r.decode_all(posts[s], cfg, priors[s], 0.25), songs))
+        for f in seeds:
             rows, net, _ = judged(cfg, songs, posts[s], priors[s], fits[f])
             tables[f"seed {s}, offsets fitted on seed {f}"] = rows
             tables[f"seed {s}, network offsets fitted on seed {f}"] = net
     text.append("Guard (a), seeds. Offsets fitted on one seed (three sets), applied to both seeds.\n\n"
-                + offsets_table({f"seed {s}": fits[s] for s in r.SEEDS}) + "\n\n" + r.markdown("posteriors", tables))
+                + offsets_table({f"seed {s}": fits[s] for s in seeds}) + "\n\n" + r.markdown("posteriors", tables))
     print(text[-1], flush=True)
 
     # (b) leave one set out, seed 1
@@ -143,14 +150,14 @@ def run(cfg, songs):
         loso[held] = f
         keys = [k for k in posts[1] if songs[k]["set"] == held]
         p_self = f["lag 8"]["p_self"]
-        for name, offsets in (("V8", ZERO), ("offsets", f["lag 8"]["offsets"])):
+        for system, offsets in ((base, ZERO), ("offsets", f["lag 8"]["offsets"])):
             sc = r.pooled(r.decode_all(with_offsets({k: posts[1][k] for k in keys}, offsets), cfg, priors[1], 0.25),
                           songs, sets=(held,))
             chosen = {"network": None, "lag 2": None, "lag 4": None, "lag 8": p_self}
             fit_sc = r.pooled(r.decode_all(with_offsets({k: posts[1][k] for k in posts[1] if songs[k]["set"] in fitting},
                                                         offsets), cfg, priors[1], 0.25), songs, sets=fitting)
             chosen.update({pt: p for pt, p in r.best_points(fit_sc).items() if pt != "network"})
-            ltables[(held, name)] = {pt: sc[(held, pt, chosen[pt])] for pt in r.POINT_ORDER}
+            ltables[(held, system)] = {pt: sc[(held, pt, chosen[pt])] for pt in r.POINT_ORDER}
         net = {k: {("network", None): decode_v10.quality_offsets(posts[1][k], np.asarray(f["network"]["offsets"]))
                    .argmax(axis=0)} for k in keys}
         ltables[(held, "network offsets")] = {"network": r.pooled(net, songs, sets=(held,))[(held, "network", None)]}
@@ -160,12 +167,16 @@ def run(cfg, songs):
     print(text[-1], flush=True)
 
     # quality shares on RWC-P val, seed 0
-    sh = {"seed 0, V8": shares(posts[0], priors[0], cfg, songs, ZERO),
-          "seed 0, offsets (seed 0 fit)": shares(posts[0], priors[0], cfg, songs, fits[0]["lag 8"]["offsets"])}
+    sh = {f"seed 0, {base}": shares(posts[0], priors[0], cfg, songs, ZERO, p_self=share_p_self),
+          "seed 0, offsets (seed 0 fit)": shares(posts[0], priors[0], cfg, songs, fits[0]["lag 8"]["offsets"],
+                                                 p_self=share_p_self)}
     data["shares"] = sh
-    text.append("Quality shares, RWC-P val, seed 0 (lag 8 at p_self 0.95), frames with a reference target.\n\n"
-                + share_table(sh))
+    text.append(f"Quality shares, RWC-P val, seed 0 (lag 8 at p_self {share_p_self:g}), frames with a reference "
+                "target.\n\n" + share_table(sh))
     print(text[-1], flush=True)
+    if not ensembles:
+        write(name, "\n\n".join(text), data)
+        return
 
     # offsets on the ensemble
     prior = (priors[0] + priors[1]) / 2
@@ -173,12 +184,12 @@ def run(cfg, songs):
     for mode in ("geometric", "arithmetic"):
         comb = {k: decode_v10.ensemble([posts[0][k], posts[1][k]], mode) for k in posts[0]}
         etables[f"{mode} ensemble"] = r.point_table(r.pooled(r.decode_all(comb, cfg, prior, 0.25), songs))
-        for f in r.SEEDS:
+        for f in seeds:
             rows, net, _ = judged(cfg, songs, comb, prior, fits[f])
             etables[f"{mode} ensemble, offsets fitted on seed {f}"] = rows
     text.append("Offsets (fitted on one seed, not on the ensemble) applied to the ensembles, prior power 0.25.\n\n"
                 + r.markdown("posteriors", etables))
-    r.write("step2_offsets", "\n\n".join(text), data)
+    write(name, "\n\n".join(text), data)
 
 
 def offsets_table(fits: dict[str, dict]) -> str:

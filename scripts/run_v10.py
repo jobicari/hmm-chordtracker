@@ -204,8 +204,9 @@ def markdown(title: str, tables: dict[str, list[dict]]) -> str:
     return "\n".join(lines)
 
 
-def write(name: str, text: str, data) -> None:
-    out = paths.REPO_ROOT / "results" / "v10" / name
+def write(name: str, text: str, data, version: str = "v10") -> None:
+    """results/<version>/<name>/table.md and results.json."""
+    out = paths.REPO_ROOT / "results" / version / name
     out.mkdir(parents=True, exist_ok=True)
     (out / "table.md").write_text(text + "\n")
     (out / "results.json").write_text(json.dumps(data, indent=1, default=str))
