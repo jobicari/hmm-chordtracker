@@ -82,3 +82,28 @@ def test_one_distilled_epoch_trains_and_leaves_the_teachers_alone():
 def test_kl_weight_needs_teachers():
     with pytest.raises(ValueError):
         train_v11.train([], {}, {"train": {**T, "kl_weight": 1.0}}, 60)
+
+
+def test_pool_starts_tile_songs_without_targets_and_draw_n():
+    songs = [Song("p0", np.zeros((168, 300), np.float32), np.full(300, -1)),
+             Song("p1", np.zeros((168, 50), np.float32), np.full(50, -1))]
+    every = train_v11.pool_starts(songs, 128, np.random.default_rng(0), 100)
+    for i, n in ((0, 300), (1, 50)):
+        covered = np.zeros(n, bool)
+        for s in every[every[:, 0] == i, 1]:
+            covered[max(s, 0):s + 128] = True
+        assert covered.all()                                   # every frame of every song, once tiled
+    assert len(train_v11.pool_starts(songs, 128, np.random.default_rng(0), 2)) == 2
+
+
+def test_pool_pretraining_and_starting_from_it():
+    rng = np.random.default_rng(0)
+    pool = [Song(f"p{i}", rng.uniform(0, 2, (168, 40)).astype(np.float32), np.full(40, -1)) for i in range(2)]
+    torch.manual_seed(1)
+    teacher = ChordCRNN(60, bidirectional=False)
+    songs = tiny_songs(1, rng)
+    model, history = train_v11.train_pool(pool, {"a": songs}, {"train": T}, 60, [teacher], 4)
+    assert len(history) == 1 and history[0]["train_kl"] > 0
+    init = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+    start, _, _ = train_v11._start(T, 60, None, init)
+    assert all(torch.equal(v, start.state_dict()[k].cpu()) for k, v in init.items())

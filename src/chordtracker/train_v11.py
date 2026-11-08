@@ -4,7 +4,9 @@
     distill_loss(student_logits, teacher_logp, mask)   mean KL(teacher || student) over the masked frames
     inside_song(songs, starts, length)           (B, L) True where an excerpt frame lies inside its song
     run_epoch(model, opt, songs, rng, t, teachers)
-    train(train_songs, val_sets, cfg, n_classes, teachers)
+    train(train_songs, val_sets, cfg, n_classes, teachers, init=None)
+    pool_starts(songs, length, rng, n)            (n, 2) random excerpts of unlabelled songs
+    train_pool(pool, val_sets, cfg, n_classes, teachers, n_excerpts)   pre-training on the pool, KL only
 
 Loss = chord CE on the real labels (frames with a target, as V8) + kl_weight * KL(teacher || student)
 on every frame inside the song, labelled or not (cfg["train"]["kl_weight"], 0 = V8's loss).
@@ -14,6 +16,10 @@ log-sum-exp over the classes (as run_v10's step 1 ensemble), at temperature 1. I
 in eval mode, on the same pitch-shifted excerpt the student sees, so the soft targets are exactly the
 ensemble's output for that input. The teachers' forward passes draw no random numbers, so the excerpts,
 their order, the shifts and the student's dropout are V8's for the same seed.
+
+Pool (stage A of the plan). Unlabelled recordings as Songs whose targets are all -1. Each epoch draws
+n_excerpts excerpts at random from every recording tiled from a random offset, pitch-shifted as V8, and
+the loss is the KL term alone. Stage B is train() started from stage A's best model (init).
 """
 import copy
 import time
@@ -79,28 +85,50 @@ def run_epoch(model: nn.Module, opt: torch.optim.Optimizer, songs: list[Song], r
     return float(np.mean(ces)), float(np.mean(kls)) if kls else 0.0
 
 
-def train(train_songs: list[Song], val_sets: dict[str, list[Song]], cfg: dict, n_classes: int,
-          teachers: list[nn.Module] | None = None) -> tuple[nn.Module, list[dict]]:
-    """train_v8.train (no class weights) with the distillation term; teachers are frozen, in eval mode."""
-    t = cfg["train"]
-    if t.get("kl_weight", 0) and not teachers:
-        raise ValueError("kl_weight > 0 needs teacher models")
-    for m in teachers or []:
-        m.to(device()).eval().requires_grad_(False)
-    torch.manual_seed(t["seed"])
-    rng = np.random.default_rng(t["seed"])
-    model = ChordCRNN(n_classes, bidirectional=False, dropout=t["dropout"]).to(device())
-    opt = torch.optim.Adam(model.parameters(), lr=t["lr"])
+def pool_starts(songs: list[Song], length: int, rng: np.random.Generator, n: int) -> np.ndarray:
+    """(n, 2) (song index, start frame): every pool song tiled from a random offset, then n tiles at random.
 
+    Unlike data_v6.excerpt_starts no tile is dropped for lack of targets (pool songs have none). If the
+    tiles are fewer than n, all of them are returned in a random order.
+    """
+    rows = [(i, start) for i, song in enumerate(songs)
+            for start in range(-int(rng.integers(0, length)), song.cqt.shape[1], length)]
+    pick = rng.permutation(len(rows))[:n]
+    return np.array(rows, dtype=int).reshape(-1, 2)[pick]
+
+
+def run_pool_epoch(model: nn.Module, opt: torch.optim.Optimizer, pool: list[Song], rng: np.random.Generator,
+                   t: dict, teachers: list[nn.Module], n_excerpts: int) -> float:
+    """One pass over n_excerpts random pool excerpts, one random shift each, loss = KL only; the mean KL."""
+    model.train()
+    dev = next(model.parameters()).device
+    length = t["excerpt_frames"]
+    starts = pool_starts(pool, length, rng, n_excerpts)
+    shifts = rng.choice(list(data_v5.SHIFTS), size=len(starts))
+    kls = []
+    for first in range(0, len(starts), t["batch_excerpts"]):
+        pick = np.arange(first, min(first + t["batch_excerpts"], len(starts)))
+        x, _ = data_v7_2.make_batch(pool, starts[pick], shifts[pick], length, t["input_lookahead"])
+        x = x.to(dev)
+        opt.zero_grad()
+        kl = distill_loss(model(x), teacher_log_posteriors(teachers, x), inside_song(pool, starts[pick], length).to(dev))
+        kl.backward()
+        opt.step()
+        kls.append(kl.item())
+    return float(np.mean(kls))
+
+
+def fit(model: nn.Module, epoch, val_sets: dict[str, list[Song]], t: dict) -> tuple[nn.Module, list[dict]]:
+    """V8's loop: epoch() -> (ce, kl) each epoch, val frame accuracy, early stopping; the best epoch's model."""
     history, scores, best = [], [], None
-    for epoch in range(1, t["max_epochs"] + 1):
+    for number in range(1, t["max_epochs"] + 1):
         began = time.time()
-        ce, kl = run_epoch(model, opt, train_songs, rng, t, teachers)
+        ce, kl = epoch()
         accuracy = {name: frame_accuracy(model, songs, t["input_lookahead"]) for name, songs in val_sets.items()}
         scores.append(float(np.mean(list(accuracy.values()))))
-        history.append({"epoch": epoch, "train_loss": ce, "train_kl": kl, **{f"val_{n}": a for n, a in accuracy.items()},
+        history.append({"epoch": number, "train_loss": ce, "train_kl": kl, **{f"val_{n}": a for n, a in accuracy.items()},
                         "val_mean": scores[-1], "seconds": time.time() - began})
-        print(f"epoch {epoch:3d}  ce {ce:.3f}  kl {kl:.3f}  "
+        print(f"epoch {number:3d}  ce {ce:.3f}  kl {kl:.3f}  "
               + "  ".join(f"{n} {100 * a:.2f}%" for n, a in accuracy.items())
               + f"  {history[-1]['seconds']:.0f} s", flush=True)
         if epochs_since_best(scores) == 0:
@@ -109,3 +137,36 @@ def train(train_songs: list[Song], val_sets: dict[str, list[Song]], cfg: dict, n
             break
     model.load_state_dict(best)
     return model, history
+
+
+def _start(t: dict, n_classes: int, teachers: list[nn.Module] | None, init: dict | None):
+    for m in teachers or []:
+        m.to(device()).eval().requires_grad_(False)
+    torch.manual_seed(t["seed"])
+    rng = np.random.default_rng(t["seed"])
+    model = ChordCRNN(n_classes, bidirectional=False, dropout=t["dropout"]).to(device())
+    if init is not None:
+        model.load_state_dict(init)
+    return model, torch.optim.Adam(model.parameters(), lr=t["lr"]), rng
+
+
+def train(train_songs: list[Song], val_sets: dict[str, list[Song]], cfg: dict, n_classes: int,
+          teachers: list[nn.Module] | None = None, init: dict | None = None) -> tuple[nn.Module, list[dict]]:
+    """train_v8.train (no class weights) with the distillation term; teachers are frozen, in eval mode.
+
+    init: a state dict to start from (the pool pre-training), else V8's random initialisation.
+    """
+    t = cfg["train"]
+    if t.get("kl_weight", 0) and not teachers:
+        raise ValueError("kl_weight > 0 needs teacher models")
+    model, opt, rng = _start(t, n_classes, teachers, init)
+    return fit(model, lambda: run_epoch(model, opt, train_songs, rng, t, teachers), val_sets, t)
+
+
+def train_pool(pool: list[Song], val_sets: dict[str, list[Song]], cfg: dict, n_classes: int,
+               teachers: list[nn.Module], n_excerpts: int) -> tuple[nn.Module, list[dict]]:
+    """Pre-train a student on the unlabelled pool with the KL term alone, n_excerpts random excerpts an
+    epoch, early stopping on the val sets' frame accuracy as V8."""
+    t = cfg["train"]
+    model, opt, rng = _start(t, n_classes, teachers, None)
+    return fit(model, lambda: (0.0, run_pool_epoch(model, opt, pool, rng, t, teachers, n_excerpts)), val_sets, t)

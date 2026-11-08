@@ -31,6 +31,7 @@ train:
   input_lookahead: 2
   kl_weight: 1.0              # loss = CE(labels) + kl_weight * KL(teacher || student) on every frame in the song
   teachers: [results/v8/A_seed0, results/v8/A_seed1]
+  pool_ratio: 2               # --pool: pool excerpts an epoch of stage A, as a multiple of the labelled excerpts
 
 transitions:
   source: billboard
