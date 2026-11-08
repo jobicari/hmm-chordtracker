@@ -23,7 +23,8 @@ uses the exact kernels (sparsity 0), whose reach is at most half their length, s
 
 Tuning: V5 estimates it on the whole file. scripts/v7_1_tuning.py found 23 % of the training songs more
 than 10 cents from A440 (GuitarSet up to 25 cents), so V7.1 estimates it on the first
-cfg["cqt"]["tuning_seconds"] (10 s) and uses A440 until that estimate exists (start_tuning).
+cfg["cqt"]["tuning_seconds"] (10 s) and uses A440 until that estimate exists (start_tuning). Since V10
+the estimate reads +/-50 cents (tuning_in_bins) instead of wrapping at +/-25.
 """
 from pathlib import Path
 
@@ -100,16 +101,28 @@ def start_tuning(y: np.ndarray, cfg: dict) -> tuple[float, int] | None:
     """(tuning, first frame it applies to), estimated on the first tuning_seconds of audio only; None if shorter.
 
     The estimate reads y[:n] (n = tuning_seconds of samples), as V5's estimate_tuning reads the whole
-    file. A column t is known once the audio up to frame t + 1 has arrived, so the estimate can be used
-    from the first column whose frame t + 1 starts at or after sample n.
+    file, at 12 bins per octave (tuning_in_bins; V10, before it 24 bins, which wrap at +/-25 cents). A
+    column t is known once the audio up to frame t + 1 has arrived, so the estimate can be used from the
+    first column whose frame t + 1 starts at or after sample n.
     """
     sr, q = cfg["audio"]["sr"], cfg["cqt"]
     n = int(q["tuning_seconds"] * sr)
     if len(y) <= n:
         return None
-    tuning = float(librosa.estimate_tuning(y=causal_harmonic(y[:n], sr, cfg), sr=sr,
-                                           bins_per_octave=q["bins_per_octave"]))
+    tuning = tuning_in_bins(causal_harmonic(y[:n], sr, cfg), sr, q["bins_per_octave"])
     return tuning, int(np.ceil(n / q["hop_length"])) - 1
+
+
+def tuning_in_bins(y: np.ndarray, sr: int, bins_per_octave: int) -> float:
+    """The tuning of y in fractions of a CQT bin at bins_per_octave, as librosa.cqt's `tuning` takes it.
+
+    Estimated at 12 bins per octave, which reads -50 .. +50 cents, then converted (x bins_per_octave / 12).
+    librosa.estimate_tuning at 24 bins reads only -25 .. +25 cents and wraps: a recording 35 cents flat
+    came out as 15 cents sharp, its CQT a quarter tone off the semitone grid (issue #11).
+    Example: 35 cents flat -> -0.35 at 12 bins -> -0.70 at 24 bins (50 cents a bin).
+    """
+    semitones = float(librosa.estimate_tuning(y=y, sr=sr, bins_per_octave=12))
+    return semitones * bins_per_octave / 12
 
 
 def causal_log_cqt_of_audio(y: np.ndarray, cfg: dict) -> np.ndarray:

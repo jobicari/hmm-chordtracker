@@ -1,0 +1,50 @@
+# V10: V8 (vocabulary A, seed 1, prior power 0.25, Billboard transitions) with decoder-side changes and
+# three training options, all judged on validation only (reports/v10.md). With the train
+# options at their defaults this is configs/v8.yaml's training.
+version: v10
+base_config: v2.yaml          # compression (99th pct, gamma 10)
+
+data:
+  choco_export: ~/github/choco_corpus_prep/export
+
+audio:
+  sr: 22050
+  mono: true
+  harmonic_margin: 4.0
+  harmonic_median_frames: 9
+
+cqt:
+  hop_length: 2048
+  fmin: F#1
+  bins_per_octave: 24
+  n_bins: 168
+  tuning_seconds: 10.0
+
+train:
+  seed: 0
+  lr: 0.001
+  max_epochs: 50
+  patience: 5
+  dropout: 0.5
+  excerpt_frames: 128
+  batch_excerpts: 8
+  input_lookahead: 2
+  early_stop: frame_accuracy  # or sevenths: mean val sevenths WCSR of the network alone (train_v10)
+  aux_weight: 0               # > 0: root, quality and bass heads, loss = chord CE + w * (root + quality + bass CE)
+  augment:                    # extra input augmentation on the log-CQT excerpts; all 0 = off
+    gain_db: 0
+    tilt_db: 0
+    noise: 0
+
+transitions:
+  source: billboard
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+
+decoder:
+  p_self_grid: [0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.98]
+  lags: [0, 1, 2, 4, 8, 16, 32]
+  prior_power: 0.25
+
+harmonic_lookahead_frames: 1
