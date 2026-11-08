@@ -4,7 +4,7 @@ import pytest
 
 from chordtracker import demo
 from chordtracker.data.data import ChordAnnotation
-from chordtracker.play_along import OPERATING_POINTS
+from chordtracker.play_along import V7_2_POINTS as OPERATING_POINTS
 
 LABELS = ["C:maj", "G:maj", "A:min"]
 HOP, SR = 2048, 22050

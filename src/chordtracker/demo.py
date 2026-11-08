@@ -4,7 +4,7 @@ scripts/demo_export.py runs the listening prototype's chain on a validation take
 module builds, one JSON file per sample (the spec's TrackerResult):
 
     duration        seconds of audio
-    points          the prototype's three operating points (play_along.OPERATING_POINTS): the network
+    points          the prototype's three operating points (play_along.V7_2_POINTS): the network
                     alone (0.28 s), fixed-lag Viterbi lag 2 (0.46 s) and lag 4 (0.65 s); each with its
                     segments and the delay after which a frame's label is known
     framewise       the network alone: argmax of every frame, runs merged, nothing smoothed
@@ -24,7 +24,7 @@ import numpy as np
 
 from chordtracker import evaluate
 from chordtracker.data.data import ChordAnnotation
-from chordtracker.play_along import OPERATING_POINTS, chord_name, required_delay, total_lookahead
+from chordtracker.play_along import V7_2_POINTS as OPERATING_POINTS, chord_name, required_delay, total_lookahead
 
 DEFAULT_POINT = "0.65 s"        # fixed-lag Viterbi, lag 4: the steadiest point by ear (reports/play_along.md)
 FRAMEWISE_POINT = "0.28 s"      # the network alone

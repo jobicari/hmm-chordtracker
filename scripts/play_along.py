@@ -3,16 +3,24 @@
     python scripts/play_along.py --list-devices
     python scripts/play_along.py --input-device "VB-Cable A"        # e.g. Spotify's output set to VB-Cable A
     python scripts/play_along.py --file song.wav                     # a file, read at real-time pace
+    python scripts/play_along.py --file song.wav --dry-run 30        # no window, no sound: timing only
 
-The recording is analysed block by block with V7.3's live chain (C2 grid, input look-ahead 2, results/v7_2/
-c2_la2_seed0) and played back on the output device `delay` seconds late, so every chord is ready when its
-moment is heard. The window shows the system's chord now and next, and the Isophonics annotation of the song
-picked in the drop-down (now and next). Pick the song first, then start it in Spotify: the annotation's
-clock starts when the input rises out of silence.
+The recording is analysed block by block with the live chain and the frozen V11 student (results/v11/
+pool_kd1_seed1, configs/v11.yaml: vocabulary A, 60 classes, prior power 0.25, Billboard change matrix)
+and played back on the output device `delay` seconds late, so every chord is ready when its moment is
+heard. The window shows the system's chord now and next (sevenths included: G7, Cmaj7, Am7), and the
+Isophonics annotation of the song picked in the drop-down, reduced to the same vocabulary (now and next;
+a chord outside it, such as a dim, in parentheses). Pick the song first, then start it in Spotify: the
+annotation's clock starts when the input rises out of silence.
 
-Keys: 1 / 2 / 3 operating point (0.28 / 0.46 / 0.65 s of total look-ahead); Up / Down extra delay
-+-50 ms; Right / Left lead +-50 ms (chords shown earlier); ] / [ nudge the annotation +-50 ms; space
-reset for the next song ([ shows the annotation earlier, ] later). Every change is logged to data/play_along/<start time>.json.
+Keys: 1 / 2 / 3 / 4 operating point (0.28 s network alone, 0.46 / 0.65 / 1.02 s fixed-lag Viterbi at lag
+2 / 4 / 8); Up / Down extra delay +-50 ms; Right / Left lead +-50 ms (chords shown earlier); ] / [ nudge
+the annotation +-50 ms ([ shows the annotation earlier, ] later); space reset for the next song. Every
+change is logged to data/play_along/<start time>.json.
+
+--dry-run SECONDS feeds the file at real-time pace through the same analysis process for that long and
+prints the analysis time per input block and, per point at its own required delay, how many window
+updates found their frame not yet labelled (late).
 """
 import argparse
 import json
@@ -33,9 +41,11 @@ from chordtracker import paths, play_along as pa
 
 sys.path.insert(0, str(Path(__file__).parent))
 import run_v5  # noqa: E402
-import run_v7_2  # noqa: E402
+import run_v8  # noqa: E402
 
-RUN = run_v7_2.run_dir("C2", pa.INPUT_LOOKAHEAD, 0)
+RUN = paths.REPO_ROOT / "results" / "v11" / "pool_kd1_seed1"
+CONFIG = paths.REPO_ROOT / "configs" / "v11.yaml"
+BLOCK = 1024                                    # input samples per callback (feed_file and the device)
 BEATLES = paths.DATA_DIR / "beatles" / "chordlab"
 LOG_DIR = paths.DATA_DIR / "play_along"
 STEP = 0.05
@@ -49,7 +59,7 @@ class Engine:
     analysis (and Python's interpreter lock) can never make the playback stutter.
     """
 
-    def __init__(self, rate: int, cfg: dict, Q):
+    def __init__(self, rate: int, cfg: dict, Q, timing: bool = False):
         self.rate, self.cfg = rate, cfg
         self.sr, self.hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
         self.ring = np.zeros((rate * 30, 2), dtype=np.float32)       # the last 30 s of input
@@ -61,8 +71,9 @@ class Engine:
         self.jumps = 0                                               # playback repositions after drift
         ctx = mp.get_context("spawn")
         self.blocks, self.results = ctx.Queue(), ctx.Queue()
+        self.timing = ctx.Queue() if timing else None
         self.worker = ctx.Process(target=pa.analysis_worker, daemon=True,
-                                  args=(self.blocks, self.results, cfg, str(RUN), Q, rate))
+                                  args=(self.blocks, self.results, cfg, str(RUN), Q, rate, self.timing))
         self.worker.start()
         self.generation = 0
         self.reset()
@@ -82,7 +93,7 @@ class Engine:
         if self.worker.is_alive():
             self.worker.terminate()
             self.worker.join()
-        for q in (self.blocks, self.results):
+        for q in (self.blocks, self.results) + ((self.timing,) if self.timing else ()):
             q.cancel_join_thread()
             q.close()
 
@@ -174,7 +185,7 @@ class Window:
         panel = tk.Frame(self.root, bg=BG)
         panel.pack(padx=20, pady=(0, 16))
         self.fields = {}
-        rows = [("Look-ahead", "1 / 2 / 3"), ("Playback delay", "up / down: extra"), ("Lead", "left / right"),
+        rows = [("Look-ahead", "1 / 2 / 3 / 4"), ("Playback delay", "up / down: extra"), ("Lead", "left / right"),
                 ("Annotation nudge", "[ earlier / ] later"), ("Input", "space: reset"), ("Analysis", "")]
         for r, (name, keys_hint) in enumerate(rows):
             tk.Label(panel, text=name, font=("Helvetica", 17), fg=MUTED, bg=BG, anchor="e").grid(
@@ -183,11 +194,11 @@ class Window:
             self.fields[name].grid(row=r, column=1, sticky="w")
             tk.Label(panel, text=keys_hint, font=("Helvetica", 15), fg=MUTED, bg=BG, anchor="w").grid(
                 row=r, column=2, sticky="w", padx=(18, 0))
-        keys = {"1": lambda: self.set_point("0.28 s"), "2": lambda: self.set_point("0.46 s"),
-                "3": lambda: self.set_point("0.65 s"), "<Up>": lambda: self.change("extra", STEP),
-                "<Down>": lambda: self.change("extra", -STEP), "<Right>": lambda: self.change("lead", STEP),
-                "<Left>": lambda: self.change("lead", -STEP), "]": lambda: self.change("nudge", STEP),
-                "[": lambda: self.change("nudge", -STEP), "<space>": self.reset}
+        keys = {str(i + 1): (lambda p=p: self.set_point(p)) for i, p in enumerate(pa.OPERATING_POINTS)}
+        keys.update({"<Up>": lambda: self.change("extra", STEP), "<Down>": lambda: self.change("extra", -STEP),
+                     "<Right>": lambda: self.change("lead", STEP), "<Left>": lambda: self.change("lead", -STEP),
+                     "]": lambda: self.change("nudge", STEP), "[": lambda: self.change("nudge", -STEP),
+                     "<space>": self.reset})
         for key, action in keys.items():
             self.root.bind(key, lambda _e, a=action: a())
         self.root.protocol("WM_DELETE_WINDOW", self.close)
@@ -260,15 +271,61 @@ class Window:
         self.engine.close()
 
 
-def feed_file(path: Path, engine: Engine) -> None:
-    """Read a file at real-time pace into the engine, as an input device would."""
-    y, _ = librosa.load(str(path), sr=engine.rate, mono=False)
+def feed_file(path: Path, engine: Engine, seconds: float | None = None) -> None:
+    """Read a file (or its first `seconds`) at real-time pace into the engine, as an input device would."""
+    y, _ = librosa.load(str(path), sr=engine.rate, mono=False, duration=seconds)
     y = np.atleast_2d(y).T
-    block, start = 1024, time.perf_counter()
-    for i in range(0, len(y), block):
+    start = time.perf_counter()
+    for i in range(0, len(y), BLOCK):
         while time.perf_counter() - start < i / engine.rate:
             time.sleep(0.002)
-        engine.push(y[i:i + block])
+        engine.push(y[i:i + BLOCK])
+
+
+def dry_run(path: Path, engine: Engine, seconds: float) -> None:
+    """The file's first `seconds` through the analysis process at real-time pace, no window and no sound.
+
+    Every 30 ms, as the window's timer would, each point's labels are checked at that point's required
+    delay: an update whose frame has started but is not labelled yet is late. Then the analysis time per
+    input block against the block's real-time length.
+    """
+    feeder = threading.Thread(target=feed_file, args=(path, engine, seconds), daemon=True)
+    started = time.perf_counter()
+    feeder.start()
+    late, updates = {p: 0 for p in pa.OPERATING_POINTS}, 0
+    while feeder.is_alive() or time.perf_counter() - started < seconds + 1:
+        time.sleep(0.03)
+        engine.collect()
+        heard = (engine.written - engine.base) / engine.rate
+        if engine.onset_time is None:
+            continue
+        updates += 1
+        for p in pa.OPERATING_POINTS:
+            delay = pa.required_delay(p, 0.0, engine.sr, engine.hop)
+            s = pa.shown(engine.labels[p], None, engine.onset_time, heard - delay, 0.0, 0.0, engine.sr, engine.hop)
+            late[p] += s["frame"] >= 0 and not s["ready"]
+    times = []
+    while True:
+        try:
+            times.append(engine.timing.get_nowait())
+        except queue.Empty:
+            break
+    block_s = np.array([n / engine.rate for n, _ in times])
+    took = np.array([t for _, t in times])
+    print(f"{path.name}: {seconds:g} s at {engine.rate} Hz, {len(times)} blocks of {BLOCK} samples "
+          f"({1000 * BLOCK / engine.rate:.1f} ms) analysed, onset {engine.onset_time}")
+    print(f"analysis per block: mean {1000 * took.mean():.2f} ms, median {1000 * np.median(took):.2f}, "
+          f"95th pct {1000 * np.percentile(took, 95):.2f}, max {1000 * took.max():.2f}; "
+          f"real-time factor {took.sum() / block_s.sum():.3f}; blocks slower than real time "
+          f"{int((took > block_s).sum())}")
+    for p in pa.OPERATING_POINTS:
+        print(f"point {p}: {len(engine.labels[p])} frames labelled, late updates {late[p]} of {updates}")
+    print(f"input overflows / output underflows {engine.xruns}")
+
+
+def training_prior(run: Path) -> np.ndarray:
+    """The training prior of a run (prior.json), as Q's change counts are weighted by it (run_v8.decoder_parts)."""
+    return np.array(json.loads((run / "prior.json").read_text()))
 
 
 def main(argv=None) -> None:
@@ -277,6 +334,7 @@ def main(argv=None) -> None:
     parser.add_argument("--input-device", help="name (or part of it) of the input, e.g. 'VB-Cable A'")
     parser.add_argument("--file", type=Path, help="play a file instead of an input device")
     parser.add_argument("--output-device", help="name (or part of it) of the output; default: the system's")
+    parser.add_argument("--dry-run", type=float, metavar="SECONDS", help="with --file: timing only, no window or sound")
     args = parser.parse_args(argv)
     if args.list_devices:
         print(sd.query_devices())
@@ -284,10 +342,19 @@ def main(argv=None) -> None:
     if (args.input_device is None) == (args.file is None):
         parser.error("give exactly one of --input-device and --file")
 
-    base = run_v5.load_config(paths.REPO_ROOT / "configs" / "v7_2.yaml")
-    cfg = run_v7_2.cell_config(base, "C2", pa.INPUT_LOOKAHEAD, 0)
+    if args.dry_run and not args.file:
+        parser.error("--dry-run needs --file")
+
+    cfg = run_v5.load_config(CONFIG)
+    Q = run_v8.decoder_parts(cfg, pa.VOCAB, training_prior(RUN))
     rate = int(sd.query_devices(args.output_device, "output")["default_samplerate"])
-    engine = Engine(rate, cfg, run_v5.change_prior(cfg))
+    engine = Engine(rate, cfg, Q, timing=bool(args.dry_run))
+    if args.dry_run:
+        try:
+            dry_run(args.file, engine, args.dry_run)
+        finally:
+            engine.close()
+        return
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     window = Window(engine, LOG_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json")
 
