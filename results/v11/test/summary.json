@@ -1,0 +1,155 @@
+{
+  "version": "v11",
+  "split": "test",
+  "prior_power": 0.25,
+  "points": [
+    {
+      "name": "network alone (0.28 s)",
+      "vocab": "A",
+      "seed": 1,
+      "run": "results/v11/pool_kd1_seed1",
+      "system": "frame-argmax",
+      "p_self": null,
+      "lag": 0,
+      "test": {
+        "rwc": {
+          "majmin": 0.811910912959144,
+          "sevenths": 0.6710540808268336
+        },
+        "guitarset": {
+          "majmin": 0.749855212635881,
+          "sevenths": 0.600951033231319
+        },
+        "choco": {
+          "majmin": 0.8430010636438959,
+          "sevenths": 0.7552988549523125
+        },
+        "mean": {
+          "majmin": 0.8015890630796404,
+          "sevenths": 0.6757679896701552
+        }
+      },
+      "test_changes_per_min": {
+        "rwc": 71.85533185348275,
+        "guitarset": 67.58024506358137,
+        "choco": 54.173620157507415
+      },
+      "n_takes": {
+        "rwc": 20,
+        "guitarset": 60,
+        "choco": 60
+      }
+    },
+    {
+      "name": "fixed-lag Viterbi (0.46 s)",
+      "vocab": "A",
+      "seed": 1,
+      "run": "results/v11/pool_kd1_seed1",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.3,
+      "lag": 2,
+      "test": {
+        "rwc": {
+          "majmin": 0.8151485771396685,
+          "sevenths": 0.672561103680215
+        },
+        "guitarset": {
+          "majmin": 0.7555698901668828,
+          "sevenths": 0.6127443476367732
+        },
+        "choco": {
+          "majmin": 0.8487727792701554,
+          "sevenths": 0.7625958794154137
+        },
+        "mean": {
+          "majmin": 0.8064970821922355,
+          "sevenths": 0.6826337769108006
+        }
+      },
+      "test_changes_per_min": {
+        "rwc": 45.51307063328083,
+        "guitarset": 41.96585896354989,
+        "choco": 37.41100555613607
+      },
+      "n_takes": {
+        "rwc": 20,
+        "guitarset": 60,
+        "choco": 60
+      }
+    },
+    {
+      "name": "fixed-lag Viterbi (0.65 s)",
+      "vocab": "A",
+      "seed": 1,
+      "run": "results/v11/pool_kd1_seed1",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.7,
+      "lag": 4,
+      "test": {
+        "rwc": {
+          "majmin": 0.8202802350435696,
+          "sevenths": 0.6780624526148141
+        },
+        "guitarset": {
+          "majmin": 0.7620735121856893,
+          "sevenths": 0.6185468989609799
+        },
+        "choco": {
+          "majmin": 0.8534536375650499,
+          "sevenths": 0.7662287479936077
+        },
+        "mean": {
+          "majmin": 0.8119357949314363,
+          "sevenths": 0.6876126998564672
+        }
+      },
+      "test_changes_per_min": {
+        "rwc": 40.14080426239237,
+        "guitarset": 36.95593255626698,
+        "choco": 33.64460199134694
+      },
+      "n_takes": {
+        "rwc": 20,
+        "guitarset": 60,
+        "choco": 60
+      }
+    },
+    {
+      "name": "fixed-lag Viterbi (1.02 s)",
+      "vocab": "A",
+      "seed": 1,
+      "run": "results/v11/pool_kd1_seed1",
+      "system": "fixed-lag-viterbi",
+      "p_self": 0.98,
+      "lag": 8,
+      "test": {
+        "rwc": {
+          "majmin": 0.8249078299297016,
+          "sevenths": 0.6849823727816311
+        },
+        "guitarset": {
+          "majmin": 0.7672968078789679,
+          "sevenths": 0.6221532094910979
+        },
+        "choco": {
+          "majmin": 0.8575643999220136,
+          "sevenths": 0.7705567123626085
+        },
+        "mean": {
+          "majmin": 0.8165896792435611,
+          "sevenths": 0.6925640982117791
+        }
+      },
+      "test_changes_per_min": {
+        "rwc": 34.88862334024462,
+        "guitarset": 32.371338207369476,
+        "choco": 30.026626284160773
+      },
+      "n_takes": {
+        "rwc": 20,
+        "guitarset": 60,
+        "choco": 60
+      }
+    }
+  ]
+}

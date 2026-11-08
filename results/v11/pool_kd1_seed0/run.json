@@ -1,0 +1,19 @@
+{
+  "train": {
+    "seed": 0,
+    "lr": 0.001,
+    "max_epochs": 50,
+    "patience": 5,
+    "dropout": 0.5,
+    "excerpt_frames": 128,
+    "batch_excerpts": 8,
+    "input_lookahead": 2,
+    "kl_weight": 1.0,
+    "teachers": [
+      "results/v8/A_seed0",
+      "results/v8/A_seed1"
+    ],
+    "pool_ratio": 2
+  },
+  "pool": true
+}
