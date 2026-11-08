@@ -82,12 +82,15 @@ def write_table(rows: list[dict]) -> None:
     lines = [f"{len(rows)} songs (RWC-P and GuitarSet, train + val). Cache matches: "
              + ", ".join(f"{k} {v}" for k, v in counts.items()) + ".",
              f"{len(moved)} songs whose 12-bin and 24-bin estimates differ by more than {THRESHOLD_CENTS:g} cents:", "",
-             "| song | split | 24 bins | 12 bins | change | cache vs 24-bin features | cache vs 12-bin features | cache built with |",
+             "| song | split | 24 bins | 12 bins | change | cache vs 24-bin features | cache vs 12-bin features "
+             "| cache built with |",
              "|---|---|---:|---:|---:|---:|---:|---|"]
     for r in moved:
         lines.append(f"| {r['key']} | {r['split']} | {r['old_cents']:+.1f} | {r['new_cents']:+.1f} | "
-                     f"{r['new_cents'] - r['old_cents']:+.1f} | {r['diff_old']:.4f} | {r['diff_new']:.4f} | {r['cache']} |")
-    lines += ["", f"Largest difference between the cache and its 24-bin features: {max(r['diff_old'] for r in rows):.5f}."]
+                     f"{r['new_cents'] - r['old_cents']:+.1f} | {r['diff_old']:.4f} | {r['diff_new']:.4f} | "
+                     f"{r['cache']} |")
+    largest = max(r["diff_old"] for r in rows)
+    lines += ["", f"Largest difference between the cache and its 24-bin features: {largest:.5f}."]
     (OUT / "table.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
