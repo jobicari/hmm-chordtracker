@@ -1,9 +1,10 @@
 """Score V8's frozen points on test, once: RWC-P, GuitarSet and the ChoCo export's test split.
 
     python scripts/v8_test.py --freeze      # -> results/v8/test/summary.json
+    python scripts/v8_test.py --freeze --config configs/v11.yaml --out results/v11/test   # V11's frozen points
 
 configs/v8.yaml `frozen.points` holds the choices made on validation (vocabulary, seed, decoder,
-p_self, lag). Each point is decoded with the config's prior power and transition matrix, scored with
+p_self, lag, and optionally run: the saved run's folder, else results/v8/<vocab>_seed<seed>). Each point is decoded with the config's prior power and transition matrix, scored with
 mir_eval majmin and sevenths pooled per set, and only the summary is written: no per-song rows and no
 confusion matrix, so test is evaluated, never inspected. The script refuses to run a second time.
 """
@@ -37,7 +38,7 @@ def test_takes(cfg: dict) -> dict[str, list]:
 
 def point_rows(point: dict, cfg: dict, takes: dict[str, list]) -> list[dict]:
     """Pooled rows (per set and mean) of one frozen point on the given takes."""
-    run = paths.REPO_ROOT / "results" / "v8" / f"{point['vocab']}_seed{point['seed']}"
+    run = paths.REPO_ROOT / point.get("run", f"results/v8/{point['vocab']}_seed{point['seed']}")
     model = run_v8.model_for(run, run_v8.n_classes(point["vocab"]), cfg)
     prior = np.array(json.loads((run / "prior.json").read_text()))
     Q = run_v8.decoder_parts(cfg, point["vocab"], prior)
@@ -73,7 +74,7 @@ def main(argv=None) -> None:
         print(json.dumps({k: result[k] for k in ("name", "test")}), flush=True)
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "summary.json").write_text(json.dumps(
-        {"version": "v8", "split": "test", "prior_power": cfg["decoder"].get("prior_power", 1.0),
+        {"version": cfg.get("version", "v8"), "split": "test", "prior_power": cfg["decoder"].get("prior_power", 1.0),
          "points": points}, indent=2))
 
 

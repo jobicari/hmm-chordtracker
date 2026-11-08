@@ -45,3 +45,14 @@ decoder:
   prior_power: 0.25
 
 harmonic_lookahead_frames: 1
+
+# Chosen on validation (results/v11/points_pool_kd1_seed1): the pool student, seed 1 (stage A on the
+# unlabelled pool, then stage B on the labelled data), prior power 0.25, Billboard transition matrix;
+# per point the p_self with the best mean sevenths of the three val sets. Total look-ahead as V8. Scored
+# once on test by scripts/v8_test.py --freeze --config configs/v11.yaml --out results/v11/test.
+frozen:
+  points:
+    - {name: network alone (0.28 s), vocab: A, seed: 1, run: results/v11/pool_kd1_seed1, system: frame-argmax, p_self: null, lag: 0}
+    - {name: fixed-lag Viterbi (0.46 s), vocab: A, seed: 1, run: results/v11/pool_kd1_seed1, system: fixed-lag-viterbi, p_self: 0.3, lag: 2}
+    - {name: fixed-lag Viterbi (0.65 s), vocab: A, seed: 1, run: results/v11/pool_kd1_seed1, system: fixed-lag-viterbi, p_self: 0.7, lag: 4}
+    - {name: fixed-lag Viterbi (1.02 s), vocab: A, seed: 1, run: results/v11/pool_kd1_seed1, system: fixed-lag-viterbi, p_self: 0.98, lag: 8}
