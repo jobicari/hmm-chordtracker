@@ -50,20 +50,44 @@ docker buildx build --platform linux/amd64 -t chord-tracker-demo:amd64 .
 ```
 
 The server runs as a non-root user and listens on 0.0.0.0 in the container; `GET /healthz` is its health
-check. Settings (environment variables, or the same flags of `scripts/demo_server.py`):
+check (503 while no decoding worker is up). The server process only serves the page and moves bytes; the
+decoding runs in worker processes, each loading the model once, and each live session stays on one
+worker. A worker decodes one block at a time, so one worker per CPU uses the machine. A worker that
+stops is restarted, and its listeners get an error and can start again.
+
+Settings are environment variables (or the same flags of `scripts/demo_server.py`), read when the server
+starts: change them with `docker run -e ...` and restart the container, no rebuild needed. The server
+logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`).
 
 | Variable | Default | |
 |---|---|---|
 | `CHORD_DEMO_HOST` | `127.0.0.1` (`0.0.0.0` in the image) | address to listen on (`--host`) |
 | `CHORD_DEMO_PORT`, else `PORT` | `8000` | port (`--port`) |
 | `CHORD_DEMO_ALLOWED_ORIGINS` | none | comma-separated origins, besides the server's own, whose pages may open the live route (`--allowed-origins`) |
-| `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once |
+| `CHORD_DEMO_WORKERS` | the CPUs available, at most 8 | decoding worker processes (`--workers`); any value set is used as given |
+| `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once, over all workers |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
 
+```bash
+docker run --rm -p 8000:8000 -e CHORD_DEMO_WORKERS=2 -e CHORD_DEMO_MAX_SESSIONS=4 chord-tracker-demo
+```
+
+**Sizing.** Each listener costs about 6 ms of CPU per frame of 93 ms of audio on an Apple silicon Mac
+(natively and in the image alike: the image keeps OpenMP and OpenBLAS to one thread; at their defaults
+they ran about 6 times slower in Docker Desktop's VM). The block at 10 s into a session, where the
+tuning is estimated, takes about 0.1 s (mostly building the tuned CQT kernels). Memory: about 50 MB
+for the server process and about 370 MB per worker (8 workers: 3 GB; 2 workers: 0.7 GB). So a host
+needs one CPU and about 0.4 GB per worker; with 8 workers on that Mac, 8 listeners at once had a worst
+lag under 0.1 s.
+
+**If the server is overloaded** (chords late, `scripts/demo_bench.py` exits 1, or memory runs out):
+lower `CHORD_DEMO_MAX_SESSIONS` or `CHORD_DEMO_WORKERS`, or raise `CHORD_DEMO_LIVE_MARGIN`, then restart
+the container.
+
 **Benchmark a host.** `scripts/demo_bench.py` times the live chain on the prepared samples, one frame at
-a time, and with `--sessions N` runs N listeners at once at playback speed, as the server does. It
-prints the worst lag (how long after a frame's audio its chords are out), suggests
+a time, and with `--sessions N` runs N listeners at once at playback speed through the server's worker
+processes. It prints the worst lag (how long after a frame's audio its chords are out), suggests
 `CHORD_DEMO_MAX_SESSIONS` and `CHORD_DEMO_LIVE_MARGIN`, and exits 1 if the worst lag is beyond the
 server's margin:
 
@@ -71,13 +95,5 @@ server's margin:
 docker run --rm chord-tracker-demo python scripts/demo_bench.py --sessions 8
 ```
 
-The server is one Python process and much of a step holds Python's interpreter lock, so its sessions
-share about one CPU however many the host has: for more listeners, run more containers rather than a
-bigger one.
-
-Each listener costs a fraction of one core: per frame of 93 ms of audio, about 6 ms on an Apple
-silicon Mac, natively and in the image alike (the image keeps OpenMP and OpenBLAS to one thread; at their defaults
-they ran about 6 times slower in Docker Desktop's VM). The block at 10 s into a session, where the tuning
-is estimated, takes about 0.1 s (mostly building the tuned CQT kernels). Behind
-an HTTPS proxy the page opens the live route as `wss://`; the proxy must pass WebSocket upgrades and
-keep the request's `Host`, which the origin check compares with the page's origin.
+Behind an HTTPS proxy the page opens the live route as `wss://`; the proxy must pass WebSocket upgrades
+and keep the request's `Host`, which the origin check compares with the page's origin.

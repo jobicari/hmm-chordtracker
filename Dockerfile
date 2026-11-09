@@ -32,10 +32,9 @@ ENV PYTHONPATH=/app/src \
     OMP_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 \
     CHORD_DEMO_HOST=0.0.0.0
-# Compile librosa's numba functions once, at build time (a session on 3 s of silence), so the server
-# starts and answers quickly.
-RUN python -c "import sys; sys.path.insert(0, 'scripts'); import numpy, demo_server; \
-s = demo_server.Chain().new_session(); s.step(numpy.zeros(3 * 22050, numpy.float32)); s.finish()"
+# Compile librosa's numba functions once, at build time (Chain warms itself up), so that every decoding
+# worker finds them in the cache and starts quickly.
+RUN python -c "import sys; sys.path.insert(0, 'scripts'); import demo_server; demo_server.Chain()"
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

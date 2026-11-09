@@ -25,6 +25,7 @@ def test_a_slow_step_delays_the_frames_behind_it_until_the_queue_drains(bench):
 
 
 def test_suggestions_follow_from_the_cpu_per_listener_and_the_worst_lag(bench):
-    assert bench.suggestions(0.07, 0.08, 0.15) == (7, 0.2)
-    assert bench.suggestions(0.07, 0.01, 0.15) == (7, 0.15)                   # never below the default margin
-    assert bench.suggestions(0.9, 0.5, 0.15) == (1, 0.6)                      # at least one session
+    assert bench.suggestions(0.07, 0.08, 2, 0.15) == (14, 0.2)
+    assert bench.suggestions(0.07, 0.08, 1, 0.15) == (7, 0.2)                 # half of each worker
+    assert bench.suggestions(0.07, 0.01, 2, 0.15) == (14, 0.15)               # never below the default margin
+    assert bench.suggestions(0.9, 0.5, 1, 0.15) == (1, 0.6)                   # at least one session
