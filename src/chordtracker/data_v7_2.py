@@ -7,7 +7,7 @@ still arrives with its frame. The CRNN (model_v6) is unchanged; only the strip i
 
     load(take, cfg)                                -> Song on the causal log-CQT of cfg["cqt"]["fmin"]
     excerpt(song, start, k, length, lookahead)     (144, length + 14): columns start - 14 + a .. start + length - 1 + a
-    make_batch(songs, starts, shifts, length, lookahead)
+    make_batch(songs, starts, shifts, length, lookahead, n_chords=None)
 
 The CQT grid: from F#0 (V7.1's cache, reused) or from F#1, so that the network sees C2 to B7
 (cache data/processed/v7_2_logcqt_<fmin>/). Targets, tiling and shifts are V6's.
@@ -59,8 +59,11 @@ def excerpt(song: Song, start: int, k: int, length: int = data_v6.EXCERPT_FRAMES
 
 
 def make_batch(songs: list[Song], starts: np.ndarray, shifts: np.ndarray, length: int = data_v6.EXCERPT_FRAMES,
-               lookahead: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
-    """Inputs (B, 1, 144, length + 14) and targets (B, length), each excerpt shifted by its k."""
+               lookahead: int = 0, n_chords: int | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    """Inputs (B, 1, 144, length + 14) and targets (B, length), each excerpt shifted by its k.
+
+    n_chords: classes from n_chords on (N) keep their index under the shift (data_v5.shift_targets).
+    """
     x = np.stack([excerpt(songs[i], s, k, length, lookahead) for (i, s), k in zip(starts, shifts)])[:, None]
-    y = np.stack([data_v6.excerpt_targets(songs[i], s, k, length) for (i, s), k in zip(starts, shifts)])
+    y = np.stack([data_v6.excerpt_targets(songs[i], s, k, length, n_chords) for (i, s), k in zip(starts, shifts)])
     return torch.from_numpy(x), torch.from_numpy(y).long()

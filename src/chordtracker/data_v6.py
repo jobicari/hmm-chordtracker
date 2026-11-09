@@ -49,13 +49,17 @@ def excerpt(song: Song, start: int, k: int, length: int = EXCERPT_FRAMES) -> np.
     return out
 
 
-def excerpt_targets(song: Song, start: int, k: int, length: int = EXCERPT_FRAMES) -> np.ndarray:
-    """(length,) targets of frames start .. start + length - 1, shifted by k; -1 outside the song."""
+def excerpt_targets(song: Song, start: int, k: int, length: int = EXCERPT_FRAMES,
+                    n_chords: int | None = None) -> np.ndarray:
+    """(length,) targets of frames start .. start + length - 1, shifted by k; -1 outside the song.
+
+    n_chords: classes from n_chords on (N) are not shifted (data_v5.shift_targets).
+    """
     y = np.full(length, -1, dtype=int)
     lo, hi = max(start, 0), min(start + length, len(song.targets))
     if lo < hi:
         y[lo - start:hi - start] = song.targets[lo:hi]
-    return shift_targets(y, k)
+    return shift_targets(y, k, n_chords)
 
 
 def excerpt_starts(songs: list[Song], length: int, rng: np.random.Generator) -> np.ndarray:
