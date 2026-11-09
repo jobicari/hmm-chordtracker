@@ -47,3 +47,61 @@ def test_tuning_match_names_the_estimate_the_cache_agrees_with():
     assert v12_tuning.matched(0.05, 5e-5) == "12 bins"
     assert v12_tuning.matched(5e-5, 6e-5) == "both"
     assert v12_tuning.matched(0.05, 0.06) == "neither"
+
+
+def test_the_beat_decoder_is_fixed_lag_viterbi_when_beats_change_nothing():
+    import v12_beats
+    from chordtracker import online_hmm, transitions
+    rng = np.random.default_rng(0)
+    post = rng.dirichlet(np.ones(6), size=40).T
+    Q = rng.random((6, 6))
+    np.fill_diagonal(Q, 0)
+    Q /= Q.sum(axis=1, keepdims=True)
+    A, prior = transitions.transition(Q, 0.9), np.full(6, 1 / 6)
+    on = rng.random(40) < 0.3
+    for lag in (0, 3, 8):
+        expected = online_hmm.fixed_lag_viterbi(post, A, prior, [lag])[lag]
+        np.testing.assert_array_equal(v12_beats.beat_fixed_lag_viterbi(post, A, A, prior, on, lag), expected)
+
+
+def test_a_cheap_change_on_beats_moves_the_change_onto_the_beat():
+    """Evidence that turns from chord 0 to chord 1 halfway between two beats: with changes cheap only on
+    beats and dear elsewhere, the decoded change lands on a beat frame."""
+    import v12_beats
+    from chordtracker import transitions
+    T = 20
+    post = np.full((2, T), 0.5)
+    post[0, :9], post[1, :9] = 0.6, 0.4
+    post[0, 9:], post[1, 9:] = 0.4, 0.6
+    Q = np.array([[0.0, 1.0], [1.0, 0.0]])
+    on = np.zeros(T, dtype=bool)
+    on[[4, 12]] = True
+    path = v12_beats.beat_fixed_lag_viterbi(post, transitions.transition(Q, 0.5), transitions.transition(Q, 0.999),
+                                            np.full(2, 0.5), on, 8)
+    change = int(np.nonzero(np.diff(path))[0][0]) + 1
+    assert on[change]
+
+
+def test_beat_frames_are_marked_within_the_width():
+    import v12_beats
+    on = v12_beats.near(np.array([0.0, 1.0]), 20, 1, 22050, 2048)     # 1.0 s is frame 10.77 -> 11
+    assert np.nonzero(on)[0].tolist() == [0, 1, 10, 11, 12]
+
+
+def test_madmom_files_give_beats_and_downbeats(tmp_path, monkeypatch):
+    import v12_beats
+    monkeypatch.setattr(v12_beats, "EST", tmp_path)
+    (tmp_path / "rwc__RWC_P003.txt").write_text("0.500\t1\n1.000\t2\n1.500\t3\n2.000\t4\n2.500\t1\n")
+    beats, downbeats = v12_beats.madmom_beats("rwc/RWC_P003")
+    assert beats.tolist() == [0.5, 1.0, 1.5, 2.0, 2.5] and downbeats.tolist() == [0.5, 2.5]
+
+
+def test_f_measures_compare_downbeats_with_downbeats():
+    import v12_beats
+    ref = np.arange(6.0, 30.0, 0.5)
+    k = "rwc/x"
+    beats = {"annotated": {k: ref}, "downbeats": {k: ref[::4]},
+             "madmom": {k: ref + 0.01}, "madmom downbeats": {k: ref[2::4]}}
+    fm = v12_beats.f_measures(beats)
+    assert fm["madmom"] == {"rwc": 1.0, "mean": 1.0}                    # right beats
+    assert fm["madmom downbeats"]["rwc"] == 0.0                        # downbeats off by half a bar

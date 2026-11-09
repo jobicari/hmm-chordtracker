@@ -27,3 +27,15 @@ def test_majmin_still_reads_the_triad():
 def test_chords_outside_sevenths_are_excluded(ref):
     s = evaluate.score(ann(ref), ann("C:maj"), "sevenths")
     assert s.scored_s == 0 and s.excluded_s == 2
+
+
+def test_the_inversion_metrics_need_the_bass():
+    import numpy as np
+    from chordtracker import evaluate
+    from chordtracker.data.data import ChordAnnotation
+    ref = ChordAnnotation(np.array([[0.0, 2.0], [2.0, 4.0]]), ["C:maj/3", "G:7"])
+    root_position = ChordAnnotation(np.array([[0.0, 2.0], [2.0, 4.0]]), ["C:maj", "G:7"])
+    inverted = ChordAnnotation(np.array([[0.0, 2.0], [2.0, 4.0]]), ["C:maj/3", "G:7"])
+    assert evaluate.score(ref, root_position, "sevenths").wcsr == 1.0
+    assert evaluate.score(ref, root_position, "sevenths_inv").wcsr == 0.5
+    assert evaluate.score(ref, inverted, "majmin_inv").wcsr == 1.0
