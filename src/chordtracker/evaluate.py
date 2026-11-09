@@ -30,6 +30,8 @@ Every SongScore keeps both effects visible instead of dropping them silently:
 Sevenths (V8): METRICS also holds mir_eval.chord.sevenths (maj, min, 7, maj7, min7; extensions folded,
 the bass ignored, anything else excluded). reduced_s keeps the V0 meaning (outside maj/min), so under
 sevenths it counts the 7ths too; report WCSR together with excluded_s.
+Inversions (V13): majmin_inv and sevenths_inv also need the bass to match (C:maj/3 is not C:maj); a
+reference whose bass is not a chord tone is excluded.
 """
 from dataclasses import dataclass
 
@@ -38,7 +40,8 @@ import numpy as np
 
 from chordtracker.data.data import ChordAnnotation
 
-METRICS = {"majmin": mir_eval.chord.majmin, "sevenths": mir_eval.chord.sevenths, "root": mir_eval.chord.root}
+METRICS = {"majmin": mir_eval.chord.majmin, "sevenths": mir_eval.chord.sevenths, "root": mir_eval.chord.root,
+           "majmin_inv": mir_eval.chord.majmin_inv, "sevenths_inv": mir_eval.chord.sevenths_inv}
 V0_QUALITIES = {"maj", "min"}
 
 

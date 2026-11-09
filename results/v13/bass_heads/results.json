@@ -1,0 +1,302 @@
+[
+ {
+  "system": "network alone",
+  "p_self": null,
+  "rwc": {
+   "majmin": 80.06756887465856,
+   "sevenths": 70.0723199775151,
+   "changes_per_min": 73.94885835807702
+  },
+  "guitarset": {
+   "majmin": 75.65732800571585,
+   "sevenths": 67.97740793085326,
+   "changes_per_min": 60.66635331472162
+  },
+  "choco": {
+   "majmin": 85.11036062235102,
+   "sevenths": 75.08809759350595,
+   "changes_per_min": 59.04823869808874
+  },
+  "mean": {
+   "majmin": 80.27841916757515,
+   "sevenths": 71.0459418339581,
+   "changes_per_min": 62.15925657366149
+  },
+  "root position": {
+   "rwc": {
+    "majmin_inv": 74.84957722488612,
+    "sevenths_inv": 65.55977980540636,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 75.65733047296364,
+    "sevenths_inv": 67.9774107704073,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 78.5092909936393,
+    "sevenths_inv": 70.20145147316363,
+    "songs": 22
+   }
+  },
+  "slash": {
+   "rwc": {
+    "majmin_inv": 75.21322377733105,
+    "sevenths_inv": 65.96457798301948,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 74.50639578510365,
+    "sevenths_inv": 67.26372151390973,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 78.84983377024155,
+    "sevenths_inv": 70.57530780156685,
+    "songs": 22
+   }
+  },
+  "rwc_inside_per_min": 27.458792530414897,
+  "rwc_inside_with_bass_per_min": 14.6755853186465
+ },
+ {
+  "system": "lag 8, gamma 0",
+  "p_self": 0.98,
+  "rwc": {
+   "majmin": 82.02874395249106,
+   "sevenths": 72.07327536456471,
+   "changes_per_min": 34.66958666905502
+  },
+  "guitarset": {
+   "majmin": 77.23753096914164,
+   "sevenths": 69.68630932670705,
+   "changes_per_min": 32.76810963468357
+  },
+  "choco": {
+   "majmin": 86.55609933846306,
+   "sevenths": 75.61267834386541,
+   "changes_per_min": 29.17681014197714
+  },
+  "mean": {
+   "majmin": 81.94079142003191,
+   "sevenths": 72.45742101171238,
+   "changes_per_min": 31.738491245157796
+  },
+  "root position": {
+   "rwc": {
+    "majmin_inv": 76.76055572504737,
+    "sevenths_inv": 67.54984419815398,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 77.23753395875765,
+    "sevenths_inv": 69.68631228478941,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 79.85819818928103,
+    "sevenths_inv": 71.15872067073312,
+    "songs": 22
+   }
+  },
+  "slash": {
+   "rwc": {
+    "majmin_inv": 77.00829254229092,
+    "sevenths_inv": 67.83452599058751,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 76.21942287986055,
+    "sevenths_inv": 69.1445844255015,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 80.08039537361627,
+    "sevenths_inv": 71.41638722852551,
+    "songs": 22
+   }
+  },
+  "rwc_inside_per_min": 6.243560420652239,
+  "rwc_inside_with_bass_per_min": 3.166836831918455
+ },
+ {
+  "system": "lag 8, gamma 0.5",
+  "p_self": 0.98,
+  "rwc": {
+   "majmin": 81.99247140808306,
+   "sevenths": 72.06431734019803,
+   "changes_per_min": 34.397667359839716
+  },
+  "guitarset": {
+   "majmin": 77.23568969835762,
+   "sevenths": 69.66942260073617,
+   "changes_per_min": 32.49796485429838
+  },
+  "choco": {
+   "majmin": 86.52714035081975,
+   "sevenths": 75.56194806990139,
+   "changes_per_min": 29.08913840683321
+  },
+  "mean": {
+   "majmin": 81.91843381908681,
+   "sevenths": 72.43189600361185,
+   "changes_per_min": 31.535596406109114
+  },
+  "root position": {
+   "rwc": {
+    "majmin_inv": 76.7390852235732,
+    "sevenths_inv": 67.54441322846813,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 77.23569197983488,
+    "sevenths_inv": 69.66942548561154,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 79.82797347029457,
+    "sevenths_inv": 71.1323267536411,
+    "songs": 22
+   }
+  },
+  "slash": {
+   "rwc": {
+    "majmin_inv": 76.95557190844097,
+    "sevenths_inv": 67.80907792676022,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 76.2122420025796,
+    "sevenths_inv": 69.12235872796549,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 80.01988746148123,
+    "sevenths_inv": 71.3668090449545,
+    "songs": 22
+   }
+  },
+  "rwc_inside_per_min": 6.153447177467567,
+  "rwc_inside_with_bass_per_min": 3.0381036273689244
+ },
+ {
+  "system": "lag 8, gamma 0.9",
+  "p_self": 0.98,
+  "rwc": {
+   "majmin": 81.89764186327986,
+   "sevenths": 72.01383741028332,
+   "changes_per_min": 34.23182318933689
+  },
+  "guitarset": {
+   "majmin": 77.1939951981627,
+   "sevenths": 69.59860487688172,
+   "changes_per_min": 32.60613973286755
+  },
+  "choco": {
+   "majmin": 86.39723136021954,
+   "sevenths": 75.44312599419638,
+   "changes_per_min": 28.76317528463287
+  },
+  "mean": {
+   "majmin": 81.8296228072207,
+   "sevenths": 72.35185609378712,
+   "changes_per_min": 31.43995343414595
+  },
+  "root position": {
+   "rwc": {
+    "majmin_inv": 76.63296766481538,
+    "sevenths_inv": 67.48235699962439,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 77.19399805728197,
+    "sevenths_inv": 69.5986078899986,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 79.76159093678889,
+    "sevenths_inv": 71.07835618870381,
+    "songs": 22
+   }
+  },
+  "slash": {
+   "rwc": {
+    "majmin_inv": 76.81479655351716,
+    "sevenths_inv": 67.70866912336662,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 76.16592888568636,
+    "sevenths_inv": 69.04754873193936,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 79.8922767931232,
+    "sevenths_inv": 71.25519088011588,
+    "songs": 22
+   }
+  },
+  "rwc_inside_per_min": 6.204940459287379,
+  "rwc_inside_with_bass_per_min": 2.960863704639206
+ },
+ {
+  "system": "lag 8, gamma 0.99",
+  "p_self": 0.98,
+  "rwc": {
+   "majmin": 81.83821006798122,
+   "sevenths": 71.96295286511464,
+   "changes_per_min": 34.147480970347786
+  },
+  "guitarset": {
+   "majmin": 77.1584897941313,
+   "sevenths": 69.57195338597731,
+   "changes_per_min": 32.15653643840796
+  },
+  "choco": {
+   "majmin": 86.25064068393536,
+   "sevenths": 75.31907103102483,
+   "changes_per_min": 28.676619862471917
+  },
+  "mean": {
+   "majmin": 81.7491135153493,
+   "sevenths": 72.28465909403893,
+   "changes_per_min": 31.182227868091445
+  },
+  "root position": {
+   "rwc": {
+    "majmin_inv": 76.58471603744779,
+    "sevenths_inv": 67.44438456299969,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 77.15849299184818,
+    "sevenths_inv": 69.57195646988265,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 79.63740834409461,
+    "sevenths_inv": 70.99425543538078,
+    "songs": 22
+   }
+  },
+  "slash": {
+   "rwc": {
+    "majmin_inv": 76.75680953479068,
+    "sevenths_inv": 67.65497755788968,
+    "songs": 20
+   },
+   "guitarset": {
+    "majmin_inv": 76.09473159838119,
+    "sevenths_inv": 68.98520508995205,
+    "songs": 60
+   },
+   "choco": {
+    "majmin_inv": 79.73509130723222,
+    "sevenths_inv": 71.13635783899383,
+    "songs": 22
+   }
+  },
+  "rwc_inside_per_min": 6.153447177467567,
+  "rwc_inside_with_bass_per_min": 2.9479903841842527
+ }
+]

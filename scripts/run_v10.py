@@ -131,13 +131,21 @@ def transition_mats(cfg: dict, prior: np.ndarray, p_selfs: list[float]) -> dict[
 
 def decode_all(posts: dict[str, np.ndarray], cfg: dict, prior: np.ndarray, power: float,
                p_selfs: list[float] | None = None, lags: list[int] = LAGS) -> dict[str, dict]:
-    """{song: {(point, p_self): path}} for every song, in parallel. prior: the training prior (Q and division)."""
+    """{song: {(point, p_self): path}} for every song, in parallel. prior: the training prior (Q and division).
+
+    Where the system allows no process pool (no POSIX semaphores, e.g. a sandbox), the songs are decoded
+    one after another in this process, with the same results.
+    """
     p_selfs = cfg["decoder"]["p_self_grid"] if p_selfs is None else p_selfs
     A_of = transition_mats(cfg, prior, p_selfs)
     decode_prior = transitions_v8.tempered_prior(prior, power)
     keys = list(posts)
-    with ProcessPoolExecutor(8, initializer=_init, initargs=(A_of, decode_prior, lags)) as pool:
-        results = list(pool.map(_decode, [posts[k] for k in keys], chunksize=4))
+    try:
+        with ProcessPoolExecutor(8, initializer=_init, initargs=(A_of, decode_prior, lags)) as pool:
+            results = list(pool.map(_decode, [posts[k] for k in keys], chunksize=4))
+    except PermissionError:
+        _init(A_of, decode_prior, lags)
+        results = [_decode(posts[k]) for k in keys]
     return dict(zip(keys, results))
 
 
