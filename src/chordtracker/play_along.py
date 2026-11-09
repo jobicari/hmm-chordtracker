@@ -19,6 +19,8 @@ is heard. This module holds what does not depend on sound devices:
     chord_name(label)              "E:min7" -> "Em7", "G:7" -> "G7", "A" -> "A", "N" -> "N.C."
     shown(...)                     what the window shows at a playback time: system chord now and next,
                                    reference chord now and next
+    held(now, last)                the last labelled system chord, kept while the current frame is not
+                                   labelled yet (the tuning step at 10 s can hold the analysis ~0.4 s)
     Onset                          the time the input first rises out of silence (the annotation's zero)
 
 The decoders are V8's: fixed-lag Viterbi on log P(class | frame) - log(prior ** prior_power), with the
@@ -209,6 +211,14 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
         ref_now, ref_next = reference.at(t - onset - nudge_s)
     return {"system": system_now, "system_next": system_next, "reference": ref_now, "reference_next": ref_next,
             "frame": frame, "ready": frame < len(labels)}
+
+
+def held(now: dict, last: dict | None) -> dict:
+    """`now` (from shown), with the system chord of `last` (the last shown state whose frame was labelled)
+    while now's frame has started but is not labelled yet; before the first label there is nothing to keep."""
+    if now["ready"] or now["frame"] < 0 or last is None:
+        return now
+    return {**now, "system": last["system"], "system_next": last["system_next"]}
 
 
 def required_delay(point: str, lead_s: float, sr: int, hop: int, margin_frames: int = 1) -> float:

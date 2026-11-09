@@ -157,6 +157,7 @@ class Window:
         self.engine, self.log_file = engine, log_file
         self.point, self.extra, self.lead, self.nudge = "0.28 s", 0.0, 0.0, 0.0
         self.reference, self.song = None, None
+        self.last = None                                # the last shown state with a labelled frame (pa.held)
         self.log = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "events": []}
         self.root = tk.Tk()
         self.root.title("Chord tracker: play along")
@@ -237,6 +238,7 @@ class Window:
 
     def reset(self) -> None:
         self.engine.reset()
+        self.last = None
         self.record("reset")
 
     def tick(self) -> None:
@@ -244,7 +246,10 @@ class Window:
         e.collect()
         labels = e.labels[self.point]
         onset = e.onset_time
-        s = pa.shown(labels, self.reference, onset, e.playback_s(), self.lead, self.nudge, e.sr, e.hop)
+        s = pa.held(pa.shown(labels, self.reference, onset, e.playback_s(), self.lead, self.nudge, e.sr, e.hop),
+                    self.last)
+        if s["ready"]:
+            self.last = s
         self.system.config(text=s["system"] or "...")
         self.system_next.config(text=f"next: {s['system_next']}" if s["system_next"] else "")
         if self.reference is None:
@@ -286,13 +291,15 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
     """The file's first `seconds` through the analysis process at real-time pace, no window and no sound.
 
     Every 30 ms, as the window's timer would, each point's labels are checked at that point's required
-    delay: an update whose frame has started but is not labelled yet is late. Then the analysis time per
-    input block against the block's real-time length.
+    delay: an update whose frame has started but is not labelled yet is late; one that still shows no
+    chord after pa.held is blank, which happens only before the point's first label. Then the analysis
+    time per input block against the block's real-time length.
     """
     feeder = threading.Thread(target=feed_file, args=(path, engine, seconds), daemon=True)
     started = time.perf_counter()
     feeder.start()
-    late, updates = {p: 0 for p in pa.OPERATING_POINTS}, 0
+    late, blank, updates = {p: 0 for p in pa.OPERATING_POINTS}, {p: 0 for p in pa.OPERATING_POINTS}, 0
+    last = {p: None for p in pa.OPERATING_POINTS}
     while feeder.is_alive() or time.perf_counter() - started < seconds + 1:
         time.sleep(0.03)
         engine.collect()
@@ -304,6 +311,9 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
             delay = pa.required_delay(p, 0.0, engine.sr, engine.hop)
             s = pa.shown(engine.labels[p], None, engine.onset_time, heard - delay, 0.0, 0.0, engine.sr, engine.hop)
             late[p] += s["frame"] >= 0 and not s["ready"]
+            s = pa.held(s, last[p])
+            last[p] = s if s["ready"] else last[p]
+            blank[p] += s["frame"] >= 0 and not s["system"]
     times = []
     while True:
         try:
@@ -319,7 +329,8 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
           f"real-time factor {took.sum() / block_s.sum():.3f}; blocks slower than real time "
           f"{int((took > block_s).sum())}")
     for p in pa.OPERATING_POINTS:
-        print(f"point {p}: {len(engine.labels[p])} frames labelled, late updates {late[p]} of {updates}")
+        print(f"point {p}: {len(engine.labels[p])} frames labelled, late updates {late[p]} of {updates}, "
+              f"blank (before its first label) {blank[p]}")
     print(f"input overflows / output underflows {engine.xruns}")
 
 

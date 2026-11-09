@@ -181,3 +181,17 @@ def test_the_demo_keeps_v7_2s_three_points():
     np.fill_diagonal(Q, 0)
     a = pa.Analysis(cfg, model_v8.ChordCRNN(24, bidirectional=False), np.full(24, 1 / 24), Q, pa.V7_2_POINTS)
     assert list(a.labels) == list(pa.V7_2_POINTS) and set(a.decoders) == {"0.46 s", "0.65 s"}
+
+
+def test_a_late_frame_keeps_the_last_chord_on_screen():
+    """While the analysis is behind (the 10 s tuning step), the window keeps the last labelled chord."""
+    hop_s = HOP / SR
+    labels = [0] * 5 + [31] * 5                           # C, then G7; frame 10 on not labelled yet
+    at = lambda t: pa.shown(labels, None, None, t, 0.0, 0.0, SR, HOP)
+    last = at(9.5 * hop_s)
+    assert last["ready"] and last["system"] == "G7"
+    late = pa.held(at(11.5 * hop_s), last)
+    assert not late["ready"] and late["system"] == "G7" and late["frame"] == 11
+    assert pa.held(at(11.5 * hop_s), None)["system"] == ""            # nothing labelled yet: nothing to keep
+    assert pa.held(at(-1.0), last)["system"] == ""                    # before the song: nothing shown
+    assert pa.held(at(2.5 * hop_s), last)["system"] == "C"            # a labelled frame shows its own chord
