@@ -61,9 +61,9 @@ check. Settings (environment variables, or the same flags of `scripts/demo_serve
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
 
-Each listener costs a fraction of one core: per frame of 93 ms of audio, about 7 ms natively on an Apple
-silicon Mac and 30 to 45 ms in Docker Desktop's Linux VM on the same Mac (OpenBLAS instead of Accelerate).
-The block at 10 s into a session, where the tuning is estimated, takes about 0.1 s natively (mostly
-building the tuned CQT kernels). Behind
+Each listener costs a fraction of one core: per frame of 93 ms of audio, about 6 ms on an Apple silicon
+Mac, natively and in the image alike (the image keeps OpenMP and OpenBLAS to one thread; at their defaults
+they ran about 6 times slower in Docker Desktop's VM). The block at 10 s into a session, where the tuning
+is estimated, takes about 0.1 s (mostly building the tuned CQT kernels). Behind
 an HTTPS proxy the page opens the live route as `wss://`; the proxy must pass WebSocket upgrades and
 keep the request's `Host`, which the origin check compares with the page's origin.

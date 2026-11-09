@@ -24,8 +24,13 @@ RUN test -f demo/samples/index.json || { echo "demo/samples/index.json missing: 
  && chmod -R a+rX /app
 
 USER demo
+# One thread per library: the server runs one block at a time per session and sessions in parallel.
+# Left at their defaults, OpenMP and OpenBLAS start a thread per CPU for every small product and run
+# about 6 times slower in Docker Desktop's VM.
 ENV PYTHONPATH=/app/src \
     NUMBA_CACHE_DIR=/home/demo/.cache/numba \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
     CHORD_DEMO_HOST=0.0.0.0
 # Compile librosa's numba functions once, at build time (a session on 3 s of silence), so the server
 # starts and answers quickly.
