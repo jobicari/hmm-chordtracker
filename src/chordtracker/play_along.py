@@ -20,7 +20,7 @@ is heard. This module holds what does not depend on sound devices:
     shown(...)                     what the window shows at a playback time: system chord now and next,
                                    reference chord now and next
     held(now, last)                the last labelled system chord, kept while the current frame is not
-                                   labelled yet (the tuning step at 10 s can hold the analysis ~0.4 s)
+                                   labelled yet (the tuning step at 10 s can hold the analysis ~0.1 s)
     Onset                          the time the input first rises out of silence (the annotation's zero)
 
 The decoders are V8's: fixed-lag Viterbi on log P(class | frame) - log(prior ** prior_power), with the

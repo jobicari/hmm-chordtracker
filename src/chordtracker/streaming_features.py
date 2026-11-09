@@ -14,7 +14,9 @@ be computed, with only what the past requires:
                     octaves, so the two differ slightly there (reports/v7_3.md measures how much).
     level + log     the 99th percentile of every value so far (kept sorted), log(1 + 10 C / level)
     tuning          A440 until tuning_seconds of audio have arrived, then the estimate on them, from the
-                    same column as features_v7_1.start_tuning
+                    same column as features_v7_1.start_tuning; its harmonic medians are computed frame by
+                    frame while those seconds arrive (TuningMedians), so the block that completes them
+                    does not redo the whole separation
 
     step(block)     -> list of new (n_bins,) float32 columns, in frame order (usually one per block)
     flush()         -> the remaining columns at the end of the song (zeros after it, as librosa pads)
@@ -115,6 +117,56 @@ class Buffer:
         return self.n
 
 
+class TuningMedians:
+    """features_v7_1.harmonic_medians for start_tuning's STFT of raw[:n], computed as the audio arrives.
+
+    That STFT's frame j reads raw[j * 512 - 1,024 : j * 512 + 1,024] (zeros before 0 and after n). Every
+    frame complete in the audio so far is computed on arrival (update), with its frequency median (that
+    frame only) and its time median (the past frames). Medians only select values, so these are exactly
+    the medians of the whole call. Called by start_tuning with the whole call's magnitudes, it keeps the
+    columns whose magnitudes are bitwise the ones seen ahead and recomputes the others (the last frames,
+    which read zeros after n): the result is harmonic_medians(mag, cfg), with most of its work done
+    over the first tuning_seconds instead of on one block.
+    """
+
+    def __init__(self, cfg: dict, n: int):
+        self.n = n
+        self.width = cfg["audio"].get("harmonic_median_frames", MEDIAN_FRAMES)
+        empty = np.zeros((HALF + 1, 0), dtype=np.float32)
+        self.mag, self.H, self.P = empty, empty, empty
+
+    def update(self, raw: np.ndarray) -> None:
+        """The medians of every frame of raw[:n] whose samples have all arrived."""
+        m = min(len(raw), self.n)
+        j0, j1 = self.mag.shape[1], max(0, (m - HALF) // STFT_HOP + 1)  # frame j is complete if j * 512 + 1,024 <= m
+        if j1 <= j0:
+            return
+        lo, hi = j0 * STFT_HOP - HALF, (j1 - 1) * STFT_HOP + HALF
+        seg = raw[max(lo, 0):hi]
+        if lo < 0:
+            seg = np.concatenate([np.zeros(-lo, dtype=raw.dtype), seg])
+        self._extend(np.abs(librosa.stft(seg, n_fft=N_FFT, hop_length=STFT_HOP, center=False)))
+
+    def _extend(self, mag: np.ndarray) -> None:
+        """Append frames: their frequency medians, and their time medians over the frames before them."""
+        context = self.mag[:, max(0, self.mag.shape[1] - (self.width - 1)):]
+        both = np.concatenate([context, mag], axis=1)
+        H = median_filter(both, size=(1, self.width), origin=(0, self.width // 2), mode="constant", cval=0.0)
+        P = median_filter(mag, size=(MEDIAN_FRAMES, 1), mode="reflect")
+        self.mag = np.concatenate([self.mag, mag], axis=1)
+        self.H = np.concatenate([self.H, H[:, context.shape[1]:]], axis=1)
+        self.P = np.concatenate([self.P, P], axis=1)
+
+    def __call__(self, mag: np.ndarray, cfg: dict) -> tuple[np.ndarray, np.ndarray]:
+        """harmonic_medians(mag, cfg) for start_tuning's whole STFT: the frames seen ahead, the rest now."""
+        k = min(self.mag.shape[1], mag.shape[1])
+        same = (mag[:, :k] == self.mag[:, :k]).all(axis=0)
+        keep = k if same.all() else int(np.argmin(same))       # the first frame that differs, and all after it
+        self.mag, self.H, self.P = self.mag[:, :keep], self.H[:, :keep], self.P[:, :keep]
+        self._extend(mag[:, keep:])
+        return self.H, self.P
+
+
 class StreamingFeatures:
     """V7.1's causal log-CQT, block by block."""
 
@@ -135,6 +187,7 @@ class StreamingFeatures:
         self.kernels = Kernels(cfg, 0.0, self.d0)
         self.tuned = None
         self.n_tuning = int(q["tuning_seconds"] * self.sr)
+        self.tuning_medians = TuningMedians(cfg, self.n_tuning)
         self.columns = 0                                        # log-CQT columns emitted
         self.sorted = np.zeros(0)                               # every CQT value so far, sorted
         self.comp = cfg["compression"]
@@ -191,7 +244,7 @@ class StreamingFeatures:
     def _maybe_tune(self) -> None:
         """Once more than tuning_seconds of audio have arrived: the tuning estimated on them (start_tuning)."""
         if self.tuned is None and len(self.raw) > self.n_tuning:
-            tuning, _ = features_v7_1.start_tuning(self.raw.view, self.cfg)  # reads raw[:n_tuning] only
+            tuning, _ = features_v7_1.start_tuning(self.raw.view, self.cfg, self.tuning_medians)  # raw[:n_tuning]
             self.tuned = Kernels(self.cfg, tuning, np.maximum(self.d0, features_v7_1.bin_delays(self.cfg, tuning)))
 
     def _columns(self, n_total: int | None) -> list[np.ndarray]:
@@ -218,6 +271,8 @@ class StreamingFeatures:
         """Add the next block of samples; return every log-CQT column that has become computable."""
         self.raw.extend(np.asarray(block, dtype=np.float32))
         self._harmonic(None)
+        if self.tuned is None:
+            self.tuning_medians.update(self.raw.view)
         self._maybe_tune()
         return self._columns(None)
 

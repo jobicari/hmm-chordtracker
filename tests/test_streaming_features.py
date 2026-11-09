@@ -51,6 +51,39 @@ def test_the_harmonic_part_is_features_v7_1s():
     np.testing.assert_allclose(s.y_h.view, features_v7_1.causal_harmonic(y, SR, C2), atol=1e-5)
 
 
+@pytest.mark.parametrize("block", [HOP, 777, 2 * HOP])
+def test_the_tuning_medians_computed_ahead_are_exactly_start_tunings(block):
+    """Frame by frame while the first 10 s arrive: bitwise the medians of the whole call, and the same tuning."""
+    y = synthetic(seconds=12.0, cents=15.0).astype(np.float32)
+    n = int(C2["cqt"]["tuning_seconds"] * SR)
+    medians = sf.TuningMedians(C2, n)
+    for i in range(0, len(y), block):
+        medians.update(y[:i + block])
+    mag = np.abs(librosa.stft(y[:n], n_fft=features_v7_1.N_FFT, hop_length=features_v7_1.STFT_HOP))
+    ahead = medians.mag.shape[1]
+    assert mag.shape[1] - 3 <= ahead < mag.shape[1]          # all but the frames that read zeros after n
+    H, P = features_v7_1.harmonic_medians(mag, C2)
+    H_ahead, P_ahead = medians(mag, C2)
+    assert np.array_equal(H, H_ahead) and np.array_equal(P, P_ahead)
+    fresh = sf.TuningMedians(C2, n)
+    for i in range(0, len(y), block):
+        fresh.update(y[:i + block])
+    assert features_v7_1.start_tuning(y, C2, fresh) == features_v7_1.start_tuning(y, C2)
+
+
+def test_tuning_medians_recompute_frames_that_differ():
+    """A frame seen ahead that is not the whole call's (here: changed on purpose) is computed again."""
+    y = synthetic(seconds=11.0).astype(np.float32)
+    n = int(C2["cqt"]["tuning_seconds"] * SR)
+    medians = sf.TuningMedians(C2, n)
+    medians.update(y)
+    medians.mag[:, 200] += 1.0
+    mag = np.abs(librosa.stft(y[:n], n_fft=features_v7_1.N_FFT, hop_length=features_v7_1.STFT_HOP))
+    H, P = features_v7_1.harmonic_medians(mag, C2)
+    H_ahead, P_ahead = medians(mag, C2)
+    assert np.array_equal(H, H_ahead) and np.array_equal(P, P_ahead)
+
+
 def test_close_to_the_cached_librosa_features_away_from_the_edges():
     """librosa's CQT downsamples the low octaves; the direct CQT differs slightly there."""
     y = synthetic(seconds=14.0)

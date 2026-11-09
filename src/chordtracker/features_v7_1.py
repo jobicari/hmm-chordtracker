@@ -39,7 +39,16 @@ N_FFT, STFT_HOP, MEDIAN_FRAMES = 2048, 512, 31     # librosa.effects.harmonic's 
 LOOKAHEAD_FRAMES = 1
 
 
-def causal_harmonic(y: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
+def harmonic_medians(mag: np.ndarray, cfg: dict) -> tuple[np.ndarray, np.ndarray]:
+    """(H, P) of causal_harmonic for STFT magnitudes mag (bins, frames): the time median over the past
+    harmonic_median_frames frames (silence before the song), the frequency median of each frame."""
+    width = cfg["audio"].get("harmonic_median_frames", MEDIAN_FRAMES)
+    H = median_filter(mag, size=(1, width), origin=(0, width // 2), mode="constant", cval=0.0)
+    P = median_filter(mag, size=(MEDIAN_FRAMES, 1), mode="reflect")
+    return H, P
+
+
+def causal_harmonic(y: np.ndarray, sr: int, cfg: dict, medians=harmonic_medians) -> np.ndarray:
     """The harmonic part of y, as librosa.effects.harmonic but with the time median over past frames only.
 
     The time median covers cfg["audio"]["harmonic_median_frames"] past STFT frames (default 31, as V0-V7);
@@ -48,13 +57,13 @@ def causal_harmonic(y: np.ndarray, sr: int, cfg: dict) -> np.ndarray:
     Per STFT bin: H = median of the last 31 frames (frames before the song are silence), P = median
     over 31 neighbouring frequency bins of the same frame (no time involved, unchanged). The harmonic
     mask is softmask(H, margin * P), applied to the STFT, then inverted. Same length as y.
+
+    medians: harmonic_medians, or an object giving the same values computed ahead of time
+    (streaming_features.TuningMedians).
     """
     margin = cfg["audio"]["harmonic_margin"]
     S = librosa.stft(y, n_fft=N_FFT, hop_length=STFT_HOP)
-    mag = np.abs(S)
-    width = cfg["audio"].get("harmonic_median_frames", MEDIAN_FRAMES)
-    H = median_filter(mag, size=(1, width), origin=(0, width // 2), mode="constant", cval=0.0)
-    P = median_filter(mag, size=(MEDIAN_FRAMES, 1), mode="reflect")
+    H, P = medians(np.abs(S), cfg)
     mask = librosa.util.softmask(H, margin * P, power=2.0, split_zeros=False)
     return librosa.istft(S * mask, hop_length=STFT_HOP, n_fft=N_FFT, length=len(y))
 
@@ -97,19 +106,19 @@ def causal_log_cqt(path: Path | str, cfg: dict) -> np.ndarray:
     return causal_log_cqt_of_audio(y, cfg)
 
 
-def start_tuning(y: np.ndarray, cfg: dict) -> tuple[float, int] | None:
+def start_tuning(y: np.ndarray, cfg: dict, medians=harmonic_medians) -> tuple[float, int] | None:
     """(tuning, first frame it applies to), estimated on the first tuning_seconds of audio only; None if shorter.
 
     The estimate reads y[:n] (n = tuning_seconds of samples), as V5's estimate_tuning reads the whole
     file, at 12 bins per octave (tuning_in_bins; V10, before it 24 bins, which wrap at +/-25 cents). A
     column t is known once the audio up to frame t + 1 has arrived, so the estimate can be used from the
-    first column whose frame t + 1 starts at or after sample n.
+    first column whose frame t + 1 starts at or after sample n. medians: as causal_harmonic.
     """
     sr, q = cfg["audio"]["sr"], cfg["cqt"]
     n = int(q["tuning_seconds"] * sr)
     if len(y) <= n:
         return None
-    tuning = tuning_in_bins(causal_harmonic(y[:n], sr, cfg), sr, q["bins_per_octave"])
+    tuning = tuning_in_bins(causal_harmonic(y[:n], sr, cfg, medians), sr, q["bins_per_octave"])
     return tuning, int(np.ceil(n / q["hop_length"])) - 1
 
 
