@@ -52,5 +52,7 @@ decoder:
     - {name: lag 8 (1.02 s), lag: 8, p_self: 0.98}
   n_weight: [1, 2, 4]         # knob: N's decoding evidence times this (its tempered prior divided by it)
   n_rate_factor: [1, 0.5, 2]  # knob: the counted chord -> N rate times this
+  n_weight_low: [0.5, 0.25, 0.1]   # the N weight grid extended downwards (less N) ...
+  n_rate_factor_low: [1, 0.5]       # ... with the counted rate and half of it
 
 harmonic_lookahead_frames: 1

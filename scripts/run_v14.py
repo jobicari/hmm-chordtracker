@@ -16,7 +16,7 @@ Decoding: V8's frozen points (the network alone; fixed-lag Viterbi at lag 2 p_se
 lag 8 p_self 0.98), prior power 0.25, the Billboard matrix with an N row and column
 (transitions_v8.change_matrix with chord_to_n). Two decoder knobs for the N models: N's evidence times
 n_weight (1, 2, 4; its tempered prior divided by it) and the counted chord -> N rate times n_rate_factor
-(1, 0.5, 2). The network alone is the frame argmax, which no knob changes.
+(1, 0.5, 2), and the weight grid extended downwards (0.5, 0.25, 0.1, at the counted rate and half of it). The network alone is the frame argmax, which no knob changes.
 
 Baselines, on the same rebuilt val features: V8 A seed 0 and seed 1 (results/v8/A_seed<s>) and V11 seed 1
 (results/v11/pool_kd1_seed1, posteriors from V13), alone and with decode_v10.level_gate at 0.005 (N where
@@ -247,7 +247,9 @@ def score_all(_args) -> None:
         sp = specs(cfg, run_v10.prior_of(V11_RUN), points)
         meta[name] = {}
         jobs.update({(name, k): (p, sp) for k, p in v11.items()})
-    knobs = [(w, f) for w in cfg["decoder"]["n_weight"] for f in cfg["decoder"]["n_rate_factor"]]
+    d = cfg["decoder"]
+    knobs = ([(w, f) for w in d["n_weight"] for f in d["n_rate_factor"]]
+             + [(w, f) for w in d["n_weight_low"] for f in d["n_rate_factor_low"]])
     for name, run in N_RUNS.items():
         if not (run / POSTERIORS).exists():
             print(f"{name}: no {run / POSTERIORS}, skipped", flush=True)
@@ -341,8 +343,8 @@ def write(results: dict, cfg: dict, knobs: list) -> None:
     lines += ["", "## Go / no-go for phase 2 (lag 8)", "",
               "Checks: 3-set mean sevenths with N above V11 seed 1 + gate (the better of its two p_self sets); "
               "3-set mean N-excluded sevenths at most 0.3 below the matching V8 seed; GuitarSet false N under 5 s. "
-              "At the default knobs (N weight 1, counted rate), and at the knob setting with the best mean sevenths "
-              "with N (chosen on validation, so optimistic).", "",
+              "At the default knobs (N weight 1, counted rate), and at the knob setting with the best lag 8 mean "
+              "sevenths with N over all 15 settings (chosen on validation, so optimistic).", "",
               "| system | knobs | vs V11 + gate | N-excl. vs V8 | GuitarSet false N s | go |", "|---|---|---:|---:|---:|---|"]
     verdicts = {}
     for name in N_RUNS:
