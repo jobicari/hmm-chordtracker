@@ -4,6 +4,7 @@
 !requirements-demo.txt
 !src/chordtracker/
 !scripts/demo_server.py
+!scripts/demo_bench.py
 !scripts/demo_export.py
 !scripts/run_v5.py
 !scripts/run_v6.py

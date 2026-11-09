@@ -61,8 +61,22 @@ check. Settings (environment variables, or the same flags of `scripts/demo_serve
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
 
-Each listener costs a fraction of one core: per frame of 93 ms of audio, about 6 ms on an Apple silicon
-Mac, natively and in the image alike (the image keeps OpenMP and OpenBLAS to one thread; at their defaults
+**Benchmark a host.** `scripts/demo_bench.py` times the live chain on the prepared samples, one frame at
+a time, and with `--sessions N` runs N listeners at once at playback speed, as the server does. It
+prints the worst lag (how long after a frame's audio its chords are out), suggests
+`CHORD_DEMO_MAX_SESSIONS` and `CHORD_DEMO_LIVE_MARGIN`, and exits 1 if the worst lag is beyond the
+server's margin:
+
+```bash
+docker run --rm chord-tracker-demo python scripts/demo_bench.py --sessions 8
+```
+
+The server is one Python process and much of a step holds Python's interpreter lock, so its sessions
+share about one CPU however many the host has: for more listeners, run more containers rather than a
+bigger one.
+
+Each listener costs a fraction of one core: per frame of 93 ms of audio, about 6 ms on an Apple
+silicon Mac, natively and in the image alike (the image keeps OpenMP and OpenBLAS to one thread; at their defaults
 they ran about 6 times slower in Docker Desktop's VM). The block at 10 s into a session, where the tuning
 is estimated, takes about 0.1 s (mostly building the tuned CQT kernels). Behind
 an HTTPS proxy the page opens the live route as `wss://`; the proxy must pass WebSocket upgrades and
