@@ -27,7 +27,8 @@
 const PX_PER_SECOND = 40;           // minimum scale; the timeline scrolls when the recording is longer
 const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const EPS = 1e-4;
-const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only
+const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only,
+                                    // unless the server sets its own (liveMarginSeconds in api/health)
 const MAX_UPLOAD_BYTES = 100 * 2 ** 20;
 
 const $ = (id) => document.getElementById(id);
@@ -90,11 +91,15 @@ function segmentAt(segs, t) {
 // ---------------------------------------------------------------------------------------------------
 // Clocks
 
+function liveMargin() {
+  return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
+}
+
 function playbackDelay() {
   // With "Delay playback" on: the point's decision delay + half a frame, so that every label is
   // decided by the time its segment starts being heard (chordtracker.demo.playback_delay); else 0.
   if (!$("delay").checked || !view.point) return 0;
-  return view.point.playbackDelaySeconds + (view.mode === "live" ? LIVE_MARGIN : 0);
+  return view.point.playbackDelaySeconds + (view.mode === "live" ? liveMargin() : 0);
 }
 
 function heardTime(s, d) {
@@ -442,7 +447,7 @@ function updateDelayNote() {
     const items = [`network look-ahead ${ms(networkFrames)}`];
     if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
     items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
-    if (view.mode === "live") items.push(`network and server margin ${Math.round(LIVE_MARGIN * 1000)} ms`);
+    if (view.mode === "live") items.push(`network and server margin ${Math.round(liveMargin() * 1000)} ms`);
     parts.textContent = `${(playbackDelay()).toFixed(2)} s = ` + items.join(" + ");
     if (view.mode === "live") {
       title.textContent = `Applied delay: the audio is held back by ${playbackDelay().toFixed(2)} s.`;

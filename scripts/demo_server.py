@@ -9,8 +9,9 @@ model's rate and streams it at playback speed; this server runs the listening pr
 it (play_along.Analysis: block-by-block features, the causal CRNN, the three operating points' decoders)
 and sends every chord back as soon as it is decided. Routes:
 
-    GET  /api/health    {"live": true, "points": [...], "metadata": {...}, "maxSeconds": ...}: what a
-                        page needs to decode a file of its own (the same fields as a sample's JSON)
+    GET  /api/health    {"live": true, "points": [...], "metadata": {...}, "maxSeconds": ...,
+                        "liveMarginSeconds": ...}: what a page needs to decode a file of its own (the same
+                        fields as a sample's JSON), and the margin it adds to its playback delay
     GET  /healthz       the same, for a container's health check
     WS   /api/live      one session per connection:
                           client {"type": "start"}         -> {"type": "ready", "labels": [...], "sampleRate": ...}
@@ -28,7 +29,8 @@ Settings: --host (default 127.0.0.1, this machine only), --port (default 8000), 
 also from the environment: CHORD_DEMO_HOST, CHORD_DEMO_PORT (else PORT, as many hosts set it),
 CHORD_DEMO_ALLOWED_ORIGINS (comma-separated, e.g. "https://example.github.io"). The live route accepts a
 page from the server's own origin, and from these. CHORD_DEMO_MAX_SESSIONS and CHORD_DEMO_MAX_SECONDS
-override the limits.
+override the limits; CHORD_DEMO_LIVE_MARGIN (default 0.15 s) is the margin the page adds to its playback
+delay for the network and the server (more for a slow or distant host).
 """
 import argparse
 import asyncio
@@ -53,6 +55,7 @@ import demo_export  # noqa: E402
 
 MAX_SESSIONS = int(os.environ.get("CHORD_DEMO_MAX_SESSIONS", 8))
 MAX_SECONDS = float(os.environ.get("CHORD_DEMO_MAX_SECONDS", 600.0))
+LIVE_MARGIN = float(os.environ.get("CHORD_DEMO_LIVE_MARGIN", 0.15))   # s the page adds to its playback delay
 PAGE_FILES = r"/(|index\.html|style\.css|app\.js|live\.js|samples/[^/]+)"     # not README.md
 
 
@@ -81,7 +84,7 @@ class Chain:
     def health(self) -> dict:
         return {"live": True, "points": demo.point_info(self.sr, self.hop), "defaultPoint": demo.DEFAULT_POINT,
                 "framewiseDecisionDelaySeconds": demo.framewise_decision_delay(self.sr, self.hop),
-                "metadata": self.metadata, "maxSeconds": MAX_SECONDS}
+                "metadata": self.metadata, "maxSeconds": MAX_SECONDS, "liveMarginSeconds": LIVE_MARGIN}
 
 
 class HealthHandler(tornado.web.RequestHandler):

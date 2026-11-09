@@ -124,6 +124,13 @@ def test_the_live_route_accepts_its_own_page_and_allowed_origins_only(server_mod
     run(server_module, tmp_path, test, allowed_origins=["https://pages.example.org"])
 
 
+def test_health_tells_the_page_its_live_margin(server_module, monkeypatch):
+    monkeypatch.setattr(server_module, "LIVE_MARGIN", 0.4)
+    chain = type("C", (), {"sr": SR, "hop": HOP, "metadata": {}})()
+    health = server_module.Chain.health(chain)
+    assert health["liveMarginSeconds"] == 0.4 and health["maxSeconds"] == server_module.MAX_SECONDS
+
+
 def test_settings_come_from_flags_then_the_environment(server_module):
     parse = server_module.parse_args
     default = parse([], env={})
