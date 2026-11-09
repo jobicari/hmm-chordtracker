@@ -207,6 +207,18 @@ def head_posteriors(model, song: Song, lookahead: int) -> tuple[np.ndarray, np.n
     return chord, bass
 
 
+def head_posteriors_v13(model, song: Song, lookahead: int) -> tuple[np.ndarray, np.ndarray]:
+    """(60, T) chord and (13, T) played-bass posteriors of a whole song from a model_v13.ChordCRNNBass."""
+    strip = torch.from_numpy(data_v7_2.excerpt(song, 0, 0, song.cqt.shape[1], lookahead))[None, None]
+    with torch.no_grad():
+        w = model_v6.windows(strip)
+        e = torch.cat([model.frame_embeddings(w[i:i + 1024]) for i in range(0, len(w), 1024)])
+        h = model.classifier[0](model.gru(e[None])[0])
+        chord = torch.softmax(model.classifier[1](h), dim=2)[0].T.numpy()
+        bass = torch.softmax(model.bass(h), dim=2)[0].T.numpy()
+    return chord, bass
+
+
 def beatles_val_references(songs: dict) -> dict[str, ChordAnnotation]:
     """{ChoCo key: chordlab annotation} for the Beatles validation songs, matched on the cached targets
     (the share of frames where the chordlab's vocabulary-A target equals the cached one, at least 0.8)."""

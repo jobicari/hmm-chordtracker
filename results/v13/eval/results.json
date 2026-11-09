@@ -1,0 +1,828 @@
+{
+ "V11 seed 0": {
+  "points": {
+   "network": {
+    "p_self": null,
+    "rwc": {
+     "majmin": 80.88138797574018,
+     "sevenths": 70.02064794869295,
+     "changes_per_min": 67.05512830215854
+    },
+    "guitarset": {
+     "majmin": 75.61711453438973,
+     "sevenths": 68.29223096662614,
+     "changes_per_min": 51.95703169622114
+    },
+    "choco": {
+     "majmin": 85.78398562459734,
+     "sevenths": 76.34067142980412,
+     "changes_per_min": 50.58131955442824
+    },
+    "mean": {
+     "majmin": 80.76082937824242,
+     "sevenths": 71.5511834483744,
+     "changes_per_min": 53.82556288877612
+    }
+   },
+   "lag 2": {
+    "p_self": 0.3,
+    "rwc": {
+     "majmin": 81.43466089022452,
+     "sevenths": 70.67367902295705,
+     "changes_per_min": 43.793032797635746
+    },
+    "guitarset": {
+     "majmin": 76.25587221355428,
+     "sevenths": 69.55441899952194,
+     "changes_per_min": 37.9708321467419
+    },
+    "choco": {
+     "majmin": 86.2200393718096,
+     "sevenths": 76.21122309761549,
+     "changes_per_min": 35.41784257465266
+    },
+    "mean": {
+     "majmin": 81.30352415852946,
+     "sevenths": 72.14644037336483,
+     "changes_per_min": 37.94290697453469
+    }
+   },
+   "lag 4": {
+    "p_self": 0.8,
+    "rwc": {
+     "majmin": 81.97498772877562,
+     "sevenths": 71.17422875691504,
+     "changes_per_min": 38.29339583961173
+    },
+    "guitarset": {
+     "majmin": 76.7379668319934,
+     "sevenths": 70.02100601709249,
+     "changes_per_min": 34.53566205560887
+    },
+    "choco": {
+     "majmin": 86.64745866523415,
+     "sevenths": 76.5707765736412,
+     "changes_per_min": 31.09517546689431
+    },
+    "mean": {
+     "majmin": 81.78680440866772,
+     "sevenths": 72.58867044921624,
+     "changes_per_min": 33.85418021317164
+    }
+   },
+   "lag 8": {
+    "p_self": 0.98,
+    "rwc": {
+     "majmin": 82.28876857744636,
+     "sevenths": 71.68788326908093,
+     "changes_per_min": 34.3401151291821
+    },
+    "guitarset": {
+     "majmin": 77.24624721692265,
+     "sevenths": 70.42174898957549,
+     "changes_per_min": 31.758134645808152
+    },
+    "choco": {
+     "majmin": 86.96702364184314,
+     "sevenths": 76.99128700875012,
+     "changes_per_min": 28.330581914705977
+    },
+    "mean": {
+     "majmin": 82.16734647873739,
+     "sevenths": 73.03363975580218,
+     "changes_per_min": 30.89628134900246
+    }
+   }
+  },
+  "inv": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 77.01783081118671,
+    "sevenths_inv": 67.47770049396144
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 77.24625065446084,
+    "sevenths_inv": 70.42175212332589
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 80.35569748064614,
+    "sevenths_inv": 71.62052468051893
+   }
+  },
+  "bass_measure": {
+   "inside": 6.089080575192802,
+   "near_bass": 3.141090191008549,
+   "rerooted": 1.9696180296078196
+  }
+ },
+ "V11 seed 1": {
+  "points": {
+   "network": {
+    "p_self": null,
+    "rwc": {
+     "majmin": 80.46064341306986,
+     "sevenths": 70.16718903848496,
+     "changes_per_min": 67.74685906428175
+    },
+    "guitarset": {
+     "majmin": 76.30288512229912,
+     "sevenths": 69.33015194254253,
+     "changes_per_min": 53.71497247687664
+    },
+    "choco": {
+     "majmin": 85.65081648554181,
+     "sevenths": 76.05738931573273,
+     "changes_per_min": 53.456855185583805
+    },
+    "mean": {
+     "majmin": 80.80478167363692,
+     "sevenths": 71.85157676558674,
+     "changes_per_min": 55.829194674178524
+    }
+   },
+   "lag 2": {
+    "p_self": 0.3,
+    "rwc": {
+     "majmin": 81.129492900654,
+     "sevenths": 71.07458007328096,
+     "changes_per_min": 44.060128618155005
+    },
+    "guitarset": {
+     "majmin": 77.08039852803053,
+     "sevenths": 70.47886505945262,
+     "changes_per_min": 38.524527005837754
+    },
+    "choco": {
+     "majmin": 86.0586338784209,
+     "sevenths": 75.39837785185668,
+     "changes_per_min": 36.745915817120526
+    },
+    "mean": {
+     "majmin": 81.42284176903514,
+     "sevenths": 72.31727432819675,
+     "changes_per_min": 38.73804910329158
+    }
+   },
+   "lag 4": {
+    "p_self": 0.7,
+    "rwc": {
+     "majmin": 81.71375404464047,
+     "sevenths": 71.668704134757,
+     "changes_per_min": 38.79208534006186
+    },
+    "guitarset": {
+     "majmin": 77.4443236799849,
+     "sevenths": 70.71621609146507,
+     "changes_per_min": 34.86339651881585
+    },
+    "choco": {
+     "majmin": 86.54432934633877,
+     "sevenths": 75.84939342711559,
+     "changes_per_min": 32.29359266643977
+    },
+    "mean": {
+     "majmin": 81.90080235698804,
+     "sevenths": 72.74477121777922,
+     "changes_per_min": 34.5310578996288
+    }
+   },
+   "lag 8": {
+    "p_self": 0.98,
+    "rwc": {
+     "majmin": 81.96466449952678,
+     "sevenths": 72.1495341570964,
+     "changes_per_min": 34.86409658268514
+    },
+    "guitarset": {
+     "majmin": 77.93759661123293,
+     "sevenths": 70.98188658697188,
+     "changes_per_min": 30.934888647662017
+    },
+    "choco": {
+     "majmin": 87.02746736500508,
+     "sevenths": 76.33930480341641,
+     "changes_per_min": 28.608532189549923
+    },
+    "mean": {
+     "majmin": 82.3099094919216,
+     "sevenths": 73.15690851582822,
+     "changes_per_min": 30.692726483639927
+    }
+   }
+  },
+  "inv": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 76.85608581142577,
+    "sevenths_inv": 67.70847779323311
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 77.93759894252685,
+    "sevenths_inv": 70.98188910334012
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 80.35583750700842,
+    "sevenths_inv": 71.50388825996917
+   }
+  },
+  "bass_measure": {
+   "inside": 6.2950537024720505,
+   "near_bass": 3.1925834728283613,
+   "rerooted": 2.059731272792491
+  }
+ },
+ "control seed 0": {
+  "points": {
+   "network": {
+    "p_self": null,
+    "rwc": {
+     "majmin": 80.67884689460934,
+     "sevenths": 70.00944036252451,
+     "changes_per_min": 68.20498300547429
+    },
+    "guitarset": {
+     "majmin": 75.78869158980893,
+     "sevenths": 68.44593292222625,
+     "changes_per_min": 53.51532771475076
+    },
+    "choco": {
+     "majmin": 85.70298773018695,
+     "sevenths": 76.35372612094199,
+     "changes_per_min": 51.5750797869554
+    },
+    "mean": {
+     "majmin": 80.72350873820172,
+     "sevenths": 71.60303313523092,
+     "changes_per_min": 55.1106147478853
+    }
+   },
+   "lag 2": {
+    "p_self": 0.3,
+    "rwc": {
+     "majmin": 81.33340410644551,
+     "sevenths": 70.97034183095381,
+     "changes_per_min": 44.41152692914352
+    },
+    "guitarset": {
+     "majmin": 76.6787107444009,
+     "sevenths": 69.70318047618004,
+     "changes_per_min": 38.14637956314848
+    },
+    "choco": {
+     "majmin": 86.19255638619289,
+     "sevenths": 76.27733352527531,
+     "changes_per_min": 35.68939954056017
+    },
+    "mean": {
+     "majmin": 81.40155707901312,
+     "sevenths": 72.31695194413638,
+     "changes_per_min": 38.22374087226855
+    }
+   },
+   "lag 4": {
+    "p_self": 0.95,
+    "rwc": {
+     "majmin": 81.99201316183704,
+     "sevenths": 71.58461965711746,
+     "changes_per_min": 38.0133367762991
+    },
+    "guitarset": {
+     "majmin": 76.94334200428827,
+     "sevenths": 70.04190756608926,
+     "changes_per_min": 33.629624805386186
+    },
+    "choco": {
+     "majmin": 86.67461085006349,
+     "sevenths": 76.59974093778766,
+     "changes_per_min": 30.587356956275045
+    },
+    "mean": {
+     "majmin": 81.86998867206293,
+     "sevenths": 72.74208938699812,
+     "changes_per_min": 33.19409449444157
+    }
+   },
+   "lag 8": {
+    "p_self": 0.95,
+    "rwc": {
+     "majmin": 82.26528711014814,
+     "sevenths": 72.2277838476254,
+     "changes_per_min": 35.312380461296236
+    },
+    "guitarset": {
+     "majmin": 77.52446875239073,
+     "sevenths": 70.58588431519038,
+     "changes_per_min": 31.906843952186147
+    },
+    "choco": {
+     "majmin": 86.8386089188824,
+     "sevenths": 76.92631235903463,
+     "changes_per_min": 28.536903601294803
+    },
+    "mean": {
+     "majmin": 82.20945492714043,
+     "sevenths": 73.24666017395015,
+     "changes_per_min": 31.196005634787003
+    }
+   }
+  },
+  "inv": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 76.90382622065609,
+    "sevenths_inv": 67.83772368937436
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 77.52447201629383,
+    "sevenths_inv": 70.58588735416478
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 80.12620097252201,
+    "sevenths_inv": 71.53840688426642
+   }
+  },
+  "bass_measure": {
+   "inside": 6.436660227476534,
+   "near_bass": 3.334189997832845,
+   "rerooted": 1.9824913500627728
+  }
+ },
+ "control seed 1": {
+  "points": {
+   "network": {
+    "p_self": null,
+    "rwc": {
+     "majmin": 80.40361375775163,
+     "sevenths": 70.04003518096482,
+     "changes_per_min": 67.1423922309459
+    },
+    "guitarset": {
+     "majmin": 76.30502618273873,
+     "sevenths": 69.26503586057908,
+     "changes_per_min": 53.5202229097757
+    },
+    "choco": {
+     "majmin": 85.73705564488299,
+     "sevenths": 76.17679038149092,
+     "changes_per_min": 53.11840818852659
+    },
+    "mean": {
+     "majmin": 80.8152318617911,
+     "sevenths": 71.8272871410116,
+     "changes_per_min": 55.516743339104025
+    }
+   },
+   "lag 2": {
+    "p_self": 0.3,
+    "rwc": {
+     "majmin": 80.9219745971044,
+     "sevenths": 70.60645021389553,
+     "changes_per_min": 43.42605561201765
+    },
+    "guitarset": {
+     "majmin": 77.14686890281162,
+     "sevenths": 70.51636794980696,
+     "changes_per_min": 38.21070868733916
+    },
+    "choco": {
+     "majmin": 86.18097642669505,
+     "sevenths": 75.54438138604097,
+     "changes_per_min": 36.14528254018002
+    },
+    "mean": {
+     "majmin": 81.41660664220369,
+     "sevenths": 72.22239984991448,
+     "changes_per_min": 38.26765285723752
+    }
+   },
+   "lag 4": {
+    "p_self": 0.9,
+    "rwc": {
+     "majmin": 81.5879264440591,
+     "sevenths": 71.20130854111312,
+     "changes_per_min": 37.72495810136838
+    },
+    "guitarset": {
+     "majmin": 77.6180187786716,
+     "sevenths": 70.87499678351755,
+     "changes_per_min": 33.52156693857582
+    },
+    "choco": {
+     "majmin": 86.76261088474007,
+     "sevenths": 75.95184275936346,
+     "changes_per_min": 31.043038401974364
+    },
+    "mean": {
+     "majmin": 81.98951870249026,
+     "sevenths": 72.67604936133138,
+     "changes_per_min": 33.266267584525295
+    }
+   },
+   "lag 8": {
+    "p_self": 0.95,
+    "rwc": {
+     "majmin": 81.77833301421006,
+     "sevenths": 71.72021359258243,
+     "changes_per_min": 34.608918826461895
+    },
+    "guitarset": {
+     "majmin": 78.10453614415785,
+     "sevenths": 71.14830233762667,
+     "changes_per_min": 31.45326619908526
+    },
+    "choco": {
+     "majmin": 87.02032858390399,
+     "sevenths": 76.39420809307734,
+     "changes_per_min": 28.91945484643806
+    },
+    "mean": {
+     "majmin": 82.30106591409063,
+     "sevenths": 73.08757467442882,
+     "changes_per_min": 31.01250965556648
+    }
+   }
+  },
+  "inv": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 76.70024722234842,
+    "sevenths_inv": 67.33868562066941
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 78.10453888378001,
+    "sevenths_inv": 71.14830553296538
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 80.31065348135441,
+    "sevenths_inv": 71.53398657636978
+   }
+  },
+  "bass_measure": {
+   "inside": 5.998967332008131,
+   "near_bass": 3.153963511463502,
+   "rerooted": 2.072604593247444
+  }
+ },
+ "bass seed 0": {
+  "points": {
+   "network": {
+    "p_self": null,
+    "rwc": {
+     "majmin": 80.03187565330637,
+     "sevenths": 68.85075134197275,
+     "changes_per_min": 76.00097548471115
+    },
+    "guitarset": {
+     "majmin": 75.62840147074354,
+     "sevenths": 68.26731920318714,
+     "changes_per_min": 53.196150024271326
+    },
+    "choco": {
+     "majmin": 85.59742170827909,
+     "sevenths": 76.3135914572724,
+     "changes_per_min": 52.49308069919476
+    },
+    "mean": {
+     "majmin": 80.41923294410968,
+     "sevenths": 71.14388733414411,
+     "changes_per_min": 56.527270110335884
+    }
+   },
+   "lag 2": {
+    "p_self": 0.5,
+    "rwc": {
+     "majmin": 81.13364864639749,
+     "sevenths": 70.29368129658184,
+     "changes_per_min": 44.14512155117702
+    },
+    "guitarset": {
+     "majmin": 76.5536069042569,
+     "sevenths": 69.71494011418935,
+     "changes_per_min": 36.69318862173684
+    },
+    "choco": {
+     "majmin": 86.18741970945901,
+     "sevenths": 76.23432235309512,
+     "changes_per_min": 34.17876961749105
+    },
+    "mean": {
+     "majmin": 81.2915584200378,
+     "sevenths": 72.08098125462212,
+     "changes_per_min": 36.93618834921126
+    }
+   },
+   "lag 4": {
+    "p_self": 0.9,
+    "rwc": {
+     "majmin": 81.77163371555736,
+     "sevenths": 70.83821952442416,
+     "changes_per_min": 38.796304259802746
+    },
+    "guitarset": {
+     "majmin": 76.95819008851156,
+     "sevenths": 70.08700559544262,
+     "changes_per_min": 33.984797094343485
+    },
+    "choco": {
+     "majmin": 86.74419677592543,
+     "sevenths": 76.71466491280215,
+     "changes_per_min": 30.898417782753395
+    },
+    "mean": {
+     "majmin": 81.82467352666478,
+     "sevenths": 72.54663001088964,
+     "changes_per_min": 33.600311390913966
+    }
+   },
+   "lag 8": {
+    "p_self": 0.98,
+    "rwc": {
+     "majmin": 82.02263405950778,
+     "sevenths": 71.29928961230453,
+     "changes_per_min": 34.83716217791162
+    },
+    "guitarset": {
+     "majmin": 77.29039719109842,
+     "sevenths": 70.33753433181145,
+     "changes_per_min": 31.40288611172838
+    },
+    "choco": {
+     "majmin": 87.07856980784955,
+     "sevenths": 77.12645142941456,
+     "changes_per_min": 28.27067481763283
+    },
+    "mean": {
+     "majmin": 82.13053368615192,
+     "sevenths": 72.92109179117685,
+     "changes_per_min": 30.78455217866675
+    }
+   }
+  },
+  "inv": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 76.72668266015023,
+    "sevenths_inv": 66.87773144456641
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 77.2904003471378,
+    "sevenths_inv": 70.33753716633122
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 80.32571797739698,
+    "sevenths_inv": 71.87614541181158
+   }
+  },
+  "bass_measure": {
+   "inside": 6.230687100197286,
+   "near_bass": 3.2054567932833145,
+   "rerooted": 2.059731272792491
+  },
+  "inv_slash": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 77.90893903184559,
+    "sevenths_inv": 68.01779093624629
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 73.22998333027728,
+    "sevenths_inv": 66.97553504629795
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 79.17838931860915,
+    "sevenths_inv": 70.80849726460787
+   }
+  },
+  "bass_accuracy": {
+   "all": 71.48323070484845,
+   "pitched": 78.26338031866027
+  },
+  "bass_hold": {
+   "0.5": {
+    "mean": {
+     "majmin": 82.12755700759891,
+     "sevenths": 72.91667553802107
+    },
+    "changes_per_min": 30.659153853977443,
+    "bass_measure": {
+     "inside": 6.16632049792252,
+     "near_bass": 3.166836831918455,
+     "rerooted": 1.9052514273330543
+    }
+   },
+   "0.9": {
+    "mean": {
+     "majmin": 82.00280747087866,
+     "sevenths": 72.81306592969146
+    },
+    "changes_per_min": 30.611656982665732,
+    "bass_measure": {
+     "inside": 6.050460613827942,
+     "near_bass": 2.9351170637292996,
+     "rerooted": 1.5962917364141807
+    }
+   },
+   "0.99": {
+    "mean": {
+     "majmin": 81.92264192113888,
+     "sevenths": 72.74910016337715
+    },
+    "changes_per_min": 30.546504868215415,
+    "bass_measure": {
+     "inside": 6.153447177467567,
+     "near_bass": 2.973737025094159,
+     "rerooted": 1.5447984545943683
+    }
+   }
+  }
+ },
+ "bass seed 1": {
+  "points": {
+   "network": {
+    "p_self": null,
+    "rwc": {
+     "majmin": 80.52557544500914,
+     "sevenths": 68.73881117712361,
+     "changes_per_min": 66.5729583613327
+    },
+    "guitarset": {
+     "majmin": 75.00702005727089,
+     "sevenths": 67.74682818270503,
+     "changes_per_min": 52.449232364240764
+    },
+    "choco": {
+     "majmin": 85.07453016382611,
+     "sevenths": 75.9528455044748,
+     "changes_per_min": 49.96976634702849
+    },
+    "mean": {
+     "majmin": 80.20237522203537,
+     "sevenths": 70.81282828810114,
+     "changes_per_min": 53.755843522767236
+    }
+   },
+   "lag 2": {
+    "p_self": 0.3,
+    "rwc": {
+     "majmin": 81.13646801860229,
+     "sevenths": 69.63730695286432,
+     "changes_per_min": 43.44951088263967
+    },
+    "guitarset": {
+     "majmin": 75.49529082149593,
+     "sevenths": 68.56554379405867,
+     "changes_per_min": 37.215734691030775
+    },
+    "choco": {
+     "majmin": 85.4518416999699,
+     "sevenths": 75.68369612485733,
+     "changes_per_min": 34.94413669111479
+    },
+    "mean": {
+     "majmin": 80.69453351335603,
+     "sevenths": 71.29551562392678,
+     "changes_per_min": 37.356761603126266
+    }
+   },
+   "lag 4": {
+    "p_self": 0.7,
+    "rwc": {
+     "majmin": 81.67474492508389,
+     "sevenths": 70.26356349450819,
+     "changes_per_min": 38.052924054719725
+    },
+    "guitarset": {
+     "majmin": 75.90116412597148,
+     "sevenths": 68.94561605866924,
+     "changes_per_min": 34.03969937407925
+    },
+    "choco": {
+     "majmin": 85.87945497771602,
+     "sevenths": 76.16639031234772,
+     "changes_per_min": 30.98516079854035
+    },
+    "mean": {
+     "majmin": 81.15178800959045,
+     "sevenths": 71.7918566218417,
+     "changes_per_min": 33.541283472996426
+    }
+   },
+   "lag 8": {
+    "p_self": 0.9,
+    "rwc": {
+     "majmin": 82.0492190065566,
+     "sevenths": 70.952782660477,
+     "changes_per_min": 34.42743112717771
+    },
+    "guitarset": {
+     "majmin": 76.28338126147075,
+     "sevenths": 69.309141319441,
+     "changes_per_min": 31.287407341049253
+    },
+    "choco": {
+     "majmin": 86.19050905687068,
+     "sevenths": 76.63615104241258,
+     "changes_per_min": 28.434317114626975
+    },
+    "mean": {
+     "majmin": 81.50770310829934,
+     "sevenths": 72.29935834077685,
+     "changes_per_min": 30.72603123932266
+    }
+   }
+  },
+  "inv": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 76.97996394665195,
+    "sevenths_inv": 66.85438943102473
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 76.28338506278422,
+    "sevenths_inv": 69.30914531835755
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 79.67236795744302,
+    "sevenths_inv": 72.07161323762351
+   }
+  },
+  "bass_measure": {
+   "inside": 6.256433741107192,
+   "near_bass": 3.475796522837329,
+   "rerooted": 2.381564284166318
+  },
+  "inv_slash": {
+   "rwc": {
+    "songs": 20,
+    "majmin_inv": 75.96822617505327,
+    "sevenths_inv": 65.97696567642186
+   },
+   "guitarset": {
+    "songs": 60,
+    "majmin_inv": 73.51184543784794,
+    "sevenths_inv": 67.36993503205817
+   },
+   "choco": {
+    "songs": 22,
+    "majmin_inv": 78.64944344832487,
+    "sevenths_inv": 71.20382697861126
+   }
+  },
+  "bass_accuracy": {
+   "all": 59.301329188338215,
+   "pitched": 66.45142662151875
+  },
+  "bass_hold": {
+   "0.5": {
+    "mean": {
+     "majmin": 81.51812837447098,
+     "sevenths": 72.29745860596867
+    },
+    "changes_per_min": 30.53068345426968,
+    "bass_measure": {
+     "inside": 6.127700536557661,
+     "near_bass": 3.321316677377892,
+     "rerooted": 2.227084438706881
+    }
+   },
+   "0.9": {
+    "mean": {
+     "majmin": 81.47530139680326,
+     "sevenths": 72.24866430972841
+    },
+    "changes_per_min": 30.078091273362915,
+    "bass_measure": {
+     "inside": 6.050460613827942,
+     "near_bass": 3.166836831918455,
+     "rerooted": 1.9824913500627728
+    }
+   },
+   "0.99": {
+    "mean": {
+     "majmin": 81.47923334494367,
+     "sevenths": 72.24280973342192
+    },
+    "changes_per_min": 30.099077702448128,
+    "bass_measure": {
+     "inside": 5.998967332008131,
+     "near_bass": 3.128216870553596,
+     "rerooted": 1.9181247477880072
+    }
+   }
+  }
+ }
+}

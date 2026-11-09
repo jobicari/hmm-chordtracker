@@ -56,3 +56,17 @@ def test_slash_labels_add_a_chord_tone_bass_only():
     q7 = np.zeros((12, 1))
     q7[5, 0] = 1.0                                                      # F under G:7 is its b7
     assert v.slash_labels(np.array([31]), q7, names, half=0) == ["G:7/b7"]
+
+
+def test_the_bass_models_chord_posteriors_are_the_usual_ones():
+    import torch
+    from chordtracker import model_v13
+    from chordtracker.data_v5 import Song
+    from chordtracker.train_v7_2 import song_posteriors
+    torch.manual_seed(0)
+    model = model_v13.ChordCRNNBass(60).eval()
+    song = Song("x", np.random.default_rng(0).random((168, 50)).astype(np.float32), np.zeros(50, dtype=int))
+    chord, bass = v.head_posteriors_v13(model, song, 2)
+    np.testing.assert_allclose(chord, song_posteriors(model, song, 2), atol=1e-5)
+    assert bass.shape == (13, 50)
+    np.testing.assert_allclose(bass.sum(axis=0), 1, atol=1e-5)
