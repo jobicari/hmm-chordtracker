@@ -60,6 +60,8 @@ check. Settings (environment variables, or the same flags of `scripts/demo_serve
 | `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 
-Each listener costs about 10 ms of CPU per frame (93 ms of audio), one core at most per session. Behind
+Each listener costs a fraction of one core: per frame of 93 ms of audio, about 7 ms natively on an Apple
+silicon Mac and 30 to 45 ms in Docker Desktop's Linux VM on the same Mac (OpenBLAS instead of Accelerate).
+One block, at 10 s into a session, takes longer (0.3 s natively, up to 0.6 s in the VM). Behind
 an HTTPS proxy the page opens the live route as `wss://`; the proxy must pass WebSocket upgrades and
 keep the request's `Host`, which the origin check compares with the page's origin.
