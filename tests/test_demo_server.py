@@ -11,7 +11,7 @@ from tornado.httpclient import AsyncHTTPClient
 from tornado.websocket import websocket_connect
 
 from chordtracker import demo
-from chordtracker.play_along import OPERATING_POINTS
+from chordtracker.play_along import V7_2_POINTS as OPERATING_POINTS
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 SR, HOP = 22050, 2048

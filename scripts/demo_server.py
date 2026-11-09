@@ -36,7 +36,7 @@ import tornado.websocket
 
 from chordtracker import demo, paths
 from chordtracker.learned_emission import LABELS
-from chordtracker.play_along import OPERATING_POINTS, Analysis
+from chordtracker.play_along import V7_2_POINTS as OPERATING_POINTS, Analysis
 
 sys.path.insert(0, str(Path(__file__).parent))
 import demo_export  # noqa: E402
@@ -59,7 +59,7 @@ class Chain:
                          "pipeline": demo_export.pipeline_settings(a.cfg, a.run)}
 
     def new_session(self):
-        return Analysis(self.analyzer.cfg, self.analyzer.model, self.analyzer.prior, self.analyzer.Q)
+        return Analysis(self.analyzer.cfg, self.analyzer.model, self.analyzer.prior, self.analyzer.Q, OPERATING_POINTS)
 
     def health(self) -> dict:
         return {"live": True, "points": demo.point_info(self.sr, self.hop), "defaultPoint": demo.DEFAULT_POINT,

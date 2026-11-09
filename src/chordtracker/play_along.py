@@ -1,20 +1,30 @@
-"""Component 28: the listening prototype's logic, without audio or window (scripts/play_along.py runs it live).
+"""The listening prototype's logic, without audio or window (scripts/play_along.py runs it live).
 
 A recording reaches the prototype as it plays (from a file read at real-time pace, or from another
-application through a virtual audio cable). It is analysed block by block with V7.3's live chain and
-played back to the musician `delay` seconds late, so the label of every frame is ready when that frame is
-heard. This module holds what does not depend on sound devices:
+application through a virtual audio cable). It is analysed block by block with the live chain and the
+frozen V11 student (vocabulary A: maj, min, 7, maj7, min7, 60 classes; configs/v11.yaml `frozen`), and
+played back to the musician `delay` seconds late, so the label of every frame is ready when that frame
+is heard. This module holds what does not depend on sound devices:
 
-    OPERATING_POINTS               V7.2's points on the C2 grid with input look-ahead 2: the decoder and
-                                   the total look-ahead of each
+    OPERATING_POINTS               V11's four frozen points (input look-ahead 2): the decoder lag and
+                                   p_self of each, and so its total look-ahead
+    V7_2_POINTS                    the demo website's three points (V7.2's network and p_self)
+    CLASS_LABELS                   the Harte label of each of the 60 classes ('C:maj' .. 'B:min7')
     Analysis                       the live chain fed with blocks; per frame, the label of every point;
                                    finish() at the end of a recording
-    Reference                      an Isophonics annotation: the chord at a time and the next one
+    Reference                      an Isophonics annotation, every chord reduced to vocabulary A (the
+                                   sevenths mapping): the chord at a time and the next one
+    reference_name(label)          "D:7(b9)" -> "D7", "C:maj6" -> "C", "B:dim" -> "(Bdim)" (not in the vocabulary)
     song_list(root)                every annotated song, by album then title, for the drop-down
-    chord_name(label)              "E:min7" -> "Em7", "A" -> "A", "N" -> "N.C."
+    chord_name(label)              "E:min7" -> "Em7", "G:7" -> "G7", "A" -> "A", "N" -> "N.C."
     shown(...)                     what the window shows at a playback time: system chord now and next,
                                    reference chord now and next
+    held(now, last)                the last labelled system chord, kept while the current frame is not
+                                   labelled yet (the tuning step at 10 s can hold the analysis ~0.4 s)
     Onset                          the time the input first rises out of silence (the annotation's zero)
+
+The decoders are V8's: fixed-lag Viterbi on log P(class | frame) - log(prior ** prior_power), with the
+Billboard change matrix Q and the point's p_self on the diagonal.
 
 Times: input time s = samples received / sample rate. A frame f is the 2,048-sample block starting at
 f * hop / sr of input time. The musician hears input time s at wall time s + delay; the window shows, at
@@ -25,16 +35,23 @@ from pathlib import Path
 
 import numpy as np
 
-from chordtracker import online_hmm, transitions
+from chordtracker import data_v8, online_hmm, transitions
 from chordtracker.data_v5 import CENTRE_ROW, PATCH_BINS
-from chordtracker.learned_emission import LABELS
 from chordtracker.streaming_features import StreamingFeatures
 from chordtracker.streaming_v7_2 import LookaheadStreamingCRNN
 
+VOCAB = "A"
+CLASS_LABELS = data_v8.class_names(VOCAB)
 INPUT_LOOKAHEAD = 2
-OPERATING_POINTS = {        # name: decoder lag (frames) and p_self; total look-ahead = 2 + 1 + lag frames
+OPERATING_POINTS = {        # name (total look-ahead): decoder lag (frames) and p_self, as configs/v11.yaml frozen
     "0.28 s": {"lag": 0, "p_self": None},       # the network alone
-    "0.46 s": {"lag": 2, "p_self": 0.9},        # fixed-lag Viterbi
+    "0.46 s": {"lag": 2, "p_self": 0.3},        # fixed-lag Viterbi
+    "0.65 s": {"lag": 4, "p_self": 0.7},
+    "1.02 s": {"lag": 8, "p_self": 0.98},
+}
+V7_2_POINTS = {             # the demo website's points: V7.2's 24-class network (demo_server.py, demo_export.py)
+    "0.28 s": {"lag": 0, "p_self": None},
+    "0.46 s": {"lag": 2, "p_self": 0.9},
     "0.65 s": {"lag": 4, "p_self": 0.98},
 }
 QUALITIES = {"maj": "", "min": "m", "7": "7", "maj7": "maj7", "min7": "m7", "dim": "dim", "aug": "aug",
@@ -43,8 +60,11 @@ QUALITIES = {"maj": "", "min": "m", "7": "7", "maj7": "maj7", "min7": "m7", "dim
 
 
 def total_lookahead(point: str) -> int:
-    """Frames between a frame and its label: input look-ahead + the harmonic part's frame + decoder lag."""
-    return INPUT_LOOKAHEAD + 1 + OPERATING_POINTS[point]["lag"]
+    """Frames between a frame and its label: input look-ahead + the harmonic part's frame + decoder lag.
+
+    A point's name is its total look-ahead, so a name has the same lag in OPERATING_POINTS and V7_2_POINTS.
+    """
+    return INPUT_LOOKAHEAD + 1 + {**V7_2_POINTS, **OPERATING_POINTS}[point]["lag"]
 
 
 def chord_name(label: str) -> str:
@@ -54,6 +74,15 @@ def chord_name(label: str) -> str:
     root, _, rest = label.partition(":")
     quality = rest.split("/")[0].split("(")[0] if rest else "maj"
     return root.split("/")[0] + QUALITIES.get(quality, quality)
+
+
+def reference_name(label: str) -> str:
+    """An annotation label as vocabulary A scores it (data_v8.target, mir_eval's sevenths): the class's name;
+    "N.C." for N and X; a chord outside the vocabulary (dim, sus4, aug, ...) in parentheses, as it is."""
+    if label in ("N", "X"):
+        return "N.C."
+    target = data_v8.target(label, VOCAB)
+    return chord_name(CLASS_LABELS[target]) if target >= 0 else f"({chord_name(label)})"
 
 
 def song_list(root: Path) -> list[tuple[str, Path]]:
@@ -68,7 +97,7 @@ def song_list(root: Path) -> list[tuple[str, Path]]:
 
 @dataclass
 class Reference:
-    """An Isophonics chord annotation: start times and labels."""
+    """An Isophonics chord annotation: start times and labels, shown reduced to vocabulary A."""
     starts: np.ndarray
     labels: list[str]
 
@@ -80,11 +109,11 @@ class Reference:
     def at(self, t: float) -> tuple[str, str]:
         """(chord now, next different chord) at annotation time t; before the song: ("", first chord)."""
         i = int(np.searchsorted(self.starts, t, side="right")) - 1
-        now = chord_name(self.labels[i]) if i >= 0 else ""
+        now = reference_name(self.labels[i]) if i >= 0 else ""
         nxt = ""
         for label in self.labels[i + 1:]:
-            if chord_name(label) != now:
-                nxt = chord_name(label)
+            if reference_name(label) != now:
+                nxt = reference_name(label)
                 break
         return now, nxt
 
@@ -105,18 +134,23 @@ class Onset:
 
 @dataclass
 class Analysis:
-    """V7.3's live chain on 22,050 Hz mono blocks; labels[point][f] = the chord index of frame f, per point."""
+    """The live chain on 22,050 Hz mono blocks; labels[point][f] = the class index of frame f, per point.
+
+    prior: what the decoders divide by (transitions_v8.tempered_prior of the training prior); Q: the change
+    matrix (zero diagonal) that each point's p_self completes; points: OPERATING_POINTS or V7_2_POINTS.
+    """
     cfg: dict
     model: object
     prior: np.ndarray
     Q: np.ndarray
-    labels: dict = field(default_factory=lambda: {p: [] for p in OPERATING_POINTS})
+    points: dict = field(default_factory=lambda: OPERATING_POINTS)
 
     def __post_init__(self):
+        self.labels = {p: [] for p in self.points}
         self.features = StreamingFeatures(self.cfg)
         self.crnn = LookaheadStreamingCRNN(self.model, INPUT_LOOKAHEAD)
         self.decoders = {p: online_hmm.FixedLagViterbi(transitions.transition(self.Q, v["p_self"]), v["lag"])
-                         for p, v in OPERATING_POINTS.items() if v["p_self"] is not None}
+                         for p, v in self.points.items() if v["p_self"] is not None}
 
     def step(self, block: np.ndarray) -> None:
         """Feed samples; append every label that has become known."""
@@ -141,7 +175,7 @@ class Analysis:
             self._posterior(post)
 
     def _posterior(self, post: np.ndarray) -> None:
-        for point, v in OPERATING_POINTS.items():
+        for point, v in self.points.items():
             if v["p_self"] is None:
                 self.labels[point].append(int(post.argmax()))
             else:
@@ -154,10 +188,10 @@ def system_at(labels: list[int], frame: int) -> tuple[str, str]:
     """(chord of frame, next different chord already decided) from a point's labels; "" if not known yet."""
     if frame < 0 or frame >= len(labels):
         return "", ""
-    now = chord_name(LABELS[labels[frame]])
+    now = chord_name(CLASS_LABELS[labels[frame]])
     for later in labels[frame + 1:]:
-        if chord_name(LABELS[later]) != now:
-            return now, chord_name(LABELS[later])
+        if chord_name(CLASS_LABELS[later]) != now:
+            return now, chord_name(CLASS_LABELS[later])
     return now, ""
 
 
@@ -179,29 +213,48 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
             "frame": frame, "ready": frame < len(labels)}
 
 
+def held(now: dict, last: dict | None) -> dict:
+    """`now` (from shown), with the system chord of `last` (the last shown state whose frame was labelled)
+    while now's frame has started but is not labelled yet; before the first label there is nothing to keep."""
+    if now["ready"] or now["frame"] < 0 or last is None:
+        return now
+    return {**now, "system": last["system"], "system_next": last["system_next"]}
+
+
 def required_delay(point: str, lead_s: float, sr: int, hop: int, margin_frames: int = 1) -> float:
     """The smallest playback delay, s, for which every label is ready on time (one frame of margin)."""
     return (total_lookahead(point) + margin_frames) * hop / sr + lead_s
 
 
-def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rate: int) -> None:
+def load_system(cfg: dict, run: Path):
+    """(model on CPU in eval mode, decoding prior) of a saved vocabulary-A run: model.pt and prior.json,
+    the prior raised to cfg's decoder.prior_power."""
+    import json
+
+    import torch
+
+    from chordtracker import model_v8, transitions_v8
+
+    model = model_v8.ChordCRNN(len(CLASS_LABELS), bidirectional=False, dropout=cfg["train"]["dropout"])
+    model.load_state_dict(torch.load(Path(run) / "model.pt", map_location="cpu"))
+    prior = np.array(json.loads((Path(run) / "prior.json").read_text()))
+    return model.eval(), transitions_v8.tempered_prior(prior, cfg["decoder"]["prior_power"])
+
+
+def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rate: int, timing=None) -> None:
     """The analysis, in its own process so it never holds up the audio callbacks.
 
     blocks: ("reset", generation) or (generation, mono block at `rate`); results: (generation, {point:
-    new labels}, onset time). Resamples to cfg's rate, finds the onset, runs Analysis.
+    new labels}, onset time). Resamples to cfg's rate, finds the onset, runs Analysis. timing: a queue
+    that gets (samples at `rate`, seconds) for every analysed block, or None.
     """
-    import json as _json
-    from pathlib import Path as _Path
+    import time as _time
 
     import soxr
     import torch
 
-    from chordtracker import train_v7_2
-
     torch.set_num_threads(1)
-    run = _Path(run_dir)
-    model = train_v7_2.load(run / "model.pt", False, 0.5).cpu()
-    prior = np.array(_json.loads((run / "prior.json").read_text()))
+    model, prior = load_system(cfg, Path(run_dir))
     sr = cfg["audio"]["sr"]
     generation, analysis, onset, resampler, analysed, sent = None, None, None, None, 0, {}
     while True:
@@ -221,7 +274,10 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rat
         analysed += len(y)
         if onset.time is None:
             continue                                # the song has not started: nothing to analyse yet
+        start = _time.perf_counter()
         analysis.step(y)                            # from the onset block on: the tuning reads the song's 10 s
+        if timing is not None:
+            timing.put((len(message[1]), _time.perf_counter() - start))
         new = {p: analysis.labels[p][sent[p]:] for p in OPERATING_POINTS}
         if any(new.values()) or onset.time is not None:
             sent = {p: len(analysis.labels[p]) for p in OPERATING_POINTS}
