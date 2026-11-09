@@ -1,4 +1,5 @@
-"""The demo server's live route: the session protocol, its order, its limits, and the static page."""
+"""The demo server's live route: the session protocol, its order, its limits, its origin check, the static
+page and the settings."""
 import asyncio
 import importlib.util
 import json
@@ -7,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from tornado.httpclient import AsyncHTTPClient
+from tornado.httpclient import AsyncHTTPClient, HTTPClientError, HTTPRequest
 from tornado.websocket import websocket_connect
 
 from chordtracker import demo
@@ -55,12 +56,15 @@ class FakeChain:
         return {"live": True, "points": demo.point_info(SR, HOP), "maxSeconds": 600.0}
 
 
-def run(server_module, tmp_path, test):
+def run(server_module, tmp_path, test, allowed_origins=()):
     """Start the app on a free port with the fake chain, run the async test against it, stop."""
     (tmp_path / "index.html").write_text("ok")
+    (tmp_path / "README.md").write_text("not part of the page")
+    (tmp_path / "samples").mkdir()
+    (tmp_path / "samples" / "index.json").write_text('{"samples": []}')
 
     async def main():
-        app = server_module.make_app(FakeChain(), tmp_path)
+        app = server_module.make_app(FakeChain(), tmp_path, allowed_origins)
         httpd = app.listen(0, address="127.0.0.1")
         port = next(iter(httpd._sockets.values())).getsockname()[1]
         try:
@@ -85,8 +89,54 @@ def test_health_and_page(server_module, tmp_path):
         client = AsyncHTTPClient()
         health = json.loads((await client.fetch(f"http://{host}/api/health")).body)
         assert health["live"] and [p["id"] for p in health["points"]] == list(OPERATING_POINTS)
+        assert json.loads((await client.fetch(f"http://{host}/healthz")).body) == health
         assert (await client.fetch(f"http://{host}/")).body == b"ok"
+        assert (await client.fetch(f"http://{host}/index.html")).body == b"ok"
+        assert json.loads((await client.fetch(f"http://{host}/samples/index.json")).body) == {"samples": []}
+        for path in ("README.md", "samples/../README.md"):
+            with pytest.raises(HTTPClientError) as refused:
+                await client.fetch(f"http://{host}/{path}")
+            assert refused.value.code in (403, 404)
     run(server_module, tmp_path, test)
+
+
+async def live_with_origin(host, origin):
+    """Open the live route as a browser page from `origin` would (None: no Origin, as a script) and start."""
+    headers = {} if origin is None else {"Origin": origin}
+    ws = await websocket_connect(HTTPRequest(f"ws://{host}/api/live", headers=headers))
+    await ws.write_message(json.dumps({"type": "start"}))
+    m = json.loads(await ws.read_message())
+    ws.close()
+    return m["type"]
+
+
+def test_the_live_route_accepts_its_own_page_and_allowed_origins_only(server_module, tmp_path):
+    async def test(host):
+        port = host.split(":")[1]
+        assert await live_with_origin(host, f"http://{host}") == "ready"                 # the server's own page
+        assert await live_with_origin(host, None) == "ready"                             # not a browser
+        assert await live_with_origin(host, "https://Pages.Example.org/") == "ready"     # allowed
+        for origin in ("https://evil.example.com", f"http://localhost.evil.example.com:{port}",
+                       "http://pages.example.org"):                                     # another scheme
+            with pytest.raises(HTTPClientError) as refused:
+                await live_with_origin(host, origin)
+            assert refused.value.code == 403
+    run(server_module, tmp_path, test, allowed_origins=["https://pages.example.org"])
+
+
+def test_settings_come_from_flags_then_the_environment(server_module):
+    parse = server_module.parse_args
+    default = parse([], env={})
+    assert (default.host, default.port, default.allowed_origins) == ("127.0.0.1", 8000, [])
+    assert parse([], env={"PORT": "9000"}).port == 9000
+    assert parse([], env={"PORT": "9000", "CHORD_DEMO_PORT": "9100"}).port == 9100
+    env = {"CHORD_DEMO_HOST": "0.0.0.0", "CHORD_DEMO_PORT": "9100",
+           "CHORD_DEMO_ALLOWED_ORIGINS": " https://a.example.org, ,https://b.example.org "}
+    from_env = parse([], env=env)
+    assert (from_env.host, from_env.port) == ("0.0.0.0", 9100)
+    assert from_env.allowed_origins == ["https://a.example.org", "https://b.example.org"]
+    flags = parse(["--host", "::", "--port", "8010", "--allowed-origins", "https://c.example.org"], env=env)
+    assert (flags.host, flags.port, flags.allowed_origins) == ("::", 8010, ["https://c.example.org"])
 
 
 def test_a_session_streams_labels_in_order_and_flushes_at_the_end(server_module, tmp_path):

@@ -835,6 +835,7 @@ dependencies = [
     { name = "scipy" },
     { name = "soundfile" },
     { name = "torch" },
+    { name = "tornado" },
 ]
 
 [package.dev-dependencies]
@@ -862,6 +863,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.18.1" },
     { name = "soundfile", specifier = ">=0.13.1" },
     { name = "torch", specifier = ">=2.14.1" },
+    { name = "tornado", specifier = ">=6.5.10" },
 ]
 
 [package.metadata.requires-dev]
