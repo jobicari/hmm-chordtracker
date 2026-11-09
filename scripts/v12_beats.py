@@ -1,6 +1,8 @@
 """Beats in the fixed-lag decoder, decode only: an upper bound on RWC-P and GuitarSet validation.
 
-    python scripts/v12_beats.py      # -> results/v12/beats/{table.md, results.json}
+    python scripts/v12_beats.py                    # -> results/v12/beats/{table.md, results.json}
+    python scripts/v12_beats.py --list-audio       # results/v13/est_downbeats/audio.tsv for madmom
+    python scripts/v12_beats.py --madmom           # + madmom's estimates -> results/v13/beats_estimated/
 
 The network and its saved validation posteriors are V11's frozen student (seed 1). The decoder is
 the frozen lag-8 fixed-lag Viterbi, except that its self-transition probability depends on the frame:
@@ -9,16 +11,21 @@ beat (beat_fixed_lag_viterbi). Beats come from:
     annotated   RWC-P's AIST beat annotations and GuitarSet's beat_position: the oracle
     downbeats   the annotated beats at position 1 of the bar only
     librosa     librosa.beat.beat_track on the full audio: an estimated stand-in, still offline
+    madmom, madmom downbeats   (--madmom) madmom's downbeat tracker, all its beats and its downbeats only,
+                read from results/v13/est_downbeats/ (scripts/v13_madmom_downbeats.py, offline); with
+                their beat and downbeat F-measure against the annotations (mir_eval.beat, 70 ms window)
 Controls: the frozen lag 8 (p_self 0.98) and the best constant p_self over a wider grid, so a gain
 from beats is not just a gain from more smoothing. Settings are chosen on the mean sevenths of the
 two sets, and also on one set and judged on the other. ChoCo is not here: its beats are not in data/.
 """
+import argparse
 import csv
 import json
 from concurrent.futures import ProcessPoolExecutor
 from itertools import product
 
 import librosa
+import mir_eval
 import numpy as np
 
 import run_v10 as r
@@ -26,6 +33,8 @@ from chordtracker import frame_score, online_hmm, paths, transitions, transition
 
 RUN = paths.REPO_ROOT / "results" / "v11" / "pool_kd1_seed1"
 OUT = paths.REPO_ROOT / "results" / "v12" / "beats"
+EST = paths.REPO_ROOT / "results" / "v13" / "est_downbeats"
+OUT_EST = paths.REPO_ROOT / "results" / "v13" / "beats_estimated"
 RWC_BEATS = paths.DATA_DIR / "rwc" / "rwc-annotations" / "01_annotations_preprocessed" / "beats" / "RWC-P"
 GUITARSET = paths.DATA_DIR / "guitarset" / "annotation"
 SETS = ("rwc", "guitarset")
@@ -85,6 +94,29 @@ def annotated_beats(key: str) -> tuple[np.ndarray, np.ndarray]:
     return times, np.array([t for t, b in rows if b == 1])
 
 
+def madmom_beats(key: str) -> tuple[np.ndarray, np.ndarray]:
+    """(beat times, downbeat times) madmom estimated for a song (scripts/v13_madmom_downbeats.py)."""
+    rows = [line.split("\t") for line in (EST / f"{key.replace('/', '__')}.txt").read_text().splitlines() if line]
+    times = np.array([float(t) for t, _ in rows])
+    return times, np.array([float(t) for t, b in rows if int(b) == 1])
+
+
+def f_measures(beats: dict) -> dict[str, dict[str, float]]:
+    """{estimate: {set or 'mean': F}}: mir_eval's beat F-measure (70 ms) against the annotation, mean over the
+    songs of each set and over all songs; beats against annotated beats, downbeats against annotated downbeats."""
+    out = {}
+    for source in beats:
+        if source in ("annotated", "downbeats"):
+            continue
+        ref = "downbeats" if source.endswith("downbeats") else "annotated"
+        f = {k: mir_eval.beat.f_measure(mir_eval.beat.trim_beats(beats[ref][k]), mir_eval.beat.trim_beats(beats[source][k]))
+             for k in beats[source]}
+        out[source] = {d: float(np.mean([v for k, v in f.items() if k.startswith(f"{d}/")])) for d in SETS
+                       if any(k.startswith(f"{d}/") for k in f)}
+        out[source]["mean"] = float(np.mean(list(f.values())))
+    return out
+
+
 def librosa_beats(audio, sr: int) -> np.ndarray:
     y, _ = librosa.load(str(audio), sr=sr, mono=True)
     _, beats = librosa.beat.beat_track(y=y, sr=sr, hop_length=512, units="time")
@@ -112,8 +144,17 @@ def changes_per_min(path: np.ndarray, sr: int, hop: int) -> float:
     return float(np.count_nonzero(np.diff(path))) / (len(path) * hop / sr / 60)
 
 
-def main() -> None:
+def main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--list-audio", action="store_true", help="write the val audio list for madmom and stop")
+    parser.add_argument("--madmom", action="store_true", help="add madmom's estimated beats and downbeats")
+    args = parser.parse_args(argv)
     cfg = r.config()
+    if args.list_audio:
+        EST.mkdir(parents=True, exist_ok=True)
+        rows = [f"{t.key}\t{t.audio}\n" for name in SETS for t in r.val_takes(cfg)[name]]
+        (EST / "audio.tsv").write_text("".join(rows))
+        return
     sr, hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
     songs = r.load_songs()
     posts = {k: p for k, p in r.load_posteriors(RUN).items() if songs[k]["set"] in SETS}
@@ -127,6 +168,10 @@ def main() -> None:
     with ProcessPoolExecutor(8) as pool:
         for k, b in zip(posts, pool.map(librosa_beats, [takes[k].audio for k in posts], [sr] * len(posts))):
             beats["librosa"][k] = b
+    if args.madmom:
+        beats["madmom"], beats["madmom downbeats"] = {}, {}
+        for k in posts:
+            beats["madmom"][k], beats["madmom downbeats"][k] = madmom_beats(k)
     jobs = [(k, "none", 0, None, p, sr, hop) for k in posts for p in P_CONST]
     jobs += [(k, s, w, on, off, sr, hop) for k in posts for s in beats for w, on, off in product(WIDTHS, P_ON, P_OFF)]
     systems: dict[tuple, dict] = {}
@@ -144,7 +189,7 @@ def main() -> None:
         rows.append(row)
     reference = {d: float(np.mean([changes_per_min(np.maximum(songs[k]["targets"], -1), sr, hop)
                                    for k in posts if d == "mean" or songs[k]["set"] == d])) for d in (*SETS, "mean")}
-    write(rows, reference, beats, posts, sr, hop)
+    write(rows, reference, beats, posts, sr, hop, OUT_EST if args.madmom else OUT)
 
 
 def best(rows, source, on="mean"):
@@ -159,7 +204,7 @@ def fmt(row) -> str:
     return f"| {row['source']} | {w} | {p_on} | {row['p_off']:g} | " + " | ".join(cells) + " |"
 
 
-def write(rows, reference, beats, posts, sr, hop) -> None:
+def write(rows, reference, beats, posts, sr, hop, out=OUT) -> None:
     head = ["| beats | width | p_on | p_off | RWC-P | GuitarSet | mean |", "|---|---:|---:|---:|---:|---:|---:|"]
     frozen = next(x for x in rows if x["source"] == "none" and x["p_off"] == 0.98)
     lines = ["Lag-8 fixed-lag Viterbi on V11 seed 1's validation posteriors, RWC-P and GuitarSet.",
@@ -167,11 +212,12 @@ def write(rows, reference, beats, posts, sr, hop) -> None:
              + ", ".join(f"{d} {v:.0f}" for d, v in reference.items()) + ".", "",
              "Chosen on the mean sevenths of the two sets:", "", *head, fmt(frozen) + " frozen",
              fmt(best(rows, "none")) + " best constant"]
-    lines += [fmt(best(rows, s)) for s in ("annotated", "downbeats", "librosa")]
+    estimated = [s for s in beats if s not in ("annotated", "downbeats")]
+    lines += [fmt(best(rows, s)) for s in ("annotated", "downbeats", *estimated)]
     lines += ["", "Chosen on one set, judged on the other (sevenths %, change against the best constant chosen "
               "the same way):", "", "| beats | chosen on | judged on | setting (width, p_on, p_off) | sevenths | "
               "best constant | change |", "|---|---|---|---|---:|---:|---:|"]
-    for s in ("annotated", "downbeats", "librosa"):
+    for s in ("annotated", "downbeats", *estimated):
         for a, b in (("rwc", "guitarset"), ("guitarset", "rwc")):
             x, c = best(rows, s, a), best(rows, "none", a)
             lines.append(f"| {s} | {a} | {b} | {x['width']}, {x['p_on']:g}, {x['p_off']:g} | {x[b]['sevenths']:.2f} | "
@@ -179,9 +225,14 @@ def write(rows, reference, beats, posts, sr, hop) -> None:
     per_min = {s: float(np.mean([len(beats[s][k]) / (posts[k].shape[1] * hop / sr / 60) for k in posts]))
                for s in beats}
     lines += ["", "Beats per minute, mean over the songs: " + ", ".join(f"{s} {v:.0f}" for s, v in per_min.items()) + "."]
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "table.md").write_text("\n".join(lines) + "\n")
-    (OUT / "results.json").write_text(json.dumps({"rows": rows, "reference_changes_per_min": reference}, indent=1))
+    fm = f_measures(beats)
+    lines += ["F-measure against the annotations (beats against beats, downbeats against downbeats; mean over the "
+              "songs): " + "; ".join(f"{s} " + ", ".join(f"{d} {v:.3f}" for d, v in by.items()) for s, by in fm.items())
+              + "."]
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "table.md").write_text("\n".join(lines) + "\n")
+    (out / "results.json").write_text(json.dumps({"rows": rows, "reference_changes_per_min": reference,
+                                                  "f_measure": fm}, indent=1))
     print("\n".join(lines))
 
 

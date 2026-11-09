@@ -86,3 +86,22 @@ def test_beat_frames_are_marked_within_the_width():
     import v12_beats
     on = v12_beats.near(np.array([0.0, 1.0]), 20, 1, 22050, 2048)     # 1.0 s is frame 10.77 -> 11
     assert np.nonzero(on)[0].tolist() == [0, 1, 10, 11, 12]
+
+
+def test_madmom_files_give_beats_and_downbeats(tmp_path, monkeypatch):
+    import v12_beats
+    monkeypatch.setattr(v12_beats, "EST", tmp_path)
+    (tmp_path / "rwc__RWC_P003.txt").write_text("0.500\t1\n1.000\t2\n1.500\t3\n2.000\t4\n2.500\t1\n")
+    beats, downbeats = v12_beats.madmom_beats("rwc/RWC_P003")
+    assert beats.tolist() == [0.5, 1.0, 1.5, 2.0, 2.5] and downbeats.tolist() == [0.5, 2.5]
+
+
+def test_f_measures_compare_downbeats_with_downbeats():
+    import v12_beats
+    ref = np.arange(6.0, 30.0, 0.5)
+    k = "rwc/x"
+    beats = {"annotated": {k: ref}, "downbeats": {k: ref[::4]},
+             "madmom": {k: ref + 0.01}, "madmom downbeats": {k: ref[2::4]}}
+    fm = v12_beats.f_measures(beats)
+    assert fm["madmom"] == {"rwc": 1.0, "mean": 1.0}                    # right beats
+    assert fm["madmom downbeats"]["rwc"] == 0.0                        # downbeats off by half a bar
