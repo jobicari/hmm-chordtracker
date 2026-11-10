@@ -4,9 +4,9 @@ A page that plays a recording and shows its chords as the real-time system does:
 (fixed-lag Viterbi) above the framewise row (the network alone), so the flicker the decoder removes is
 visible. One setting picks the look-ahead (0.28 / 0.46 / 0.65 / 1.02 s: the network alone and fixed-lag
 Viterbi at lag 2 / 4 / 8; V7.2 has the first three); a checkbox really delays playback to match it, and a
-panel states the delay and what it is made of. With the delay on, another checkbox shows each chord 1 s
-before you hear it (the lead the listening prototype ended on, reports/play_along.md): the delay grows by
-that second, so the chords shown early are already decided. A
+panel states the delay and what it is made of. With the delay on, another checkbox shows each chord 0.5 s
+before you hear it (half the lead the listening prototype ended on, reports/play_along.md, which felt long
+here): the delay grows by that half second, so the chords shown early are already decided. A
 checkbox adds the GuitarSet lead-sheet chords as a reference row, and a diagram shows the analysis
 stages with the run's settings. See [reports/demo.md](../reports/demo.md).
 

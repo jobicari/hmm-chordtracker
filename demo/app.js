@@ -105,7 +105,7 @@ function liveMargin() {
   return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
 }
 
-const LEAD_SECONDS = 1.0;            // the lead preferred with the listening prototype (reports/play_along.md)
+const LEAD_SECONDS = 0.5;            // half the 1 s the listening prototype ended on (reports/play_along.md): 1 s felt long
 
 function lead() {
   // "Show chords early" (with the delay on): the chords on screen are those of LEAD_SECONDS ahead.
@@ -553,7 +553,8 @@ function updateDelayNote() {
   showMeasured();
   $("input-head").hidden = !$("delay").checked;
   $("lead").disabled = !$("delay").checked;                      // a lead needs the delay to be decided in time
-  $("now-caption").textContent = lead() > 0 ? `Chord in ${lead().toFixed(0)} s` : "Chord now";
+  $("now-caption").textContent = lead() > 0 ? `Chord in ${lead()} s` : "Chord now";
+  $("lead-seconds").textContent = String(LEAD_SECONDS);
 }
 
 function showMeasured() {
