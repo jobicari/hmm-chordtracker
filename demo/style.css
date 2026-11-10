@@ -258,6 +258,7 @@ select, button, input { font: inherit; }
 
 /* Below the timeline: two collapsible sections. */
 .more { display: grid; gap: 1.2rem; }
+.more > * { min-width: 0; }              /* grid items: the diagram scrolls in its box, not the page */
 .more details { border-top: 1px solid var(--line); padding-top: 1rem; }
 .more summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
 .more summary:focus-visible { outline: 2px solid var(--input); outline-offset: 3px; }
@@ -331,4 +332,5 @@ body.analyzing .status::before {
   .source { grid-row: auto; }
   .player { grid-template-columns: 1fr 10rem; }
   .player .transport { grid-column: 1 / -1; grid-row: 2; }
+  .row-name { max-width: calc(100vw - 2.4rem); box-sizing: border-box; }    /* the timeline's visible width: wrap, do not run past it */
 }

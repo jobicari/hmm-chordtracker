@@ -39,7 +39,7 @@ const rows = {
 };
 // Reference annotations: not model output, so never masked; the active block follows what you hear.
 const reference = { track: $("track-reference"), segs: [], divs: [], active: undefined, nowEl: $("now-reference") };
-const MAJMIN = new Set(["maj", "min"]);
+const QUALITY_NAMES = { maj: "", min: "m", "7": "7", maj7: "maj7", min7: "m7" };   // as play_along.QUALITIES
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
                live: null };
@@ -66,10 +66,16 @@ function colour(chord) {
 }
 
 function chordName(label) {
-  // "C:maj" -> "C", "A:min" -> "Am" (the model's 24 labels), "N" -> "N.C.", as chordtracker.play_along.chord_name.
+  // The model's labels as chordtracker.play_along.chord_name reads them: "C:maj" -> "C", "A:min" -> "Am",
+  // "G:7" -> "G7", "F:maj7" -> "Fmaj7", "E:min7" -> "Em7", "N" -> "N.C.".
   if (label === "N" || label === "X") return "N.C.";
   const [root, q = "maj"] = label.split(":");
-  return root + (q === "min" ? "m" : "");
+  return root + (q in QUALITY_NAMES ? QUALITY_NAMES[q] : q);
+}
+
+function vocabulary(sample) {
+  // The qualities the model names (metadata.pipeline.network.qualities; major and minor before it was there).
+  return new Set(sample.metadata.pipeline.network.qualities || ["maj", "min"]);
 }
 
 function coversRecording(segs, d) {
@@ -172,7 +178,28 @@ function placeSegment(div, seg, d) {
   div.style.left = `${(100 * seg.start) / d}%`;
   div.style.width = `${(100 * (seg.end - seg.start)) / d}%`;
   div.title = `${seg.name} (${seg.chord}), ${seg.start.toFixed(2)} - ${seg.end.toFixed(2)} s`;
-  div.classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < 8 + 7 * seg.name.length);
+  fitLabel(div, seg, d);
+}
+
+const textWidths = new Map();
+let measure = null;
+
+function labelWidth(div, name) {
+  // Width in px of a block's name in the block's own font (measured once per font and name).
+  const font = getComputedStyle(div).font, key = `${font}|${name}`;
+  if (!textWidths.has(key)) {
+    measure = measure || document.createElement("canvas").getContext("2d");
+    measure.font = font;
+    textWidths.set(key, measure.measureText(name).width);
+  }
+  return textWidths.get(key);
+}
+
+function fitLabel(div, seg, d) {
+  // A block too narrow for its whole name shows none (its colour and tooltip remain): no cut-off names.
+  if (!div.isConnected) return;                       // measured once it is in the page
+  const padding = 0.35 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+  div.classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < labelWidth(div, seg.name) + 2 * padding + 2);
 }
 
 function appendLabels(row, from, labels) {
@@ -197,6 +224,7 @@ function appendLabels(row, from, labels) {
       const div = segmentDiv(seg, d);
       row.track.insertBefore(div, mask);
       row.divs.push(div);
+      fitLabel(div, seg, d);
     }
     row.knownEnd = t1;
   });
@@ -204,8 +232,7 @@ function appendLabels(row, from, labels) {
 
 function markNarrow(row) {
   const d = view.sample ? view.sample.duration : 1;
-  row.segs.forEach((seg, i) =>
-    row.divs[i].classList.toggle("narrow", ((seg.end - seg.start) / d) * view.width < 8 + 7 * seg.name.length));
+  row.segs.forEach((seg, i) => fitLabel(row.divs[i], seg, d));
 }
 
 function quality(chord) {
@@ -228,12 +255,12 @@ function buildReference(sample) {
     showReference();
     return;
   }
-  const d = sample.duration;
+  const d = sample.duration, inVocabulary = vocabulary(sample);
   reference.segs = sample.reference;
   reference.divs = sample.reference.map((seg) => {
     const div = document.createElement("div");
     const q = quality(seg.chord);
-    div.className = "seg ref" + (q === null ? " nc" : "") + (q !== null && !MAJMIN.has(q) ? " out" : "");
+    div.className = "seg ref" + (q === null ? " nc" : "") + (q !== null && !inVocabulary.has(q) ? " out" : "");
     div.style.left = `${(100 * seg.start) / d}%`;
     div.style.width = `${(100 * (Math.min(seg.end, d) - seg.start)) / d}%`;
     const bg = colour(seg.chord);
@@ -307,11 +334,11 @@ function buildDiagram() {
   box(xs[1], MAIN_Y, W, "", "2", "Harmonic part", [`STFT ${P.harmonic.nFft}, hop ${P.harmonic.stftHop}`,
     `past ${P.harmonic.medianFrames}-frame median`, "keeps sustained notes"]);
   box(xs[2], MAIN_Y, W, "", "3", "Log-CQT", [`${P.cqt.binsPerOctave} bins per octave`,
-    P.silence && P.silence.dbfs !== null ? `tuning: ${P.cqt.tuningSeconds} s from onset`
-      : `tuning: first ${P.cqt.tuningSeconds} s`,
+    tuningOnset(P) !== null ? `tuning: ${P.cqt.tuningSeconds} s from onset` : `tuning: first ${P.cqt.tuningSeconds} s`,
     `log(1 + ${P.compression.gamma} x)`]);
   box(xs[3], MAIN_Y, W, "model", "4", "CRNN", [`${P.network.windowFrames} frames, ${P.network.inputLookaheadFrames} ahead`,
-    `${P.cqt.networkLowest} to ${P.cqt.networkHighest}`, `causal GRU, ${P.network.classes} chords`]);
+    `${P.cqt.networkLowest} to ${P.cqt.networkHighest}`, P.network.noChordClass
+    ? `GRU, ${P.network.classes - 1} chords + N` : `causal GRU, ${P.network.classes} chords`]);
   for (let i = 0; i < 3; i++) arrow(`M${xs[i] + W} ${MAIN_Y + H / 2} H${xs[i + 1] - 3}`);
   const decoderOn = p.pSelf !== null;
   box(775, TOP_Y, 170, decoderOn ? "decoder" : "decoder off", "5", "HMM + Viterbi", decoderOn
@@ -328,11 +355,39 @@ function buildDiagram() {
   $("pipeline-diagram").replaceChildren(root);
 }
 
+function tuningOnset(P) {
+  // The level (dBFS) from which the tuning seconds start, or null if they start at time 0.
+  if (P.cqt.tuningOnsetDbfs !== undefined) return P.cqt.tuningOnsetDbfs;
+  return P.silence && P.silence.dbfs !== null ? P.silence.dbfs : null;
+}
+
+function qualityList(P) {
+  // ["maj", "min", "7", "maj7", "min7"] -> "major, minor, 7, maj7 and m7".
+  const words = (P.network.qualities || ["maj", "min"]).map((q) => ({ maj: "major", min: "minor", min7: "m7" }[q] || q));
+  return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0];
+}
+
+function describeModel() {
+  // The notes that depend on the model: its chords, what it was trained on, the legend's vocabulary.
+  const P = view.sample.metadata.pipeline, n = P.network, chords = n.classes - (n.noChordClass ? 1 : 0);
+  $("note-chords").textContent = n.noChordClass
+    ? `${qualityList(P)} chords in all 12 keys (${chords}), plus N.C. (no chord), which the network learned `
+      + "from the passages the training songs' annotations mark as no chord. It can say N.C. over a real chord, and names other "
+      + "chords (dim, sus, 6, 9...) by the nearest one it knows."
+    : `${qualityList(P)} triads only (${chords}), no sevenths or other qualities. A seventh chord is shown as `
+      + "its triad at best. The network always gives a chord; \"N.C.\" (no chord) comes from a level gate, "
+      + "where the input is silent, not from the network.";
+  $("note-training").textContent = `the network was trained on ${n.trainedOn || "the RWC Popular Music and "
+    + "GuitarSet training takes"}.`;
+  $("vocab-legend").textContent = `${chords} chords (${(n.qualities || ["maj", "min"]).join(", ")})`;
+}
+
 function buildPipeline() {
   // The stages in the order the code runs them, with the values of this run (metadata.pipeline).
   const m = view.sample.metadata, P = m.pipeline, p = view.point;
   const ms = Math.round(m.frameSeconds * 1000);
-  const gated = Boolean(P.silence && P.silence.dbfs !== null);
+  const gated = Boolean(P.silence && P.silence.dbfs !== null), onset = tuningOnset(P);
+  const learnedN = Boolean(P.network.noChordClass);
   const stages = [
     ["Audio input", `The recording, mono, resampled to ${P.sampleRate.toLocaleString("en")} Hz. A live `
       + `system receives it in blocks of ${m.hopLength.toLocaleString("en")} samples (${ms} ms), one per frame.`],
@@ -342,20 +397,27 @@ function buildPipeline() {
       + `This needs ${P.harmonic.lookaheadFrames} frame of future audio.`],
     ["Log constant-Q spectrum", `${P.cqt.binsPerOctave} bins per octave (${P.cqt.nBins} bins), one column `
       + `per ${ms} ms frame, each bin delayed so it reads only past audio. Tuning is estimated on the first `
-      + `${P.cqt.tuningSeconds} s${gated ? ` of sound, from the first frame at or above ${P.silence.dbfs} dBFS `
+      + `${P.cqt.tuningSeconds} s${onset !== null ? ` of sound, from the first frame at or above ${onset} dBFS `
         + "(a silent intro does not count)" : ""}; values are divided by the running ${P.compression.levelPercentile}th `
       + `percentile and compressed as log(1 + ${P.compression.gamma} x). Computed column by column, as live.`],
     ["Acoustic model (CRNN)", `For each frame, a window of ${P.network.windowFrames} columns `
       + `(${P.cqt.networkBins} bins, ${P.cqt.networkLowest} to ${P.cqt.networkHighest}) that ends `
       + `${P.network.inputLookaheadFrames} frames ahead goes through convolution layers; a GRU `
       + `(${P.network.gruHidden} units) then reads the frames in order, past only. Output: a probability for `
-      + `each of ${P.network.classes} chords (12 major, 12 minor; there is no "no chord"). Model ${P.network.model}.`],
+      + (learnedN
+        ? `each of ${P.network.classes} classes: ${P.network.classes - 1} chords (${qualityList(P)} in 12 keys) `
+          + `and N, "no chord", learned from the passages the training songs' annotations mark as no chord.`
+        : `each of ${P.network.classes} chords (12 major, 12 minor; there is no "no chord").`)
+      + ` Model ${P.network.model}.`],
     ["Framewise output", "The most probable chord of each frame, alone. This is the Framewise row: it "
       + "changes whenever the network's top choice does, hence the flicker."],
-    ["HMM", `${P.hmm.states} states, one per chord. Evidence: the network's probability of a chord divided `
-      + `by how often it occurred in training. Transitions: stay on the chord with probability p_self, or `
-      + `move as in chord-change counts from ${P.hmm.changeCountsSource} (alpha ${P.hmm.alpha}, tau `
-      + `${P.hmm.tau}), the same for every key.`],
+    ["HMM", `${P.hmm.states} states, one per ${learnedN ? "chord and one for N" : "chord"}. Evidence: the `
+      + `network's probability of a chord divided by how often it occurred in training. Transitions: stay on `
+      + `the chord with probability p_self, or move as in chord-change counts from ${P.hmm.changeCountsSource} `
+      + `(alpha ${P.hmm.alpha}, tau ${P.hmm.tau}), the same for every key.`
+      + (learnedN ? ` N is held back: its evidence is weighted x${P.hmm.noChordWeight} and the rate of chord `
+        + `to N changes counted in training x${P.hmm.noChordRateFactor}, the setting that scored best on `
+        + "validation." : "")],
     ["Fixed-lag Viterbi", p.pSelf === null
       ? "Not used at the 0.28 s look-ahead: the decoded row is the network alone. Pick 0.46 s or 0.65 s to "
         + "add the decoder."
@@ -371,6 +433,7 @@ function buildPipeline() {
       + `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s for the framewise row.`],
   ];
   buildDiagram();
+  describeModel();
   $("pipeline-stages").replaceChildren(...stages.map(([title, text]) => {
     const li = document.createElement("li");
     const b = document.createElement("strong");
