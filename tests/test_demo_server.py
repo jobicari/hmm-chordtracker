@@ -137,6 +137,11 @@ def test_page_files_are_revalidated_on_every_load(server_module, tmp_path):
             again = await client.fetch(f"http://{host}/{path}", headers={"If-None-Match": first.headers["Etag"]},
                                        raise_error=False)
             assert again.code == 304
+        # A file edited while the server runs (as in development) gets a new ETag: its new content, not 304.
+        old = (await client.fetch(f"http://{host}/index.html")).headers["Etag"]
+        (tmp_path / "index.html").write_text("edited")
+        edited = await client.fetch(f"http://{host}/index.html", headers={"If-None-Match": old}, raise_error=False)
+        assert edited.code == 200 and edited.body == b"edited" and edited.headers["Etag"] != old
     run(server_module, tmp_path, test)
 
 
