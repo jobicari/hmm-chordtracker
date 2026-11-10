@@ -10,8 +10,11 @@ is heard. This module holds what does not depend on sound devices:
                                    p_self of each, and so its total look-ahead
     V7_2_POINTS                    the demo website's three points (V7.2's network and p_self)
     CLASS_LABELS                   the Harte label of each of the 60 classes ('C:maj' .. 'B:min7')
-    Analysis                       the live chain fed with blocks; per frame, the label of every point;
-                                   finish() at the end of a recording
+    SILENCE_DBFS, SILENCE_FRAMES   the silence gate: -55 dBFS for 3 frames
+    Analysis                       the live chain fed with blocks; per frame, the label of every point
+                                   (N, index n_classes, where the gate finds silence); finish() at the end
+                                   of a recording
+    silent_frames(levels, ...)     which frames the gate labels N, from every frame's dBFS
     Reference                      an Isophonics annotation, every chord reduced to vocabulary A (the
                                    sevenths mapping): the chord at a time and the next one
     reference_name(label)          "D:7(b9)" -> "D7", "C:maj6" -> "C", "B:dim" -> "(Bdim)" (not in the vocabulary)
@@ -20,11 +23,21 @@ is heard. This module holds what does not depend on sound devices:
     shown(...)                     what the window shows at a playback time: system chord now and next,
                                    reference chord now and next
     held(now, last)                the last labelled system chord, kept while the current frame is not
-                                   labelled yet (the tuning step at 10 s can hold the analysis ~0.4 s)
+                                   labelled yet (the tuning step at 10 s can hold the analysis ~0.1 s)
     Onset                          the time the input first rises out of silence (the annotation's zero)
 
 The decoders are V8's: fixed-lag Viterbi on log P(class | frame) - log(prior ** prior_power), with the
 Billboard change matrix Q and the point's p_self on the diagonal.
+
+Neither network has an N class, so silence would show a chord. The silence gate
+labels a frame N when its own samples and those of the frames just before it are all below a level
+(silent_frames: frame f is N once frames f - 2 .. f are below -55 dBFS, before the song counting as
+silent). The decoders run underneath, so the chord returns with the first audible frame. Three frames
+(0.28 s) keep the short rests of a performance: on the 60 GuitarSet validation takes a gate on single
+frames at -50 dBFS would label 703 frames N in 35 takes, this one 117 frames in 4 takes (the pauses of
+a player), and none in the demo's samples. Digital silence and quiet noise (-60 dBFS) are N. With the
+gate the tuning seconds start at the first frame at or above the level (StreamingFeatures), so a quiet
+intro no longer stands for the tuning of the whole recording.
 
 Times: input time s = samples received / sample rate. A frame f is the 2,048-sample block starting at
 f * hop / sr of input time. The musician hears input time s at wall time s + delay; the window shows, at
@@ -42,6 +55,8 @@ from chordtracker.streaming_v7_2 import LookaheadStreamingCRNN
 
 VOCAB = "A"
 CLASS_LABELS = data_v8.class_names(VOCAB)
+SILENCE_DBFS = -55.0        # the gate's level: a frame below it is silent
+SILENCE_FRAMES = 3          # frames in a row below it (0.28 s) before the gate labels N
 INPUT_LOOKAHEAD = 2
 OPERATING_POINTS = {        # name (total look-ahead): decoder lag (frames) and p_self, as configs/v11.yaml frozen
     "0.28 s": {"lag": 0, "p_self": None},       # the network alone
@@ -132,22 +147,40 @@ class Onset:
             self.time = block_start
 
 
+def silent_frames(levels: np.ndarray, threshold: float = SILENCE_DBFS, frames: int = SILENCE_FRAMES) -> np.ndarray:
+    """(T,) bool: frame f is silent when frames f - frames + 1 .. f are all below threshold dBFS (frames
+    before the first count as below). levels: the dBFS of every frame (streaming_features.frame_dbfs).
+
+    Example, threshold -55, frames 3: levels [-80, -30, -60, -60, -60, -30] -> [T, F, F, F, T, F].
+    """
+    quiet, out, run = np.asarray(levels) < threshold, [], frames
+    for q in quiet:
+        run = run + 1 if q else 0
+        out.append(run >= frames)
+    return np.array(out, dtype=bool)
+
+
 @dataclass
 class Analysis:
     """The live chain on 22,050 Hz mono blocks; labels[point][f] = the class index of frame f, per point.
 
     prior: what the decoders divide by (transitions_v8.tempered_prior of the training prior); Q: the change
     matrix (zero diagonal) that each point's p_self completes; points: OPERATING_POINTS or V7_2_POINTS.
+    silence_dbfs: the silence gate's level (None: no gate, the tuning seconds from time 0); a silent frame
+    gets N, index len(prior), at every point.
     """
     cfg: dict
     model: object
     prior: np.ndarray
     Q: np.ndarray
     points: dict = field(default_factory=lambda: OPERATING_POINTS)
+    silence_dbfs: float | None = None
 
     def __post_init__(self):
         self.labels = {p: [] for p in self.points}
-        self.features = StreamingFeatures(self.cfg)
+        self.n_index = len(self.prior)
+        self.features = StreamingFeatures(self.cfg, self.silence_dbfs)
+        self.silent, self.run = [], SILENCE_FRAMES              # the gate per frame, and the quiet frames in a row
         self.crnn = LookaheadStreamingCRNN(self.model, INPUT_LOOKAHEAD)
         self.decoders = {p: online_hmm.FixedLagViterbi(transitions.transition(self.Q, v["p_self"]), v["lag"])
                          for p, v in self.points.items() if v["p_self"] is not None}
@@ -167,7 +200,8 @@ class Analysis:
         for post in self.crnn.flush():
             self._posterior(post)
         for point, decoder in self.decoders.items():
-            self.labels[point].extend(decoder.flush())
+            for state in decoder.flush():
+                self._append(point, state)
 
     def _column(self, column: np.ndarray) -> None:
         post = self.crnn.step(column[CENTRE_ROW:CENTRE_ROW + PATCH_BINS])
@@ -177,21 +211,42 @@ class Analysis:
     def _posterior(self, post: np.ndarray) -> None:
         for point, v in self.points.items():
             if v["p_self"] is None:
-                self.labels[point].append(int(post.argmax()))
+                self._append(point, int(post.argmax()))
             else:
                 state = self.decoders[point].step(online_hmm.evidence(post[:, None], self.prior)[:, 0])
                 if state is not None:
-                    self.labels[point].append(state)
+                    self._append(point, state)
+
+    def _append(self, point: str, state: int) -> None:
+        """The label of the point's next frame: the decoder's state, or N where the gate finds silence."""
+        f = len(self.labels[point])
+        self.labels[point].append(self.n_index if self._is_silent(f) else int(state))
+
+    def _is_silent(self, f: int) -> bool:
+        """The gate of frame f (silent_frames), extended as the frames' levels become known. A frame's label
+        always comes after its samples (its CQT column reads audio past the frame's end)."""
+        if self.silence_dbfs is None:
+            return False
+        levels = self.features.levels
+        while len(self.silent) <= f:
+            self.run = self.run + 1 if levels[len(self.silent)] < self.silence_dbfs else 0
+            self.silent.append(self.run >= SILENCE_FRAMES)
+        return self.silent[f]
+
+
+def class_name(index: int) -> str:
+    """A label index as a musician reads it: a class's name, "N.C." for N (index len(CLASS_LABELS))."""
+    return chord_name(CLASS_LABELS[index]) if index < len(CLASS_LABELS) else chord_name("N")
 
 
 def system_at(labels: list[int], frame: int) -> tuple[str, str]:
     """(chord of frame, next different chord already decided) from a point's labels; "" if not known yet."""
     if frame < 0 or frame >= len(labels):
         return "", ""
-    now = chord_name(CLASS_LABELS[labels[frame]])
+    now = class_name(labels[frame])
     for later in labels[frame + 1:]:
-        if chord_name(CLASS_LABELS[later]) != now:
-            return now, chord_name(CLASS_LABELS[later])
+        if class_name(later) != now:
+            return now, class_name(later)
     return now, ""
 
 
@@ -263,7 +318,7 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rat
             return
         if message[0] == "reset":
             generation = message[1]
-            analysis, onset = Analysis(cfg, model, prior, Q), Onset()
+            analysis, onset = Analysis(cfg, model, prior, Q, silence_dbfs=SILENCE_DBFS), Onset()
             resampler = soxr.ResampleStream(rate, sr, 1, dtype="float32")
             analysed, sent = 0, {p: 0 for p in OPERATING_POINTS}
             continue
