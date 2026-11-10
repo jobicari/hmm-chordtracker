@@ -1,8 +1,10 @@
 // Live decoding: decode a recording in the browser, stream it to scripts/demo_server.py at playback
 // speed, and receive each chord as soon as the server's decoders have decided it.
 //
-//   decodeForModel(blob, sampleRate) -> {pcm, duration}: the browser's own decoder, mixed down to mono
-//                                       and resampled to the model's rate (22,050 Hz)
+//   decodeForModel(blob, sampleRate) -> {pcm, duration, playback}: the browser's own decoder, mixed down
+//                                       to mono and resampled to the model's rate (22,050 Hz); playback:
+//                                       the same decoded audio as a WAV Blob, for the player (wavBlob)
+//   wavBlob(audioBuffer)             -> 16-bit PCM WAV of every channel, at the buffer's rate
 //   new LiveSession({...})           -> one WebSocket session; sendUntil(t) streams the audio up to t
 //                                       seconds of the recording; close() ends it
 //
@@ -10,6 +12,10 @@
 "use strict";
 
 async function decodeForModel(blob, sampleRate) {
+  // The player plays `playback`, not the original file: a compressed file (MP3, FLAC, AAC...) seeks only
+  // approximately in some browsers (Safari's FLAC and MP3), so after a seek the player would play other
+  // samples than the ones streamed from the same time. An uncompressed WAV seeks exactly everywhere, and
+  // being the same decoded audio, it has the same samples and the same length as what the server gets.
   const context = new AudioContext();
   let decoded;
   try {
@@ -17,13 +23,33 @@ async function decodeForModel(blob, sampleRate) {
   } finally {
     context.close();
   }
+  const playback = wavBlob(decoded);
   const offline = new OfflineAudioContext(1, Math.max(1, Math.ceil(decoded.duration * sampleRate)), sampleRate);
   const source = offline.createBufferSource();
   source.buffer = decoded;
   source.connect(offline.destination);            // one output channel: the channels are averaged
   source.start();
   const rendered = await offline.startRendering();
-  return { pcm: rendered.getChannelData(0), duration: decoded.duration };
+  return { pcm: rendered.getChannelData(0), duration: decoded.duration, playback };
+}
+
+function wavBlob(buffer) {
+  // A 16-bit PCM WAV (RIFF, little-endian) of an AudioBuffer: channels interleaved, at buffer.sampleRate.
+  const channels = buffer.numberOfChannels, frames = buffer.length, rate = buffer.sampleRate;
+  const header = new DataView(new ArrayBuffer(44));
+  const text = (offset, s) => { for (let i = 0; i < s.length; i++) header.setUint8(offset + i, s.charCodeAt(i)); };
+  const bytes = frames * channels * 2;
+  text(0, "RIFF"); header.setUint32(4, 36 + bytes, true); text(8, "WAVE");
+  text(12, "fmt "); header.setUint32(16, 16, true); header.setUint16(20, 1, true);           // PCM
+  header.setUint16(22, channels, true); header.setUint32(24, rate, true);
+  header.setUint32(28, rate * channels * 2, true); header.setUint16(32, channels * 2, true); header.setUint16(34, 16, true);
+  text(36, "data"); header.setUint32(40, bytes, true);
+  const data = new Int16Array(frames * channels);
+  for (let c = 0; c < channels; c++) {
+    const x = buffer.getChannelData(c);
+    for (let i = 0; i < frames; i++) data[i * channels + c] = Math.max(-32768, Math.min(32767, Math.round(x[i] * 32767)));
+  }
+  return new Blob([header, data], { type: "audio/wav" });
 }
 
 class LiveSession {

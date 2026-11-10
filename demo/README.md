@@ -28,7 +28,14 @@ bar, to seek.
 **Live** (with `scripts/demo_server.py`): the browser decodes the recording, streams it to the server at
 playback speed over a WebSocket, and the server runs the live chain (`play_along.Analysis`) on it,
 sending back each chord as soon as it is decided. Your own file works the same way: any audio file your
-browser can play, up to 100 MB and 10 min. A seek or a new look-ahead starts a new session.
+browser can play, up to 100 MB and 10 min. The page plays the browser's decoding of it, as a WAV, not
+the file itself: compressed files (FLAC and MP3 in Safari, MP3 without a seek index elsewhere) seek only
+approximately, so after a seek the player would play other samples than the ones the server decodes. A
+seek or a new look-ahead starts a new session; a drag on the seek bar or the timeline starts one, on
+release.
+
+`tests/test_demo_e2e.py` checks this in Chromium (it needs Playwright: `pip install playwright` and
+`playwright install chromium`; skipped without it).
 
 **Precomputed** (any static server, e.g. `python -m http.server -d demo 8000`): no model runs; the page
 reveals the chords that `scripts/demo_export.py` computed, each when the live system would have output
