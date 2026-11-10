@@ -105,11 +105,18 @@ function liveMargin() {
   return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
 }
 
-const LEAD_SECONDS = 0.5;            // half the 1 s the listening prototype ended on (reports/play_along.md): 1 s felt long
+const LEAD_KEY = "chord-demo-lead";   // the viewer's lead, remembered in this browser
 
 function lead() {
-  // "Show chords early" (with the delay on): the chords on screen are those of LEAD_SECONDS ahead.
-  return $("delay").checked && $("lead").checked ? LEAD_SECONDS : 0;
+  // "Show chords ... early" (with the delay on): the chords on screen are those of that many seconds ahead
+  // (0.1 to 0.5 s; the listening prototype ended on 1 s, which felt long here).
+  return $("delay").checked ? Number($("lead").value) : 0;
+}
+
+function restoreLead() {
+  let saved = null;
+  try { saved = localStorage.getItem(LEAD_KEY); } catch { /* storage unavailable: on time */ }
+  if (saved !== null && [...$("lead").options].some((o) => o.value === saved)) $("lead").value = saved;
 }
 
 function playbackDelay() {
@@ -554,7 +561,6 @@ function updateDelayNote() {
   $("input-head").hidden = !$("delay").checked;
   $("lead").disabled = !$("delay").checked;                      // a lead needs the delay to be decided in time
   $("now-caption").textContent = lead() > 0 ? `Chord in ${lead()} s` : "Chord now";
-  $("lead-seconds").textContent = String(LEAD_SECONDS);
 }
 
 function showMeasured() {
@@ -1057,7 +1063,12 @@ audio.addEventListener("error", () => {
 $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
 $("delay").addEventListener("change", () => { updateDelayNote(); restartInput(); });
-$("lead").addEventListener("change", () => { updateDelayNote(); restartInput(); });
+restoreLead();
+$("lead").addEventListener("change", () => {
+  try { localStorage.setItem(LEAD_KEY, $("lead").value); } catch { /* not remembered */ }
+  updateDelayNote();
+  restartInput();
+});
 $("show-reference").addEventListener("change", showReference);
 
 const seekBar = $("seek");

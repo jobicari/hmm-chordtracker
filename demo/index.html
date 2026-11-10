@@ -35,7 +35,15 @@
       <div class="control checks">
         <span class="label">Options</span>
         <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
-        <label class="check"><input id="lead" type="checkbox"> Show chords <span id="lead-seconds">0.5</span> s before you hear them</label>
+        <label class="check lead">Show chords
+          <select id="lead">
+            <option value="0">on time</option>
+            <option value="0.1">0.1 s early</option>
+            <option value="0.2">0.2 s early</option>
+            <option value="0.3">0.3 s early</option>
+            <option value="0.4">0.4 s early</option>
+            <option value="0.5">0.5 s early</option>
+          </select></label>
         <label class="check"><input id="show-reference" type="checkbox" disabled> Show reference annotations</label>
       </div>
       <div id="delay-note" class="delay-panel" aria-live="polite"></div>
