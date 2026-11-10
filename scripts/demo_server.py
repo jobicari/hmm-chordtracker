@@ -144,10 +144,17 @@ def health(workers: Workers, settings) -> dict:
 
 class PageFileHandler(tornado.web.StaticFileHandler):
     """The page's files and the samples, revalidated on every load ("no-cache", answered 304 from the ETag
-    when unchanged): without it browsers keep using a cached app.js after a new image is deployed."""
+    when unchanged): without it browsers keep using a cached app.js after a new image is deployed.
+
+    The ETag is the file's modification time and size, read on every request: tornado's own is a hash it
+    computes once per process, so a file edited while the server runs kept its old ETag and got 304."""
 
     def set_extra_headers(self, path):
         self.set_header("Cache-Control", "no-cache")
+
+    def compute_etag(self):
+        st = os.stat(self.absolute_path)
+        return f'"{st.st_mtime_ns:x}-{st.st_size:x}"'
 
 
 class HealthHandler(tornado.web.RequestHandler):
