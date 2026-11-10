@@ -294,8 +294,8 @@ V14_CFG = {**GATE_CFG, "train": {"dropout": 0.5}, "decoder": {"prior_power": 0.2
            "transitions": {"source": "billboard", "counts": "results/v3/billboard_counts.json", "alpha": 1, "tau": 1}}
 
 
-def test_the_two_systems():
-    assert set(pa.SYSTEMS) == {"v11", "v14"}
+def test_the_systems():
+    assert set(pa.SYSTEMS) == {"v11", "v14", "v15"}
     assert pa.SYSTEMS["v11"].gate and not pa.SYSTEMS["v14"].gate
     assert pa.SYSTEMS["v14"].run == "results/v14/n_seed0" and pa.SYSTEMS["v14"].config == "configs/v14.yaml"
     for name, v in pa.V14_POINTS.items():                         # the same names, so the same look-aheads
@@ -376,3 +376,28 @@ def test_v14_streamed_gives_the_whole_file_labels(tmp_path):
         v = pa.V14_POINTS[point]
         whole = online_hmm.fixed_lag_viterbi(post, transitions.transition(Q, v["p_self"]), decode_prior, [v["lag"]])
         assert a.labels[point] == list(whole[v["lag"]])
+
+
+def test_v15_is_the_fine_tuned_network_in_decode_order():
+    """V15's outputs are put in decode order (N last), so its labels are its vocabulary's decode names."""
+    from chordtracker import data_v15, model_v14
+    assert pa.SYSTEMS["v15"].run == "results/v15/ft_seed0" and not pa.SYSTEMS["v15"].gate
+    vocab = data_v15.Vocab()
+    cfg = {"vocab_plus": {"new": list(vocab.new), "merge": dict(data_v15.MERGE)}}
+    names = pa.system_labels("v15", cfg)
+    assert names == vocab.decode_names() and len(names) == 97 and names[-1] == "N"
+    assert pa.system_labels("v14", {}) == pa.CLASS_LABELS + ["N"]
+    torch.manual_seed(0)
+    model = model_v14.ChordCRNN(97).eval()
+    x = torch.randn(1, 15, 64)
+    before = model.classifier(x)
+    pa.decode_order_head(model, vocab.decode_order)
+    assert torch.equal(model.classifier(x), before[..., torch.as_tensor(vocab.decode_order)])
+    assert model.classifier[1].out_features == 97                       # the layers themselves untouched
+
+
+def test_the_window_names_any_vocabulary():
+    names = ["C:maj", "C:dim", "B:hdim7", "N"]
+    assert [pa.class_name(i, names) for i in range(4)] == ["C", "Cdim", "Bm7b5", "N.C."]
+    assert pa.system_at([1, 1, 2], 0, names) == ("Cdim", "Bm7b5")
+    assert pa.class_name(60) == "N.C." and pa.class_name(0) == "C"     # vocabulary A without names

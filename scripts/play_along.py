@@ -14,6 +14,8 @@ chord is ready when its moment is heard:
                    60 classes, prior power 0.25, Billboard change matrix); N from the silence gate
     v14            V14's network with an N class (results/v14/n_seed0, configs/v14.yaml: 61 classes) at
                    its best decoder setting on validation; N from the network, the silence gate off
+    v15            V14 fine-tuned to also name dim, aug and hdim7 (results/v15/ft_seed0, configs/v15.yaml:
+                   97 classes), decoded as V15 scores it; N from the network, the silence gate off
 
 --run DIR takes the model from another folder (model.pt, prior.json, and for v14 run.json and
 n_counts.json; the weights are not in git, so a worktree points at the main clone's). --silence-gate /
@@ -71,6 +73,7 @@ class Engine:
     def __init__(self, rate: int, cfg: dict, run: Path, system: str = "v11", silence_dbfs: float | None = None,
                  timing: bool = False):
         self.rate, self.cfg, self.points = rate, cfg, pa.SYSTEMS[system].points
+        self.names = pa.system_labels(system, cfg)                   # the label of every index, N last
         self.sr, self.hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
         self.ring = np.zeros((rate * 30, 2), dtype=np.float32)       # the last 30 s of input
         self.written = 0                                             # input samples since start (device rate)
@@ -259,7 +262,8 @@ class Window:
         e.collect()
         labels = e.labels[self.point]
         onset = e.onset_time
-        s = pa.held(pa.shown(labels, self.reference, onset, e.playback_s(), self.lead, self.nudge, e.sr, e.hop),
+        s = pa.held(pa.shown(labels, self.reference, onset, e.playback_s(), self.lead, self.nudge, e.sr, e.hop,
+                             e.names),
                     self.last)
         if s["ready"]:
             self.last = s
@@ -322,7 +326,8 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
         updates += 1
         for p in engine.points:
             delay = pa.required_delay(p, 0.0, engine.sr, engine.hop)
-            s = pa.shown(engine.labels[p], None, engine.onset_time, heard - delay, 0.0, 0.0, engine.sr, engine.hop)
+            s = pa.shown(engine.labels[p], None, engine.onset_time, heard - delay, 0.0, 0.0, engine.sr, engine.hop,
+                         engine.names)
             late[p] += s["frame"] >= 0 and not s["ready"]
             s = pa.held(s, last[p])
             last[p] = s if s["ready"] else last[p]
@@ -365,7 +370,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--model", choices=sorted(pa.SYSTEMS), default="v11", help="the system to run (default v11)")
     parser.add_argument("--run", type=Path, help="the saved run's folder, instead of the system's own")
     parser.add_argument("--silence-gate", action=argparse.BooleanOptionalAction, default=None,
-                        help=f"N where the input stays below {pa.SILENCE_DBFS:g} dBFS (default: on for v11, off for v14)")
+                        help=f"N where the input stays below {pa.SILENCE_DBFS:g} dBFS (default: on for v11, off for v14 and v15)")
     args = parser.parse_args(argv)
     if not args.list_devices and (args.input_device is None) == (args.file is None):
         parser.error("give exactly one of --input-device and --file")

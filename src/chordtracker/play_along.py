@@ -11,6 +11,10 @@ is ready when that frame is heard:
            its best decoder setting on validation (N weight x0.1, chord -> N rate x0.5): N comes from the
            network, the silence gate is off unless asked for. V14 did not pass its checks (reports/v14.md:
            it calls N on some chords); this is for listening to a learned N
+    v15    V14's network fine-tuned to also name dim, aug and hdim7 (97 classes; results/v15/ft_seed0, the
+           run reports/v15.md recommends, configs/v15.yaml), decoded as V15 scores it (the evidence divided
+           by the fine-tune's target mix); the network's outputs are put in decode order (N last), so its
+           labels are system_labels("v15", cfg)
 
 This module holds what does not depend on sound devices:
 
@@ -19,6 +23,7 @@ This module holds what does not depend on sound devices:
     V14_POINTS                     V14's points: the same lags, V8's p_self
     SYSTEMS, System                the two systems: config, run, points, silence gate on or off by default
     load_chain(system, cfg, run)   (model, decoding prior, Q) of a system's saved run
+    system_labels(system, cfg)     the Harte label of every index the system outputs, N last
     V7_2_POINTS                    the demo website's three points (V7.2's network and p_self)
     CLASS_LABELS                   the Harte label of each of the 60 classes ('C:maj' .. 'B:min7')
     SILENCE_DBFS, SILENCE_FRAMES   the silence gate: -55 dBFS for 3 frames
@@ -259,24 +264,26 @@ class Analysis:
         return self.silent[f]
 
 
-def class_name(index: int) -> str:
-    """A label index as a musician reads it: a class's name, "N.C." for N (index len(CLASS_LABELS))."""
-    return chord_name(CLASS_LABELS[index]) if index < len(CLASS_LABELS) else chord_name("N")
+def class_name(index: int, names: list[str] | None = None) -> str:
+    """A label index as a musician reads it: names[index] (system_labels; default vocabulary A then N),
+    "N.C." for N and for an index past the vocabulary."""
+    names = names or CLASS_LABELS
+    return chord_name(names[index]) if index < len(names) else chord_name("N")
 
 
-def system_at(labels: list[int], frame: int) -> tuple[str, str]:
+def system_at(labels: list[int], frame: int, names: list[str] | None = None) -> tuple[str, str]:
     """(chord of frame, next different chord already decided) from a point's labels; "" if not known yet."""
     if frame < 0 or frame >= len(labels):
         return "", ""
-    now = class_name(labels[frame])
+    now = class_name(labels[frame], names)
     for later in labels[frame + 1:]:
-        if class_name(later) != now:
-            return now, class_name(later)
+        if class_name(later, names) != now:
+            return now, class_name(later, names)
     return now, ""
 
 
 def shown(labels: list[int], reference: Reference | None, onset: float | None, playback_s: float, lead_s: float,
-          nudge_s: float, sr: int, hop: int) -> dict:
+          nudge_s: float, sr: int, hop: int, names: list[str] | None = None) -> dict:
     """What the window shows when the musician hears input time playback_s.
 
     The chords are those of input time playback_s + lead_s. The analysis starts at the onset, so the
@@ -285,7 +292,7 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
     """
     t = playback_s + lead_s
     frame = int(np.floor((t - (onset or 0.0)) * sr / hop))
-    system_now, system_next = system_at(labels, frame)
+    system_now, system_next = system_at(labels, frame, names)
     ref_now = ref_next = ""
     if reference is not None and onset is not None:
         ref_now, ref_next = reference.at(t - onset - nudge_s)
@@ -334,7 +341,35 @@ class System:
 SYSTEMS = {
     "v11": System("configs/v11.yaml", "results/v11/pool_kd1_seed1", OPERATING_POINTS, gate=True),
     "v14": System("configs/v14.yaml", "results/v14/n_seed0", V14_POINTS, gate=False),
+    "v15": System("configs/v15.yaml", "results/v15/ft_seed0", V14_POINTS, gate=False),
 }
+
+
+def system_labels(system: str, cfg: dict) -> list[str]:
+    """The Harte label of every index the system outputs, N last: vocabulary A then N for v11 and v14,
+    V15's vocabulary in decode order (its chords, then N) for v15."""
+    if system == "v15":
+        from chordtracker import data_v15
+        return data_v15.vocab_from_cfg(cfg).decode_names()
+    return CLASS_LABELS + ["N"]
+
+
+def decode_order_head(model, order):
+    """The model with its classifier's outputs put in `order` (output i = old output order[i]): a network
+    trained in another order then decodes as one whose classes are in decode order."""
+    import torch
+    from torch import nn
+
+    class Reorder(nn.Module):
+        def __init__(self, order):
+            super().__init__()
+            self.register_buffer("order", torch.as_tensor(np.asarray(order), dtype=torch.long))
+
+        def forward(self, x):
+            return x.index_select(-1, self.order)
+
+    model.classifier.append(Reorder(order))
+    return model
 
 
 def billboard_counts(cfg: dict) -> np.ndarray:
@@ -351,9 +386,12 @@ def load_chain(system: str, cfg: dict, run: Path):
 
     v11: load_system, and V8's Billboard matrix weighted by the training prior (run_v8.decoder_parts).
     The matrices follow cfg's vocabulary (cfg["vocab"], vocabulary A without one).
-    v14: model_v14's network with N last (run.json: n_classes); the training prior raised to the prior power, N's entry
-    divided by V14_N_WEIGHT (its evidence times the weight); Q with N's row and column at the counted chord
-    -> N rate (n_counts.json) times V14_RATE_FACTOR (run_v14.specs).
+    v14: model_v14's network with N last (run.json: n_classes); the training prior raised to the prior
+    power, N's entry divided by V14_N_WEIGHT (its evidence times the weight); Q with N's row and column at
+    the counted chord -> N rate (n_counts.json) times V14_RATE_FACTOR (run_v14.specs).
+    v15: the fine-tuned network with its outputs in decode order (decode_order_head); Q and the decoding
+    prior from eval_v15.decode_parts with configs/v15.yaml's decoder (the evidence divided by the target mix,
+    mix_prior.json), as run_v15 scores it.
     """
     import json
 
@@ -366,6 +404,14 @@ def load_chain(system: str, cfg: dict, run: Path):
         model, decode_prior = load_system(cfg, run)
         Q = transitions_v8.change_matrix(billboard_counts(cfg), vocab, prior, t["alpha"], t["tau"])
         return model, decode_prior, Q
+    if system == "v15":
+        from chordtracker import data_v15, eval_v15
+        vocab, d = data_v15.vocab_from_cfg(cfg), cfg["decoder"]
+        rate = json.loads((run / "n_counts.json").read_text())["chord_to_n_rate"] * d["n_rate_factor"]
+        mix = np.array(json.loads((run / "mix_prior.json").read_text()))       # decode order, as prior.json
+        Q, decode_prior = eval_v15.decode_parts(vocab.qualities, billboard_counts(cfg), prior, mix, rate,
+                                                d["n_weight"], d["prior_power"], t["alpha"], t["tau"])
+        return decode_order_head(model_v14.load(run, cfg).cpu(), vocab.decode_order), decode_prior, Q
     if system != "v14":
         raise ValueError(f"unknown system {system!r}: one of {sorted(SYSTEMS)}")
     rate = json.loads((run / "n_counts.json").read_text())["chord_to_n_rate"] * V14_RATE_FACTOR
@@ -392,6 +438,7 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, rate: int, timing=
     torch.set_num_threads(1)
     model, prior, Q = load_chain(system, cfg, Path(run_dir))
     points = SYSTEMS[system].points
+    n_label = len(system_labels(system, cfg)) - 1
     sr = cfg["audio"]["sr"]
     generation, analysis, onset, resampler, analysed, sent = None, None, None, None, 0, {}
     while True:
@@ -400,7 +447,7 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, rate: int, timing=
             return
         if message[0] == "reset":
             generation = message[1]
-            analysis = Analysis(cfg, model, prior, Q, points, silence_dbfs, n_label=N_LABEL, onset_dbfs=SILENCE_DBFS)
+            analysis = Analysis(cfg, model, prior, Q, points, silence_dbfs, n_label=n_label, onset_dbfs=SILENCE_DBFS)
             onset = Onset()
             resampler = soxr.ResampleStream(rate, sr, 1, dtype="float32")
             analysed, sent = 0, {p: 0 for p in points}

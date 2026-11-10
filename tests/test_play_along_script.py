@@ -42,3 +42,10 @@ def test_the_input_is_required(script):
     with pytest.raises(SystemExit):
         script.parse_args(["--input-device", "A", "--dry-run", "5"])
     assert script.parse_args(["--list-devices"]).list_devices
+
+
+def test_v15_without_the_gate(script):
+    from chordtracker import paths
+    cfg, run, gate = script.chain_settings(script.parse_args(["--model", "v15", "--file", "x.wav"]))
+    assert cfg["version"] == "v15" and run == paths.REPO_ROOT / "results" / "v15" / "ft_seed0" and gate is None
+    assert cfg["audio"]["sr"] == 22050 and cfg["vocab_plus"]["new"] == ["dim", "aug", "hdim7"]   # v2 + v14 + v15

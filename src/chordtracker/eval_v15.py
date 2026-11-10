@@ -41,18 +41,27 @@ def song_tables(annotation, n_frames: int, vocab: Vocab, period: float,
     return out
 
 
-def decoder(qualities: tuple[str, ...], counts: np.ndarray, prior: np.ndarray, divide_prior: np.ndarray,
-            p_self: float, chord_to_n: float, n_weight: float, power: float, alpha: float = 1.0,
-            tau: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
-    """(A, decode prior) as V14's run_v14.specs: the Billboard matrix split by the prior's quality shares,
-    N's row and column at chord_to_n, p_self on the diagonal; the evidence divides by divide_prior ** power,
-    N's entry divided by n_weight (more N evidence for n_weight > 1). A class divide_prior gives no mass is
-    divided by the smallest mass it gives a class (not by ~0, which would make its evidence unbounded)."""
+def decode_parts(qualities: tuple[str, ...], counts: np.ndarray, prior: np.ndarray, divide_prior: np.ndarray,
+                 chord_to_n: float, n_weight: float, power: float, alpha: float = 1.0,
+                 tau: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+    """(Q, decode prior) as V14's run_v14.specs: the Billboard change matrix split by the prior's quality
+    shares with N's row and column at chord_to_n (zero diagonal, for any p_self); the evidence divides by
+    divide_prior ** power, N's entry divided by n_weight (more N evidence for n_weight > 1). A class
+    divide_prior gives no mass is divided by the smallest mass it gives a class (not by ~0, which would make
+    its evidence unbounded). The live chain (play_along.load_chain) decodes with these."""
     Q = transitions_v8.change_matrix(counts, qualities, prior, alpha, tau, chord_to_n)
     floor = divide_prior[divide_prior > 0].min()
     d = transitions_v8.tempered_prior(np.maximum(divide_prior, floor), power)
     d[-1] /= n_weight
-    return transitions.transition(Q, p_self), d / d.sum()
+    return Q, d / d.sum()
+
+
+def decoder(qualities: tuple[str, ...], counts: np.ndarray, prior: np.ndarray, divide_prior: np.ndarray,
+            p_self: float, chord_to_n: float, n_weight: float, power: float, alpha: float = 1.0,
+            tau: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+    """(A, decode prior): decode_parts with p_self on the diagonal."""
+    Q, d = decode_parts(qualities, counts, prior, divide_prior, chord_to_n, n_weight, power, alpha, tau)
+    return transitions.transition(Q, p_self), d
 
 
 def decode(post: np.ndarray, A: np.ndarray | None, prior: np.ndarray | None, lag: int | None) -> np.ndarray:
