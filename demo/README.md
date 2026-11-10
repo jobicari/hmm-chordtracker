@@ -7,12 +7,20 @@ checkbox really delays playback to match it, and a panel states the delay and wh
 checkbox adds the GuitarSet lead-sheet chords as a reference row, and a diagram shows the analysis
 stages with the run's settings. See [reports/demo.md](../reports/demo.md).
 
+The model is V14's network with an N class (`results/v14/n_seed0`: 60 chords, major, minor, 7, maj7 and
+m7 in 12 keys, plus N.C.), decoded at its best setting on validation (N weight x0.1, chord to N rate
+x0.5); N.C. is the network's own call, so it can land on a real chord (reports/v14.md). V7.2's 24-chord
+network (`results/v7_2/c2_la2_seed0`, N.C. from a level gate) stays available with `--model v7_2`.
+`results/v14/n_seed0/model.pt` is git-ignored: copy it into that folder before exporting or building.
+
 No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`.
 
 ```bash
 PYTHONPATH=src python scripts/demo_export.py 00_Funk2-108-Eb_comp 00_Rock3-148-C_comp 00_SS3-98-C_comp
 PYTHONPATH=src python scripts/demo_server.py
 ```
+
+(`--model v7_2` on both for V7.2: the prepared samples and the server must use the same model.)
 
 Then open http://localhost:8000. Space plays and pauses; click or drag on the timeline, or use the seek
 bar, to seek.
@@ -33,10 +41,11 @@ lead-sheet chords, metadata with the pipeline settings). Only GuitarSet validati
 ## Deploy with Docker
 
 The `Dockerfile` at the repo root packages the live server: the page, the prepared samples, the model
-(`results/v7_2/c2_la2_seed0`), its configs and the Billboard counts, with CPU-only PyTorch and the
-packages of `requirements-demo.txt`. `.dockerignore` lets in only those files, so `data/` and the other
-results never enter the build. `demo/samples/` is git-ignored, so export it first (above): the build
-stops if `demo/samples/index.json` is missing.
+(`results/v14/n_seed0`: model.pt, prior.json, run.json, n_counts.json; and `results/v7_2/c2_la2_seed0`), their
+configs and the Billboard counts, with CPU-only PyTorch and the packages of `requirements-demo.txt`.
+`.dockerignore` lets in only those files, so `data/` and the other results never enter the build.
+`demo/samples/` and V14's `model.pt` are git-ignored, so export the samples first (above) and copy the
+weights in: the build stops if `demo/samples/index.json` or `results/v14/n_seed0/model.pt` is missing.
 
 ```bash
 docker build -t chord-tracker-demo .
@@ -58,7 +67,7 @@ stops is restarted, and its listeners get an error and can start again.
 Settings are environment variables (or the same flags of `scripts/demo_server.py`), read when the server
 starts: change them with `docker run -e ...` and restart the container, no rebuild needed. The server
 logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`,
-`silenceDbfs`).
+`model`, `silenceDbfs`).
 
 | Variable | Default | |
 |---|---|---|
@@ -69,7 +78,8 @@ logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, 
 | `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once, over all workers |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
-| `CHORD_DEMO_SILENCE_DBFS` | `-55` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames, and the 10 s the tuning is estimated on start at the first frame at or above it; `-inf` turns the gate off (reported as `null`) |
+| `CHORD_DEMO_MODEL` | `v14` | `v14`: V14's network with its own N.C.; `v7_2`: V7.2's 24 chords (`--model`). The prepared samples must be exported with the same model |
+| `CHORD_DEMO_SILENCE_DBFS` | off for `v14`, `-55` for `v7_2` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames; `-inf` turns it off (reported as `null`). The 10 s the tuning is estimated on start at the first frame at or above -55 dBFS either way |
 
 ```bash
 docker run --rm -p 8000:8000 -e CHORD_DEMO_WORKERS=2 -e CHORD_DEMO_MAX_SESSIONS=4 chord-tracker-demo

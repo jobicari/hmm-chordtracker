@@ -218,7 +218,11 @@ def test_settings_come_from_flags_then_the_environment(server_module, monkeypatc
     default = parse([], env={})
     assert (default.host, default.port, default.allowed_origins) == ("127.0.0.1", 8000, [])
     assert (default.workers, default.max_sessions, default.max_seconds, default.live_margin) == (8, 8, 600.0, 0.15)
-    assert default.silence_dbfs == -55.0
+    assert default.model == "v14" and default.silence_dbfs == float("-inf")         # v14: its own N, no gate
+    assert parse([], env={"CHORD_DEMO_MODEL": "v7_2"}).silence_dbfs == -55.0        # v7_2: the gate
+    assert parse(["--model", "v7_2"], env={"CHORD_DEMO_MODEL": "v14"}).model == "v7_2"
+    with pytest.raises(SystemExit):
+        parse([], env={"CHORD_DEMO_MODEL": "v99"})
     monkeypatch.setattr(server_module, "available_cpus", lambda: 2)
     assert parse([], env={}).workers == 2                                      # the CPUs, at most 8 by default
     assert parse([], env={"PORT": "9000"}).port == 9000
@@ -241,7 +245,7 @@ def test_health_reports_the_settings_in_use(server_module, tmp_path):
     async def test(host, pool):
         health = json.loads((await AsyncHTTPClient().fetch(f"http://{host}/healthz")).body)
         assert (health["maxSessions"], health["maxSeconds"], health["liveMarginSeconds"]) == (3, 120.0, 0.4)
-        assert health["silenceDbfs"] == -50.0
+        assert health["silenceDbfs"] == -50.0 and health["model"] == "v14"
         assert health["workers"] == {"alive": 2, "count": 2}
     run(server_module, tmp_path, test, workers=2,
         env={"CHORD_DEMO_MAX_SESSIONS": "3", "CHORD_DEMO_MAX_SECONDS": "120", "CHORD_DEMO_LIVE_MARGIN": "0.4",
@@ -255,26 +259,39 @@ def test_the_silence_gate_can_be_turned_off(server_module):
     assert server_module.health(NoWorkers(), settings)["silenceDbfs"] is None      # JSON has no -inf
 
 
-def test_the_servers_default_level_is_the_prototypes(server_module):
-    from chordtracker import play_along
-    assert server_module.DEFAULT_SILENCE_DBFS == play_along.SILENCE_DBFS
-    assert server_module.Chain.__init__.__defaults__ == (play_along.SILENCE_DBFS,)
+def test_the_servers_lists_are_the_models(server_module):
+    """The server process does not import the model code: its copies of the names and defaults must agree."""
+    sys.path.insert(0, str(SCRIPTS))
+    import demo_export
+    from chordtracker import demo
+    assert set(server_module.MODELS) == set(demo.MODELS) and server_module.DEFAULT_MODEL == demo.DEFAULT_MODEL
+    assert server_module.DEFAULT_SILENCE_DBFS == demo_export.DEFAULT_SILENCE_DBFS
 
 
-def test_the_real_chain_gives_the_same_labels_through_a_worker(server_module, tmp_path):
+V14_MODEL = SCRIPTS.parent / "results" / "v14" / "n_seed0" / "model.pt"
+needs_v14 = pytest.mark.skipif(not V14_MODEL.exists(), reason="results/v14/n_seed0/model.pt is git-ignored: copy it in")
+
+
+@pytest.mark.parametrize("model", [pytest.param("v14", marks=needs_v14), "v7_2"])
+def test_the_real_chain_gives_the_same_labels_through_a_worker(server_module, tmp_path, model):
     """The process path changes nothing: the labels of a worker session are those of the chain run here."""
+    import functools
     from test_features_v7_1 import synthetic
     pcm = np.clip(np.round(synthetic(seconds=12.0, cents=15.0) * 32767), -32768, 32767).astype("<i2")
-    chain = server_module.Chain()
+    chain = server_module.Chain(model)
     here = chain.new_session()
     for i in range(0, len(pcm), 3000):
         here.step(pcm[i:i + 3000].astype(np.float32) / 32768.0)
     here.finish()
 
     async def test(host, pool):
-        _, received = await session(host, pcm, block=3000)
+        ready, received = await session(host, pcm, block=3000)
+        assert len(ready["labels"]) == {"v14": 61, "v7_2": 25}[model] and ready["labels"][-1] == "N"
         assert received == {p: [int(x) for x in labels] for p, labels in here.labels.items()}
-    run(server_module, tmp_path, test, chain=server_module.Chain)
+        health = json.loads((await AsyncHTTPClient().fetch(f"http://{host}/healthz")).body)
+        assert health["metadata"]["pipeline"]["network"]["name"] == model
+    run(server_module, tmp_path, test, chain=functools.partial(server_module.Chain, model),
+        env={"CHORD_DEMO_MODEL": model})
 
 
 def triads(chords, seconds, cents=0.0):
@@ -294,8 +311,8 @@ def triads(chords, seconds, cents=0.0):
 
 
 def test_a_silent_intro_is_no_chord_then_the_recordings_chords(server_module, tmp_path):
-    """3.7 s of digital silence (40 frames), then 12 s of triads 15 cents sharp, through a worker of the real
-    chain: N (label 24) on the intro at every point, a chord from the onset on, the tuning of the music
+    """3.7 s of digital silence (40 frames), then 12 s of triads 15 cents sharp, through a worker of V7.2's
+    chain with the silence gate: N (label 24) on the intro at every point, a chord from the onset on, the tuning of the music
     alone, and its labels once the running level has forgotten the intro (its silent columns lower the
     99th percentile for a few seconds)."""
     import functools
@@ -303,7 +320,7 @@ def test_a_silent_intro_is_no_chord_then_the_recordings_chords(server_module, tm
     intro = 40
     y = np.concatenate([np.zeros(intro * HOP, np.float32), music])
     pcm = np.clip(np.round(y * 32767), -32768, 32767).astype("<i2")
-    chain = server_module.Chain(-55.0)
+    chain = server_module.Chain("v7_2", -55.0)
 
     def run_here(samples):
         a = chain.new_session()
@@ -322,4 +339,49 @@ def test_a_silent_intro_is_no_chord_then_the_recordings_chords(server_module, tm
         ready, received = await session(host, pcm, block=3000)
         assert len(ready["labels"]) == 25 and ready["labels"][24] == "N"
         assert received == {p: [int(x) for x in labels] for p, labels in here.labels.items()}
-    run(server_module, tmp_path, test, chain=functools.partial(server_module.Chain, -55.0))
+    run(server_module, tmp_path, test, chain=functools.partial(server_module.Chain, "v7_2", -55.0))
+
+
+@needs_v14
+def test_v14_says_no_chord_itself_on_a_silent_intro(server_module):
+    """V14 without the gate: its own N on 3.7 s of digital silence at every point, chords once the music
+    has started (at most 2 frames of N at the onset), and the tuning of the music alone (the tuning
+    seconds start at the first audible frame with the gate off too)."""
+    music = triads(["C:maj", "A:min", "F:maj", "G:maj", "E:min", "D:min"], 2.0, cents=15.0)
+    intro = 40
+    chain = server_module.Chain("v14")
+    assert chain.silence_dbfs == float("-inf")
+
+    def run_here(samples):
+        a = chain.new_session()
+        for i in range(0, len(samples), 3000):
+            a.step(samples[i:i + 3000])
+        a.finish()
+        return a
+    here, alone = run_here(np.concatenate([np.zeros(intro * HOP, np.float32), music])), run_here(music)
+    assert here.silent == [] and here.features.tuned.tuning == alone.features.tuned.tuning
+    for labels in here.labels.values():
+        assert set(labels[:intro]) == {60} and sum(x == 60 for x in labels[intro:]) <= 2
+
+
+@pytest.mark.parametrize("model", [pytest.param("v14", marks=needs_v14), "v7_2"])
+def test_the_prepared_sample_is_the_live_session(server_module, tmp_path, model):
+    """demo_export's JSON of a file has, at every point, the labels a live session gives for the same PCM."""
+    import soundfile as sf
+    sys.path.insert(0, str(SCRIPTS))
+    import demo_export
+    from chordtracker import demo
+    y = np.concatenate([np.zeros(10 * HOP, np.float32), triads(["G:maj", "E:min", "C:maj"], 2.0)])
+    sf.write(tmp_path / "x.wav", y, SR, subtype="FLOAT")
+    analyzer = demo_export.Analyzer(model)
+    out = analyzer.analyze(tmp_path / "x.wav", "x", "X", "x.wav")
+    chain = server_module.Chain(model)
+    live = chain.new_session()
+    pcm = np.clip(np.round(y * 32767), -32768, 32767).astype("<i2")
+    for i in range(0, len(pcm), 3000):
+        live.step(pcm[i:i + 3000].astype(np.float32) / 32768.0)
+    live.finish()
+    times = np.arange(len(live.labels["0.28 s"])) * HOP / SR
+    for p in out["points"]:
+        assert p["segments"] == demo.path_segments(np.array(live.labels[p["id"]]), chain.labels, times, out["duration"])
+    assert out["metadata"]["pipeline"]["network"]["name"] == model
