@@ -1,0 +1,34 @@
+{
+  "n_classes": 97,
+  "level_input": false,
+  "vocab_plus": {
+    "new": [
+      "dim",
+      "aug",
+      "hdim7"
+    ],
+    "merge": {
+      "dim7": "dim",
+      "min7(b5)": "hdim7",
+      "aug(b7)": "aug"
+    }
+  },
+  "base_run": "results/v14/n_seed0",
+  "finetune": {
+    "seed": 0,
+    "lr": 0.0001,
+    "head_lr": 0.0005,
+    "max_epochs": 12,
+    "patience": 4,
+    "excerpt_frames": 128,
+    "input_lookahead": 2,
+    "replay_excerpts": 2000,
+    "replay_per_batch": 0,
+    "focus_per_batch": 8,
+    "stretch": 0.06,
+    "gain_db": 3,
+    "penalty": 10,
+    "tolerance": 0.3,
+    "batches_per_epoch": 400
+  }
+}

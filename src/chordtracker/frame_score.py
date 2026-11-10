@@ -15,13 +15,15 @@ the metric, S[t, c] = seconds of cell(t) the metric can judge. Both come from th
 up to float rounding. Building the tables costs one comparison per (reference segment, class); scoring
 a path is then one gather, which is what makes sweeps over decoders and offsets cheap.
 
-    tables(annotation, labels, n_frames, frame_period, metric)   -> (M, S), each (n_frames, n_classes)
+    tables(annotation, labels, n_frames, frame_period, metric)   -> (M, S), each (n_frames, n_classes);
+                       metric: a key of evaluate.METRICS, or any mir_eval.chord comparison ('tetrads', 'mirex')
     score_path(M, S, path)                                       -> (matched_s, scored_s)
     cells(n_frames, frame_period, duration)                      -> (n_frames, 2) owned stretch per frame
 
 Example: one reference C:maj on [0, 0.3), labels [C:maj, G:maj], frame period 0.1 s, 3 frames:
     cells [0, 0.05), [0.05, 0.15), [0.15, 0.3); path [0, 0, 1] -> matched 0.15 of 0.3 s.
 """
+import mir_eval
 import numpy as np
 
 from chordtracker import evaluate
@@ -44,7 +46,8 @@ def tables(annotation: ChordAnnotation, labels: list[str], n_frames: int, frame_
     n_ref, n_cls = len(annotation.labels), len(labels)
     ref = [label for label in annotation.labels for _ in range(n_cls)]
     est = list(labels) * n_ref
-    comparison = evaluate.METRICS[metric](ref, est).reshape(n_ref, n_cls)     # 1 right, 0 wrong, -1 not scored
+    compare = evaluate.METRICS.get(metric) or getattr(mir_eval.chord, metric)    # V15: also tetrads, mirex
+    comparison = compare(ref, est).reshape(n_ref, n_cls)                       # 1 right, 0 wrong, -1 not scored
     return overlap @ (comparison == 1).astype(float), overlap @ (comparison >= 0).astype(float)
 
 
