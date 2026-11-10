@@ -6,7 +6,7 @@ its centre (target). This module turns the two datasets into that, without stori
     rwc_takes(split) / guitarset_takes(split)   the songs of a split -> list[Take]
     target(label)                               Harte label -> 0..23 (C:maj..B:maj, C:min..B:min), or -1
     load(take, cfg)                             -> Song: (168, n_frames) log-CQT + one target per frame
-    shift_targets(y, k)                         the targets of the same frames played k semitones higher
+    shift_targets(y, k, n_chords=None)          the targets of the same frames played k semitones higher
     patch(song, t, k)                           (144, 15) input for frame t, pitch-shifted by k semitones
 
 Why patches are cut on the fly and never cached: a frame appears in 15 overlapping patches and at
@@ -110,12 +110,14 @@ def load(take: Take, cfg: dict) -> Song:
     return Song(take.key, cqt, frame_targets(take.annotation, times))
 
 
-def shift_targets(y: np.ndarray, k: int) -> np.ndarray:
+def shift_targets(y: np.ndarray, k: int, n_chords: int | None = None) -> np.ndarray:
     """Targets of the same chords k semitones higher: the root moves, major stays major, -1 stays -1.
 
-    Example: k = 2 -> C:maj (0) becomes D:maj (2), A:min (21) becomes B:min (23).
+    n_chords (V14): classes from n_chords on have no root (N) and stay where they are; None shifts every class.
+    Example: k = 2 -> C:maj (0) becomes D:maj (2), A:min (21) becomes B:min (23); with n_chords 60, N (60) stays 60.
     """
-    return np.where(y < 0, -1, (y % 12 + k) % 12 + 12 * (y // 12))
+    shifted = np.where(y < 0, -1, (y % 12 + k) % 12 + 12 * (y // 12))
+    return shifted if n_chords is None else np.where(y >= n_chords, y, shifted)
 
 
 def patch(song: Song, t: int, k: int) -> np.ndarray:

@@ -1,0 +1,15 @@
+{
+  "n_classes": 61,
+  "level_input": false,
+  "train": {
+    "seed": 0,
+    "lr": 0.001,
+    "max_epochs": 50,
+    "patience": 5,
+    "dropout": 0.5,
+    "excerpt_frames": 128,
+    "batch_excerpts": 8,
+    "input_lookahead": 2,
+    "level_input": false
+  }
+}

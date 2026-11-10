@@ -1,0 +1,58 @@
+# V14: V8's causal CRNN (vocabulary A, the V8 recipe and settings of configs/v8.yaml) with an N (no chord)
+# class, so it can say "no chord" itself. Trained on the 12-bin tuning features (data/processed/
+# v7_2_logcqt_Fs1 for RWC-P and GuitarSet, rebuilt in V13; ChoCo's cache as V8). The level variant also
+# feeds the GRU the frame's dBFS input level (features_v14). Judged on validation only.
+version: v14
+base_config: v2.yaml          # compression (99th pct, gamma 10)
+
+data:
+  choco_export: ~/github/choco_corpus_prep/export
+
+audio:
+  sr: 22050
+  mono: true
+  harmonic_margin: 4.0
+  harmonic_median_frames: 9
+
+cqt:
+  hop_length: 2048
+  fmin: F#1
+  bins_per_octave: 24
+  n_bins: 168
+  tuning_seconds: 10.0
+
+vocab: A
+with_n: true                  # N is class 60, trained and decoded (data_v8.target with with_n)
+
+train:                        # V8's
+  seed: 0
+  lr: 0.001
+  max_epochs: 50
+  patience: 5
+  dropout: 0.5
+  excerpt_frames: 128
+  batch_excerpts: 8
+  input_lookahead: 2
+  level_input: false          # true: the level variant (model_v14, features_v14)
+
+transitions:
+  source: billboard
+  counts: results/v3/billboard_counts.json
+  alpha: 1
+  tau: 1
+  # N row and column (transitions_v8.add_n): chord -> N at the rate counted on the train labels, N -> chord
+  # by the chords' prior share.
+
+decoder:
+  prior_power: 0.25
+  points:                     # V8's frozen points (configs/v8.yaml frozen.points)
+    - {name: network alone (0.28 s), lag: null, p_self: null}
+    - {name: lag 2 (0.46 s), lag: 2, p_self: 0.5}
+    - {name: lag 4 (0.65 s), lag: 4, p_self: 0.8}
+    - {name: lag 8 (1.02 s), lag: 8, p_self: 0.98}
+  n_weight: [1, 2, 4]         # knob: N's decoding evidence times this (its tempered prior divided by it)
+  n_rate_factor: [1, 0.5, 2]  # knob: the counted chord -> N rate times this
+  n_weight_low: [0.5, 0.25, 0.1]   # the N weight grid extended downwards (less N) ...
+  n_rate_factor_low: [1, 0.5]       # ... with the counted rate and half of it
+
+harmonic_lookahead_frames: 1
