@@ -269,3 +269,110 @@ def test_quiet_but_audible_input_is_not_gated():
 def test_no_chord_reads_n_c():
     assert pa.class_name(60) == "N.C." and pa.class_name(0) == "C"
     assert pa.system_at([0, 0, 60, 60], 1) == ("C", "N.C.") and pa.system_at([60, 7], 0) == ("N.C.", "G")
+
+
+def fake_v14_run(path, n_bias=0.0):
+    """A V14 run folder: a seed-0 61-class network (N's output bias raised by n_bias), a prior, the counted
+    chord -> N rate and run.json."""
+    import json
+
+    from chordtracker import model_v14
+
+    torch.manual_seed(0)
+    model = model_v14.ChordCRNN(61)
+    with torch.no_grad():
+        model.classifier[1].bias[60] += n_bias
+    torch.save(model.state_dict(), path / "model.pt")
+    prior = np.linspace(1, 2, 61)
+    (path / "prior.json").write_text(json.dumps((prior / prior.sum()).tolist()))
+    (path / "n_counts.json").write_text(json.dumps({"chord_to_n_rate": 0.02}))
+    (path / "run.json").write_text(json.dumps({"n_classes": 61, "level_input": False}))
+    return path
+
+
+V14_CFG = {**GATE_CFG, "train": {"dropout": 0.5}, "decoder": {"prior_power": 0.25},
+           "transitions": {"source": "billboard", "counts": "results/v3/billboard_counts.json", "alpha": 1, "tau": 1}}
+
+
+def test_the_two_systems():
+    assert set(pa.SYSTEMS) == {"v11", "v14"}
+    assert pa.SYSTEMS["v11"].gate and not pa.SYSTEMS["v14"].gate
+    assert pa.SYSTEMS["v14"].run == "results/v14/n_seed0" and pa.SYSTEMS["v14"].config == "configs/v14.yaml"
+    for name, v in pa.V14_POINTS.items():                         # the same names, so the same look-aheads
+        assert pa.OPERATING_POINTS[name]["lag"] == v["lag"]
+    assert [v["p_self"] for v in pa.V14_POINTS.values()] == [None, 0.5, 0.8, 0.98]
+    assert pa.N_LABEL == 60 and pa.class_name(pa.N_LABEL) == "N.C."
+
+
+def test_the_v14_chain_has_n_last_held_back_in_the_decoder(tmp_path):
+    from chordtracker import transitions_v8
+    run = fake_v14_run(tmp_path)
+    model, decode_prior, Q = pa.load_chain("v14", V14_CFG, run)
+    assert not model.training and model.classifier[1].out_features == 61
+    prior = np.array(__import__("json").loads((run / "prior.json").read_text()))
+    tempered = transitions_v8.tempered_prior(prior, 0.25)
+    expected = np.concatenate([tempered[:60], [tempered[60] / pa.V14_N_WEIGHT]])
+    np.testing.assert_allclose(decode_prior, expected / expected.sum())          # N's evidence x0.1
+    assert Q.shape == (61, 61) and np.allclose(Q.sum(axis=1), 1)
+    np.testing.assert_allclose(Q[:60, 60], 0.02 * pa.V14_RATE_FACTOR)            # chord -> N, half the counted rate
+    with pytest.raises(ValueError):
+        pa.load_chain("v99", V14_CFG, run)
+
+
+def test_the_v11_chain_is_the_one_the_script_used(tmp_path):
+    """load_chain("v11") = load_system and run_v8.decoder_parts on the training prior, as before the switch."""
+    import importlib.util
+    import json
+    import sys
+    spec = importlib.util.spec_from_file_location("run_v8", Path(__file__).parents[1] / "scripts" / "run_v8.py")
+    sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+    run_v8 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run_v8)
+    torch.manual_seed(0)
+    torch.save(model_v8.ChordCRNN(60, bidirectional=False).state_dict(), tmp_path / "model.pt")
+    prior = np.linspace(1, 2, 60)
+    (tmp_path / "prior.json").write_text(json.dumps((prior / prior.sum()).tolist()))
+    _, decode_prior, Q = pa.load_chain("v11", V14_CFG, tmp_path)
+    np.testing.assert_allclose(Q, run_v8.decoder_parts(V14_CFG, "A", prior / prior.sum()))
+    np.testing.assert_allclose(decode_prior, pa.load_system(V14_CFG, tmp_path)[1])
+
+
+def v14_analysis(run, y, silence_dbfs=None):
+    model, decode_prior, Q = pa.load_chain("v14", V14_CFG, run)
+    a = pa.Analysis(GATE_CFG, model, decode_prior, Q, pa.V14_POINTS, silence_dbfs, n_label=pa.N_LABEL)
+    for i in range(0, len(y), 1000):
+        a.step(y[i:i + 1000])
+    a.finish()
+    return a
+
+
+def test_with_v14_n_comes_from_the_network_when_the_gate_is_off(tmp_path):
+    """Silence, gate off: the labels are the network's own; a network leaning to N says N on every frame."""
+    a = v14_analysis(fake_v14_run(tmp_path, n_bias=20.0), np.zeros(2 * SR, np.float32))
+    assert a.silent == [] and all(set(labels) == {60} for labels in a.labels.values())
+
+
+def test_with_v14_the_gate_gives_the_same_n_label(tmp_path):
+    a = v14_analysis(fake_v14_run(tmp_path, n_bias=-20.0), np.zeros(2 * SR, np.float32), silence_dbfs=pa.SILENCE_DBFS)
+    assert all(set(labels) == {60} for labels in a.labels.values())           # N from the gate, not the network
+    b = v14_analysis(tmp_path, np.zeros(2 * SR, np.float32))
+    assert 60 not in b.labels["0.28 s"]
+
+
+def test_v14_streamed_gives_the_whole_file_labels(tmp_path):
+    """Streamed in blocks and finished, every V14 point has the labels of the whole-file computation."""
+    from chordtracker import online_hmm, streaming_features, train_v7_2, transitions
+    from chordtracker.data_v5 import Song
+
+    run = fake_v14_run(tmp_path)
+    t = np.arange(int(SR * 4)) / SR
+    y = (0.1 * np.sin(2 * np.pi * np.where(t < 2, 220, 330) * t)).astype(np.float32)
+    a = v14_analysis(run, y)
+    model, decode_prior, Q = pa.load_chain("v14", V14_CFG, run)
+    cqt = streaming_features.offline_log_cqt(y, GATE_CFG)
+    post = train_v7_2.song_posteriors(model, Song("x", cqt, np.full(cqt.shape[1], -1)), pa.INPUT_LOOKAHEAD)
+    assert post.shape[0] == 61 and a.labels["0.28 s"] == list(post.argmax(axis=0))
+    for point in ("0.46 s", "0.65 s", "1.02 s"):
+        v = pa.V14_POINTS[point]
+        whole = online_hmm.fixed_lag_viterbi(post, transitions.transition(Q, v["p_self"]), decode_prior, [v["lag"]])
+        assert a.labels[point] == list(whole[v["lag"]])

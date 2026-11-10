@@ -4,11 +4,21 @@
     python scripts/play_along.py --input-device "VB-Cable A"        # e.g. Spotify's output set to VB-Cable A
     python scripts/play_along.py --file song.wav                     # a file, read at real-time pace
     python scripts/play_along.py --file song.wav --dry-run 30        # no window, no sound: timing only
+    python scripts/play_along.py --model v14 --file song.wav         # V14's network with an N class
 
-The recording is analysed block by block with the live chain and the frozen V11 student (results/v11/
-pool_kd1_seed1, configs/v11.yaml: vocabulary A, 60 classes, prior power 0.25, Billboard change matrix)
-and played back on the output device `delay` seconds late, so every chord is ready when its moment is
-heard. The window shows the system's chord now and next (sevenths included: G7, Cmaj7, Am7), and the
+The recording is analysed block by block with the live chain and the system chosen with --model
+(chordtracker.play_along.SYSTEMS), and played back on the output device `delay` seconds late, so every
+chord is ready when its moment is heard:
+
+    v11 (default)  the frozen V11 student (results/v11/pool_kd1_seed1, configs/v11.yaml: vocabulary A,
+                   60 classes, prior power 0.25, Billboard change matrix); N from the silence gate
+    v14            V14's network with an N class (results/v14/n_seed0, configs/v14.yaml: 61 classes) at
+                   its best decoder setting on validation; N from the network, the silence gate off
+
+--run DIR takes the model from another folder (model.pt, prior.json, and for v14 run.json and
+n_counts.json; the runs are git-ignored, so a worktree points at the main clone's). --silence-gate /
+--no-silence-gate turn the -55 dBFS gate on or off whatever the system's default. The tuning is read on
+the first 10 s from the first audible frame either way. The window shows the system's chord now and next (sevenths included: G7, Cmaj7, Am7), and the
 Isophonics annotation of the song picked in the drop-down, reduced to the same vocabulary (now and next;
 a chord outside it, such as a dim, in parentheses). Pick the song first, then start it in Spotify: the
 annotation's clock starts when the input rises out of silence.
@@ -41,10 +51,7 @@ from chordtracker import paths, play_along as pa
 
 sys.path.insert(0, str(Path(__file__).parent))
 import run_v5  # noqa: E402
-import run_v8  # noqa: E402
 
-RUN = paths.REPO_ROOT / "results" / "v11" / "pool_kd1_seed1"
-CONFIG = paths.REPO_ROOT / "configs" / "v11.yaml"
 BLOCK = 1024                                    # input samples per callback (feed_file and the device)
 BEATLES = paths.DATA_DIR / "beatles" / "chordlab"
 LOG_DIR = paths.DATA_DIR / "play_along"
@@ -59,8 +66,9 @@ class Engine:
     analysis (and Python's interpreter lock) can never make the playback stutter.
     """
 
-    def __init__(self, rate: int, cfg: dict, Q, timing: bool = False):
-        self.rate, self.cfg = rate, cfg
+    def __init__(self, rate: int, cfg: dict, run: Path, system: str = "v11", silence_dbfs: float | None = None,
+                 timing: bool = False):
+        self.rate, self.cfg, self.points = rate, cfg, pa.SYSTEMS[system].points
         self.sr, self.hop = cfg["audio"]["sr"], cfg["cqt"]["hop_length"]
         self.ring = np.zeros((rate * 30, 2), dtype=np.float32)       # the last 30 s of input
         self.written = 0                                             # input samples since start (device rate)
@@ -73,7 +81,8 @@ class Engine:
         self.blocks, self.results = ctx.Queue(), ctx.Queue()
         self.timing = ctx.Queue() if timing else None
         self.worker = ctx.Process(target=pa.analysis_worker, daemon=True,
-                                  args=(self.blocks, self.results, cfg, str(RUN), Q, rate, self.timing))
+                                  args=(self.blocks, self.results, cfg, str(run), rate, self.timing, system,
+                                        silence_dbfs))
         self.worker.start()
         self.generation = 0
         self.reset()
@@ -82,7 +91,7 @@ class Engine:
         """A new song: analysis, onset and input time start again from the next sample."""
         self.generation += 1
         self.base = self.written
-        self.labels = {p: [] for p in pa.OPERATING_POINTS}
+        self.labels = {p: [] for p in self.points}
         self.onset_time = None
         self.blocks.put(("reset", self.generation))
 
@@ -153,14 +162,16 @@ class Engine:
 
 
 class Window:
-    def __init__(self, engine: Engine, log_file: Path):
+    def __init__(self, engine: Engine, log_file: Path, model: str = "v11", silence_dbfs: float | None = None):
         self.engine, self.log_file = engine, log_file
         self.point, self.extra, self.lead, self.nudge = "0.28 s", 0.0, 0.0, 0.0
         self.reference, self.song = None, None
         self.last = None                                # the last shown state with a labelled frame (pa.held)
-        self.log = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "events": []}
+        self.log = {"started": time.strftime("%Y-%m-%d %H:%M:%S"), "model": model, "silence_dbfs": silence_dbfs,
+                    "events": []}
         self.root = tk.Tk()
-        self.root.title("Chord tracker: play along")
+        self.root.title(f"Chord tracker: play along ({model}, silence gate "
+                        f"{'off' if silence_dbfs is None else f'{silence_dbfs:g} dBFS'})")
         self.root.configure(bg=BG)
         self.songs = dict(pa.song_list(BEATLES))
         top = tk.Frame(self.root, bg=BG, padx=12, pady=10)
@@ -195,7 +206,7 @@ class Window:
             self.fields[name].grid(row=r, column=1, sticky="w")
             tk.Label(panel, text=keys_hint, font=("Helvetica", 15), fg=MUTED, bg=BG, anchor="w").grid(
                 row=r, column=2, sticky="w", padx=(18, 0))
-        keys = {str(i + 1): (lambda p=p: self.set_point(p)) for i, p in enumerate(pa.OPERATING_POINTS)}
+        keys = {str(i + 1): (lambda p=p: self.set_point(p)) for i, p in enumerate(engine.points)}
         keys.update({"<Up>": lambda: self.change("extra", STEP), "<Down>": lambda: self.change("extra", -STEP),
                      "<Right>": lambda: self.change("lead", STEP), "<Left>": lambda: self.change("lead", -STEP),
                      "]": lambda: self.change("nudge", STEP), "[": lambda: self.change("nudge", -STEP),
@@ -298,8 +309,8 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
     feeder = threading.Thread(target=feed_file, args=(path, engine, seconds), daemon=True)
     started = time.perf_counter()
     feeder.start()
-    late, blank, updates = {p: 0 for p in pa.OPERATING_POINTS}, {p: 0 for p in pa.OPERATING_POINTS}, 0
-    last = {p: None for p in pa.OPERATING_POINTS}
+    late, blank, updates = {p: 0 for p in engine.points}, {p: 0 for p in engine.points}, 0
+    last = {p: None for p in engine.points}
     while feeder.is_alive() or time.perf_counter() - started < seconds + 1:
         time.sleep(0.03)
         engine.collect()
@@ -307,7 +318,7 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
         if engine.onset_time is None:
             continue
         updates += 1
-        for p in pa.OPERATING_POINTS:
+        for p in engine.points:
             delay = pa.required_delay(p, 0.0, engine.sr, engine.hop)
             s = pa.shown(engine.labels[p], None, engine.onset_time, heard - delay, 0.0, 0.0, engine.sr, engine.hop)
             late[p] += s["frame"] >= 0 and not s["ready"]
@@ -328,38 +339,47 @@ def dry_run(path: Path, engine: Engine, seconds: float) -> None:
           f"95th pct {1000 * np.percentile(took, 95):.2f}, max {1000 * took.max():.2f}; "
           f"real-time factor {took.sum() / block_s.sum():.3f}; blocks slower than real time "
           f"{int((took > block_s).sum())}")
-    for p in pa.OPERATING_POINTS:
+    for p in engine.points:
         print(f"point {p}: {len(engine.labels[p])} frames labelled, late updates {late[p]} of {updates}, "
               f"blank (before its first label) {blank[p]}")
     print(f"input overflows / output underflows {engine.xruns}")
 
 
-def training_prior(run: Path) -> np.ndarray:
-    """The training prior of a run (prior.json), as Q's change counts are weighted by it (run_v8.decoder_parts)."""
-    return np.array(json.loads((run / "prior.json").read_text()))
+def chain_settings(args) -> tuple[dict, Path, float | None]:
+    """(config, run folder, silence gate level or None) for the parsed --model, --run and --silence-gate."""
+    system = pa.SYSTEMS[args.model]
+    gate = system.gate if args.silence_gate is None else args.silence_gate
+    run = args.run if args.run is not None else paths.REPO_ROOT / system.run
+    return run_v5.load_config(paths.REPO_ROOT / system.config), run, pa.SILENCE_DBFS if gate else None
 
 
-def main(argv=None) -> None:
+def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--list-devices", action="store_true")
     parser.add_argument("--input-device", help="name (or part of it) of the input, e.g. 'VB-Cable A'")
     parser.add_argument("--file", type=Path, help="play a file instead of an input device")
     parser.add_argument("--output-device", help="name (or part of it) of the output; default: the system's")
     parser.add_argument("--dry-run", type=float, metavar="SECONDS", help="with --file: timing only, no window or sound")
+    parser.add_argument("--model", choices=sorted(pa.SYSTEMS), default="v11", help="the system to run (default v11)")
+    parser.add_argument("--run", type=Path, help="the saved run's folder, instead of the system's own")
+    parser.add_argument("--silence-gate", action=argparse.BooleanOptionalAction, default=None,
+                        help=f"N where the input stays below {pa.SILENCE_DBFS:g} dBFS (default: on for v11, off for v14)")
     args = parser.parse_args(argv)
+    if not args.list_devices and (args.input_device is None) == (args.file is None):
+        parser.error("give exactly one of --input-device and --file")
+    if args.dry_run and not args.file:
+        parser.error("--dry-run needs --file")
+    return args
+
+
+def main(argv=None) -> None:
+    args = parse_args(argv)
     if args.list_devices:
         print(sd.query_devices())
         return
-    if (args.input_device is None) == (args.file is None):
-        parser.error("give exactly one of --input-device and --file")
-
-    if args.dry_run and not args.file:
-        parser.error("--dry-run needs --file")
-
-    cfg = run_v5.load_config(CONFIG)
-    Q = run_v8.decoder_parts(cfg, pa.VOCAB, training_prior(RUN))
+    cfg, run, silence_dbfs = chain_settings(args)
     rate = int(sd.query_devices(args.output_device, "output")["default_samplerate"])
-    engine = Engine(rate, cfg, Q, timing=bool(args.dry_run))
+    engine = Engine(rate, cfg, run, args.model, silence_dbfs, timing=bool(args.dry_run))
     if args.dry_run:
         try:
             dry_run(args.file, engine, args.dry_run)
@@ -367,7 +387,7 @@ def main(argv=None) -> None:
             engine.close()
         return
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    window = Window(engine, LOG_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json")
+    window = Window(engine, LOG_DIR / f"{time.strftime('%Y%m%d-%H%M%S')}.json", args.model, silence_dbfs)
 
     out = sd.OutputStream(device=args.output_device, samplerate=rate, channels=2, dtype="float32",
                           latency="high", callback=lambda o, f, t, s: engine.pull(o, f, s))
