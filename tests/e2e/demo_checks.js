@@ -9,6 +9,8 @@
 //                                  no button: {sessionsOpened, moved} (no seek may follow the cancel)
 //   demoChecks.scrub(from, to)     a drag across the timeline: {sessionsOpened, at} (one session, on release)
 //   demoChecks.decidedAfter(wait)  after `wait` s of playback: {knownEnd, heard, segments}
+//   demoChecks.staleLiveJs()       import a WAV with live.js's decodeForModel as it was before it returned the
+//                                  playback WAV (an older live.js kept in the browser's cache): {status}
 "use strict";
 
 window.demoChecks = (() => {
@@ -94,5 +96,20 @@ window.demoChecks = (() => {
              playing: !audio.paused };
   }
 
-  return { alignment, cancelledDrag, scrub, decidedAfter };
+  async function staleLiveJs() {
+    // 2 s of noise as a WAV file, imported with live.js's decodeForModel as it was before it returned the
+    // playback WAV; openFile's error goes to the status line, as the page's own import does.
+    const buffer = new AudioBuffer({ length: 88200, sampleRate: 44100 });
+    buffer.getChannelData(0).forEach((_, i, x) => { x[i] = 0.2 * (Math.random() * 2 - 1); });
+    const current = decodeForModel;
+    decodeForModel = async (blob, rate) => { const d = await current(blob, rate); return { pcm: d.pcm, duration: d.duration }; };
+    try {
+      await openFile(new File([wavBlob(buffer)], "stale.wav", { type: "audio/wav" })).catch((e) => setStatus(e.message, true));
+    } finally {
+      decodeForModel = current;
+    }
+    return { status: $("status").textContent };
+  }
+
+  return { alignment, cancelledDrag, scrub, decidedAfter, staleLiveJs };
 })();

@@ -681,6 +681,10 @@ async function openFile(file) {
     framewise: [], framewiseDecisionDelaySeconds: s.framewiseDecisionDelaySeconds,
     reference: null, referenceSource: null, metadata: s.metadata, source: { dataset: "your file" },
   };
+  if (!(decoded.playback instanceof Blob)) {   // an older live.js from the browser's cache, with this app.js
+    throw new Error("This page is out of date in your browser's cache: reload it from the server "
+      + "(Safari: Option-Command-R; other browsers: Shift-Ctrl-R or Shift-Command-R).");
+  }
   upload.pcm = decoded.pcm;
   upload.playback = decoded.playback;          // played instead of the file: exact seeks (live.js)
   showSample(upload.sample, upload.playback, decoded.pcm);
