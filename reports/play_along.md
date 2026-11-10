@@ -117,7 +117,7 @@ PYTHONPATH=src python scripts/play_along.py --model v14 --file data/rwc/RWC-P/RW
 PYTHONPATH=src python scripts/play_along.py --model v14 --silence-gate --input-device "VB-Cable A"
 ```
 
-`--model v14` runs V14's network with an N class (results/v14/n_seed0, git-ignored; `--run` points at
+`--model v14` runs V14's network with an N class (results/v14/n_seed0, weights not in git; `--run` points at
 another folder) at its best decoder setting on validation (N weight x0.1, chord -> N rate x0.5), with
 the silence gate off, so the N shown is the network's own. V14 did not pass its checks
 ([reports/v14.md](v14.md)): it calls N on some chords. The default stays V11 with the silence gate.

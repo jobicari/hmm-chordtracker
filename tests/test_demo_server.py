@@ -269,7 +269,7 @@ def test_the_servers_lists_are_the_models(server_module):
 
 
 V14_MODEL = SCRIPTS.parent / "results" / "v14" / "n_seed0" / "model.pt"
-needs_v14 = pytest.mark.skipif(not V14_MODEL.exists(), reason="results/v14/n_seed0/model.pt is git-ignored: copy it in")
+needs_v14 = pytest.mark.skipif(not V14_MODEL.exists(), reason="results/v14/n_seed0/model.pt is not in git: copy it in")
 
 
 @pytest.mark.parametrize("model", [pytest.param("v14", marks=needs_v14), "v7_2"])
@@ -312,9 +312,9 @@ def triads(chords, seconds, cents=0.0):
 
 def test_a_silent_intro_is_no_chord_then_the_recordings_chords(server_module, tmp_path):
     """3.7 s of digital silence (40 frames), then 12 s of triads 15 cents sharp, through a worker of V7.2's
-    chain with the silence gate: N (label 24) on the intro at every point, a chord from the onset on, the tuning of the music
-    alone, and its labels once the running level has forgotten the intro (its silent columns lower the
-    99th percentile for a few seconds)."""
+    chain with the silence gate: N (label 24) on the intro at every point, a chord from the onset on, the
+    tuning of the music alone, and its labels once the running level has forgotten the intro (its silent
+    columns lower the 99th percentile for a few seconds)."""
     import functools
     music = triads(["C:maj", "A:min", "F:maj", "G:maj", "E:min", "D:min"], 2.0, cents=15.0)
     intro = 40

@@ -11,7 +11,7 @@ The model is V14's network with an N class (`results/v14/n_seed0`: 60 chords, ma
 m7 in 12 keys, plus N.C.), decoded at its best setting on validation (N weight x0.1, chord to N rate
 x0.5); N.C. is the network's own call, so it can land on a real chord (reports/v14.md). V7.2's 24-chord
 network (`results/v7_2/c2_la2_seed0`, N.C. from a level gate) stays available with `--model v7_2`.
-`results/v14/n_seed0/model.pt` is git-ignored: copy it into that folder before exporting or building.
+`results/v14/n_seed0/model.pt` is not in git: copy it into that folder before exporting or building.
 
 No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`.
 
@@ -44,7 +44,7 @@ The `Dockerfile` at the repo root packages the live server: the page, the prepar
 (`results/v14/n_seed0`: model.pt, prior.json, run.json, n_counts.json; and `results/v7_2/c2_la2_seed0`), their
 configs and the Billboard counts, with CPU-only PyTorch and the packages of `requirements-demo.txt`.
 `.dockerignore` lets in only those files, so `data/` and the other results never enter the build.
-`demo/samples/` and V14's `model.pt` are git-ignored, so export the samples first (above) and copy the
+`demo/samples/` is git-ignored and V14's `model.pt` is not in git, so export the samples first (above) and copy the
 weights in: the build stops if `demo/samples/index.json` or `results/v14/n_seed0/model.pt` is missing.
 
 ```bash

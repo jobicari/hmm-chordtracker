@@ -16,9 +16,11 @@ chord is ready when its moment is heard:
                    its best decoder setting on validation; N from the network, the silence gate off
 
 --run DIR takes the model from another folder (model.pt, prior.json, and for v14 run.json and
-n_counts.json; the runs are git-ignored, so a worktree points at the main clone's). --silence-gate /
+n_counts.json; the weights are not in git, so a worktree points at the main clone's). --silence-gate /
 --no-silence-gate turn the -55 dBFS gate on or off whatever the system's default. The tuning is read on
-the first 10 s from the first audible frame either way. The window shows the system's chord now and next (sevenths included: G7, Cmaj7, Am7), and the
+the first 10 s from the first audible frame either way.
+
+The window shows the system's chord now and next (sevenths included: G7, Cmaj7, Am7; N.C. for N), and the
 Isophonics annotation of the song picked in the drop-down, reduced to the same vocabulary (now and next;
 a chord outside it, such as a dim, in parentheses). Pick the song first, then start it in Spotify: the
 annotation's clock starts when the input rises out of silence.
