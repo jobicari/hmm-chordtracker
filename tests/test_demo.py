@@ -95,9 +95,12 @@ def test_the_reference_reads_in_the_models_spelling():
 
 
 def test_the_models_points():
-    """v14 (the default) shows the same three look-aheads with V14's p_self; v7_2 keeps V7.2's."""
+    """v14 (the default) shows V14's four points (lag 0 / 2 / 4 / 8, its p_self); v7_2 keeps V7.2's three."""
     assert demo.DEFAULT_MODEL == "v14" and set(demo.MODELS) == {"v14", "v7_2"}
-    for model, p_selfs in (("v14", [None, 0.5, 0.8]), ("v7_2", [None, 0.9, 0.98])):
+    for model, ids, p_selfs in (("v14", ["0.28 s", "0.46 s", "0.65 s", "1.02 s"], [None, 0.5, 0.8, 0.98]),
+                                ("v7_2", ["0.28 s", "0.46 s", "0.65 s"], [None, 0.9, 0.98])):
         info = demo.point_info(SR, HOP, demo.MODELS[model])
-        assert [p["id"] for p in info] == ["0.28 s", "0.46 s", "0.65 s"] and [p["pSelf"] for p in info] == p_selfs
+        assert [p["id"] for p in info] == ids and [p["pSelf"] for p in info] == p_selfs
+    lag8 = demo.point_info(SR, HOP, demo.MODELS["v14"])[-1]          # input 2 + 1 + lag 8 frames
+    assert lag8["lookaheadSeconds"] == round(11 * STEP, 3) and lag8["decisionDelaySeconds"] == round(12 * STEP, 3)
     assert demo.decoder_name("0.65 s") == "fixed-lag Viterbi (lag 4 frames, p_self 0.8)"

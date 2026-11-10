@@ -398,3 +398,16 @@ def test_the_prepared_sample_is_the_live_session(server_module, tmp_path, model)
     for p in out["points"]:
         assert p["segments"] == demo.path_segments(np.array(live.labels[p["id"]]), chain.labels, times, out["duration"])
     assert out["metadata"]["pipeline"]["network"]["name"] == model
+
+
+@needs_v14
+def test_the_labels_come_from_the_runs_vocabulary(server_module):
+    """No class count is written into the demo: labels and qualities follow cfg["vocab"] (another vocabulary,
+    e.g. with dim, aug and hdim7, needs no change in the server or the export)."""
+    sys.path.insert(0, str(SCRIPTS))
+    import demo_export
+    from chordtracker import data_v8
+    a = demo_export.Analyzer("v14")
+    assert a.labels == data_v8.class_names(a.cfg["vocab"], with_n=True)
+    assert a.qualities == list(data_v8.VOCABULARIES[a.cfg["vocab"]])
+    assert demo_export.pipeline_settings(a, float("-inf"))["network"]["classes"] == len(a.labels)

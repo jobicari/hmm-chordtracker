@@ -30,7 +30,7 @@ from chordtracker.data.data import ChordAnnotation
 from chordtracker.play_along import V7_2_POINTS, V14_POINTS, chord_name, required_delay, total_lookahead
 
 MODELS = {                      # the points the demo shows, per model: the same names (look-aheads), its p_self
-    "v14": {p: V14_POINTS[p] for p in ("0.28 s", "0.46 s", "0.65 s")},
+    "v14": V14_POINTS,                                     # 0.28 / 0.46 / 0.65 / 1.02 s (lag 0 / 2 / 4 / 8)
     "v7_2": V7_2_POINTS,
 }
 DEFAULT_MODEL = "v14"

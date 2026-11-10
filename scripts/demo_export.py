@@ -34,10 +34,10 @@ import librosa
 import numpy as np
 import soundfile as sf
 
-from chordtracker import data_v5, demo, features_v7_1, model_v6, paths, train_v7_2
+from chordtracker import data_v5, data_v8, demo, features_v7_1, model_v6, paths, train_v7_2
 from chordtracker.data_v5 import CENTRE_ROW, PATCH_BINS, PATCH_FRAMES
 from chordtracker.learned_emission import LABELS
-from chordtracker.play_along import CLASS_LABELS, INPUT_LOOKAHEAD, SILENCE_DBFS, SILENCE_FRAMES, V14_N_WEIGHT, \
+from chordtracker.play_along import INPUT_LOOKAHEAD, SILENCE_DBFS, SILENCE_FRAMES, V14_N_WEIGHT, \
     V14_RATE_FACTOR, Analysis, load_chain
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -104,8 +104,9 @@ class Analyzer:
     """A model's live chain, loaded once (demo.MODELS): new sessions for the server, and audio file -> the
     JSON of chordtracker.demo.result for the export.
 
-    labels: the Harte label of every index, "N" last (the network's own class for v14, the gate's for v7_2);
-    qualities: the chord qualities of the vocabulary, for the page.
+    labels: the Harte label of every index, "N" last (the network's own class for v14, the gate's for v7_2),
+    from the run's vocabulary (cfg["vocab"]: data_v8.class_names), so another vocabulary needs no change here;
+    qualities: the chord qualities of those labels, in their order, for the page.
     """
 
     def __init__(self, model: str = demo.DEFAULT_MODEL):
@@ -116,7 +117,7 @@ class Analyzer:
             self.cfg = run_v5.load_config(paths.REPO_ROOT / "configs" / "v14.yaml")
             self.run = paths.REPO_ROOT / "results" / "v14" / "n_seed0"
             self.model, self.prior, self.Q = load_chain("v14", self.cfg, self.run)
-            self.labels, self.qualities = CLASS_LABELS + ["N"], ["maj", "min", "7", "maj7", "min7"]
+            self.labels = data_v8.class_names(self.cfg["vocab"], with_n=True)
             self.trained_on = "the RWC Popular Music, GuitarSet and ChoCo training songs"
         else:
             base = run_v5.load_config(paths.REPO_ROOT / "configs" / "v7_2.yaml")
@@ -125,8 +126,9 @@ class Analyzer:
             self.model = train_v7_2.load(self.run / "model.pt", False, 0.5).cpu()
             self.prior = np.array(json.loads((self.run / "prior.json").read_text()))
             self.Q = run_v5.change_prior(self.cfg)
-            self.labels, self.qualities = list(LABELS) + ["N"], ["maj", "min"]
+            self.labels = list(LABELS) + ["N"]
             self.trained_on = "the RWC Popular Music and GuitarSet training takes"
+        self.qualities = list(dict.fromkeys(label.split(":")[1] for label in self.labels if ":" in label))
         self.sr, self.hop = self.cfg["audio"]["sr"], self.cfg["cqt"]["hop_length"]
 
     def session(self, silence_dbfs: float) -> Analysis:

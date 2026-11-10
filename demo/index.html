@@ -35,6 +35,7 @@
       <div class="control checks">
         <span class="label">Options</span>
         <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
+        <label class="check"><input id="lead" type="checkbox"> Show chords 1 s before you hear them</label>
         <label class="check"><input id="show-reference" type="checkbox" disabled> Show reference annotations</label>
       </div>
       <div id="delay-note" class="delay-panel" aria-live="polite"></div>
@@ -42,7 +43,7 @@
 
     <section class="player">
       <div class="now">
-        <span class="caption">Chord now</span>
+        <span id="now-caption" class="caption">Chord now</span>
         <span id="now" class="chord-big"></span>
       </div>
       <div class="transport">

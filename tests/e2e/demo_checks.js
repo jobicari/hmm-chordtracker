@@ -9,6 +9,8 @@
 //                                  no button: {sessionsOpened, moved} (no seek may follow the cancel)
 //   demoChecks.scrub(from, to)     a drag across the timeline: {sessionsOpened, at} (one session, on release)
 //   demoChecks.decidedAfter(wait)  after `wait` s of playback: {knownEnd, heard, segments}
+//   demoChecks.shownDecided(point, withLead, wait)   play from 0 at that look-ahead, the lead on or off, for
+//                                  `wait` s: {shown, knownEnd, lead, delay} (what is on screen must be decided)
 //   demoChecks.staleLiveJs()       import a WAV with live.js's decodeForModel as it was before it returned the
 //                                  playback WAV (an older live.js kept in the browser's cache): {status}
 "use strict";
@@ -111,5 +113,16 @@ window.demoChecks = (() => {
     return { status: $("status").textContent };
   }
 
-  return { alignment, cancelledDrag, scrub, decidedAfter, staleLiveJs };
+  async function shownDecided(point, withLead, wait) {
+    $("points").querySelector(`input[value="${point}"]`).click();
+    if ($("lead").checked !== withLead) $("lead").click();
+    seek(0);
+    if (audio.paused && !view.preroll) $("play").click();
+    await sleep(wait * 1000);
+    const d = view.sample.duration;
+    return { shown: Math.min(audio.currentTime + lead(), d), knownEnd: rows.decoded.knownEnd, lead: lead(),
+             delay: playbackDelay(), playing: !audio.paused };
+  }
+
+  return { alignment, cancelledDrag, scrub, decidedAfter, staleLiveJs, shownDecided };
 })();

@@ -119,3 +119,15 @@ def test_an_older_cached_live_js_gives_a_reload_message_not_a_type_error(page):
     app.js: the import says to reload instead of failing with a TypeError (Safari: "Type error")."""
     r = page.evaluate("demoChecks.staleLiveJs()")
     assert "out of date" in r["status"] and "TypeError" not in r["status"]
+
+
+@pytest.mark.parametrize("lead", [False, True])
+def test_every_look_ahead_shows_only_decided_chords_with_or_without_the_lead(page, files, lead):
+    """With the delay on, the chords on screen (those of the time you hear, or 1 s later with the lead) are
+    already decided at every point; the lead adds 1 s to the delay."""
+    imported(page, files["flac"])
+    points = page.evaluate("view.sample.points.map((p) => p.id)")
+    for point in points:
+        r = page.evaluate(f"demoChecks.shownDecided('{point}', {str(lead).lower()}, 4)")
+        assert r["playing"] and r["lead"] == (1.0 if lead else 0.0)
+        assert r["knownEnd"] >= r["shown"] - 0.05, (point, r)

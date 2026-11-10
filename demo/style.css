@@ -91,6 +91,17 @@ select, button, input { font: inherit; }
 .points label:has(input:checked) { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .points label:has(input:checked) .sub { color: #3b4150; }
 .points label:has(input:focus-visible) { outline: 2px solid var(--input); outline-offset: 2px; }
+@media (max-width: 480px) {            /* four points do not fit on one line: an even 2 x 2 grid */
+  .points { display: grid; grid-template-columns: 1fr 1fr; }
+  .points legend { grid-column: 1 / -1; float: none; }
+  .points label { margin: 0 0 -1px -1px; text-align: center; border-radius: 0; }
+  .points label:nth-of-type(odd) { margin-left: 0; }
+  .points label:nth-of-type(1) { border-radius: .45rem 0 0 0; }
+  .points label:nth-of-type(2) { border-radius: 0 .45rem 0 0; }
+  .points label:nth-last-of-type(2):nth-of-type(odd) { border-radius: 0 0 0 .45rem; }
+  .points label:last-of-type:nth-of-type(even) { border-radius: 0 0 .45rem 0; }
+  .points label:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; border-radius: 0 0 .45rem .45rem; }
+}
 .points:disabled label { cursor: default; opacity: .5; }
 .checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem 1.6rem; }
 .checks .label { flex-basis: 100%; }

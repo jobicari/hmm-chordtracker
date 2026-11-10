@@ -39,7 +39,10 @@ const rows = {
 };
 // Reference annotations: not model output, so never masked; the active block follows what you hear.
 const reference = { track: $("track-reference"), segs: [], divs: [], active: undefined, nowEl: $("now-reference") };
-const QUALITY_NAMES = { maj: "", min: "m", "7": "7", maj7: "maj7", min7: "m7" };   // as play_along.QUALITIES
+const QUALITY_NAMES = {               // as chordtracker.play_along.QUALITIES: any vocabulary the model has
+  maj: "", min: "m", "7": "7", maj7: "maj7", min7: "m7", dim: "dim", aug: "aug", dim7: "dim7", hdim7: "m7b5",
+  sus4: "sus4", sus2: "sus2", maj6: "6", min6: "m6", "9": "9", maj9: "maj9", min9: "m9", "5": "5", "1": "(1)",
+};
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
                live: null };
@@ -102,11 +105,19 @@ function liveMargin() {
   return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
 }
 
+const LEAD_SECONDS = 1.0;            // the lead preferred with the listening prototype (reports/play_along.md)
+
+function lead() {
+  // "Show chords early" (with the delay on): the chords on screen are those of LEAD_SECONDS ahead.
+  return $("delay").checked && $("lead").checked ? LEAD_SECONDS : 0;
+}
+
 function playbackDelay() {
   // With "Delay playback" on: the point's decision delay + half a frame, so that every label is
-  // decided by the time its segment starts being heard (chordtracker.demo.playback_delay); else 0.
+  // decided by the time its segment starts being heard (chordtracker.demo.playback_delay), + the lead,
+  // so that it is decided by the time it is shown, that much earlier; else 0.
   if (!$("delay").checked || !view.point) return 0;
-  return view.point.playbackDelaySeconds + (view.mode === "live" ? liveMargin() : 0);
+  return view.point.playbackDelaySeconds + (view.mode === "live" ? liveMargin() : 0) + lead();
 }
 
 function heardTime(s, d) {
@@ -363,7 +374,7 @@ function tuningOnset(P) {
 
 function qualityList(P) {
   // ["maj", "min", "7", "maj7", "min7"] -> "major, minor, 7, maj7 and m7".
-  const words = (P.network.qualities || ["maj", "min"]).map((q) => ({ maj: "major", min: "minor", min7: "m7" }[q] || q));
+  const words = (P.network.qualities || ["maj", "min"]).map((q) => ({ maj: "major", min: "minor" }[q] || QUALITY_NAMES[q] || q));
   return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0];
 }
 
@@ -471,7 +482,7 @@ function buildPoints(sample) {
     input.addEventListener("change", () => selectPoint(p.id));
     const span = document.createElement("span");
     span.className = "sub";
-    span.textContent = p.pSelf === null ? "network alone" : `Viterbi, lag ${p.lagFrames}`;
+    span.textContent = p.pSelf === null ? "network" : `lag ${p.lagFrames}`;          // the full name: label.title
     label.append(input, `${p.lookaheadSeconds.toFixed(2)} s `, span);
     label.title = p.decoder;
     box.appendChild(label);
@@ -511,21 +522,23 @@ function updateDelayNote() {
   const parts = document.createElement("p");
   parts.className = "parts";
   if ($("delay").checked) {
-    const D = p.playbackDelaySeconds.toFixed(2);
+    const D = playbackDelay().toFixed(2);
     const networkFrames = Math.round(p.lookaheadSeconds / h) - p.lagFrames;
     title.textContent = `Applied delay: the audio is held back by ${D} s.`;
     text.textContent = `After Play, Restart or a seek, the system listens ${D} s ahead of what you hear, `
-      + `so each chord is shown as you hear it, exactly as a live decoder would show it.`;
+      + (lead() > 0 ? `so each chord is shown ${lead().toFixed(2)} s before you hear it, as a live decoder `
+        + "with that much delay would show it." : "so each chord is shown as you hear it, exactly as a live decoder would show it.");
     const items = [`network look-ahead ${ms(networkFrames)}`];
     if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
     items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
     if (view.mode === "live") items.push(`network and server margin ${Math.round(liveMargin() * 1000)} ms`);
+    if (lead() > 0) items.push(`lead ${lead().toFixed(2)} s (chords shown before you hear them)`);
     parts.textContent = `${(playbackDelay()).toFixed(2)} s = ` + items.join(" + ");
     if (view.mode === "live") {
       title.textContent = `Applied delay: the audio is held back by ${playbackDelay().toFixed(2)} s.`;
       text.textContent = `After Play, Restart or a seek, your browser streams the recording to the demo `
         + `server, which decodes it live; you hear it ${playbackDelay().toFixed(2)} s later, so each chord `
-        + `is on screen as you hear it.`;
+        + (lead() > 0 ? `is on screen ${lead().toFixed(2)} s before you hear it.` : "is on screen as you hear it.");
     }
   } else {
     title.textContent = "No delay: the audio plays at once.";
@@ -539,6 +552,8 @@ function updateDelayNote() {
   panel.replaceChildren(title, text, ...(parts.textContent ? [parts] : []), ...(view.mode === "live" ? [measured] : []));
   showMeasured();
   $("input-head").hidden = !$("delay").checked;
+  $("lead").disabled = !$("delay").checked;                      // a lead needs the delay to be decided in time
+  $("now-caption").textContent = lead() > 0 ? `Chord in ${lead().toFixed(0)} s` : "Chord now";
 }
 
 function showMeasured() {
@@ -548,7 +563,7 @@ function showMeasured() {
   const a = view.live.arrival;
   if (!a) { el.textContent = "This session: waiting for the first chords."; return; }
   const range = `${a.min.toFixed(2)} to ${a.max.toFixed(2)} s`;
-  const budget = playbackDelay() - view.sample.metadata.frameSeconds / 2;
+  const budget = playbackDelay() - lead() - view.sample.metadata.frameSeconds / 2;   // shown lead() s early
   el.textContent = $("delay").checked
     ? `This session: each chord reached the page ${range} after its moment of audio; the delay leaves `
       + `${budget.toFixed(2)} s, so every chord is on screen in time.`
@@ -595,8 +610,9 @@ function render() {
   if (!view.seeking) $("seek").value = s;
   const text = `${formatTime(s)} / ${formatTime(d)}`;
   if (text !== view.timeText) { view.timeText = text; $("time").textContent = text; }
-  for (const row of Object.values(rows)) renderRow(row, revealedUntil(row, s, heard, d));
-  renderReference(s);
+  const shown = Math.min(s + lead(), d);                          // the chords of `lead` s ahead
+  for (const row of Object.values(rows)) renderRow(row, revealedUntil(row, shown, heard, d));
+  renderReference(shown);
 
   if (!audio.paused || view.preroll) {
     // Keep the playhead in view when the timeline scrolls: jump only when it leaves the visible part.
@@ -1040,6 +1056,7 @@ audio.addEventListener("error", () => {
 $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
 $("delay").addEventListener("change", () => { updateDelayNote(); restartInput(); });
+$("lead").addEventListener("change", () => { updateDelayNote(); restartInput(); });
 $("show-reference").addEventListener("change", showReference);
 
 const seekBar = $("seek");

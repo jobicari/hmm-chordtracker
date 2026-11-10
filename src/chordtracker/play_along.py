@@ -350,7 +350,8 @@ def load_chain(system: str, cfg: dict, run: Path):
     """(model on CPU in eval mode, decoding prior, Q) of a system's saved run.
 
     v11: load_system, and V8's Billboard matrix weighted by the training prior (run_v8.decoder_parts).
-    v14: model_v14's 61-class network; the training prior (N last) raised to the prior power, N's entry
+    The matrices follow cfg's vocabulary (cfg["vocab"], vocabulary A without one).
+    v14: model_v14's network with N last (run.json: n_classes); the training prior raised to the prior power, N's entry
     divided by V14_N_WEIGHT (its evidence times the weight); Q with N's row and column at the counted chord
     -> N rate (n_counts.json) times V14_RATE_FACTOR (run_v14.specs).
     """
@@ -359,16 +360,16 @@ def load_chain(system: str, cfg: dict, run: Path):
     from chordtracker import model_v14, transitions_v8
 
     run = Path(run)
-    t = cfg["transitions"]
+    t, vocab = cfg["transitions"], cfg.get("vocab", VOCAB)
     prior = np.array(json.loads((run / "prior.json").read_text()))
     if system == "v11":
         model, decode_prior = load_system(cfg, run)
-        Q = transitions_v8.change_matrix(billboard_counts(cfg), VOCAB, prior, t["alpha"], t["tau"])
+        Q = transitions_v8.change_matrix(billboard_counts(cfg), vocab, prior, t["alpha"], t["tau"])
         return model, decode_prior, Q
     if system != "v14":
         raise ValueError(f"unknown system {system!r}: one of {sorted(SYSTEMS)}")
     rate = json.loads((run / "n_counts.json").read_text())["chord_to_n_rate"] * V14_RATE_FACTOR
-    Q = transitions_v8.change_matrix(billboard_counts(cfg), VOCAB, prior, t["alpha"], t["tau"], rate)
+    Q = transitions_v8.change_matrix(billboard_counts(cfg), vocab, prior, t["alpha"], t["tau"], rate)
     decode_prior = transitions_v8.tempered_prior(prior, cfg["decoder"]["prior_power"])
     decode_prior[-1] /= V14_N_WEIGHT
     return model_v14.load(run, cfg).cpu(), decode_prior / decode_prior.sum(), Q
