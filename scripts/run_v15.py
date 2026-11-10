@@ -36,7 +36,7 @@ import numpy as np
 import torch
 import yaml
 
-from chordtracker import (data_choco, data_v7_2, data_v15, eval_v15, model_v14, paths, train_v6, train_v14,
+from chordtracker import (data_choco, data_v7_2, data_v15, eval_v15, model_v5, model_v14, paths, train_v6, train_v14,
                           train_v15, transitions_v8)
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -195,7 +195,8 @@ def train(args) -> None:
 
     base = model_v14.load(paths.REPO_ROOT / cfg["base_run"], cfg)
     model_prior = prior[np.argsort(vocab.decode_order)]                    # decode -> model order
-    model = train_v15.extend(base.cpu(), vocab, model_prior).to(next(base.parameters()).device)
+    model = train_v15.extend(base.cpu(), vocab, model_prior).to(model_v5.device())     # .cpu() moved base itself
+    print(f"device: {next(model.parameters()).device}", flush=True)
 
     val_takes = {take.key: take for takes in run_v14.val_takes(cfg, first).values() for take in takes}
     val_songs = {k: load_song(tk, cfg, vocab) for k, tk in val_takes.items()}
