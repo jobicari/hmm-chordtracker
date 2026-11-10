@@ -57,7 +57,8 @@ stops is restarted, and its listeners get an error and can start again.
 
 Settings are environment variables (or the same flags of `scripts/demo_server.py`), read when the server
 starts: change them with `docker run -e ...` and restart the container, no rebuild needed. The server
-logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`).
+logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`,
+`silenceDbfs`).
 
 | Variable | Default | |
 |---|---|---|
@@ -68,6 +69,7 @@ logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, 
 | `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once, over all workers |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
+| `CHORD_DEMO_SILENCE_DBFS` | `-55` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames, and the 10 s the tuning is estimated on start at the first frame at or above it; `-inf` turns the gate off (reported as `null`) |
 
 ```bash
 docker run --rm -p 8000:8000 -e CHORD_DEMO_WORKERS=2 -e CHORD_DEMO_MAX_SESSIONS=4 chord-tracker-demo
@@ -75,8 +77,8 @@ docker run --rm -p 8000:8000 -e CHORD_DEMO_WORKERS=2 -e CHORD_DEMO_MAX_SESSIONS=
 
 **Sizing.** Each listener costs about 6 ms of CPU per frame of 93 ms of audio on an Apple silicon Mac
 (natively and in the image alike: the image keeps OpenMP and OpenBLAS to one thread; at their defaults
-they ran about 6 times slower in Docker Desktop's VM). The block at 10 s into a session, where the
-tuning is estimated, takes about 0.1 s (mostly building the tuned CQT kernels). Memory: about 50 MB
+they ran about 6 times slower in Docker Desktop's VM). The block 10 s after the first audible frame,
+where the tuning is estimated, takes about 0.1 s (mostly building the tuned CQT kernels). Memory: about 50 MB
 for the server process and about 370 MB per worker (8 workers: 3 GB; 2 workers: 0.7 GB). So a host
 needs one CPU and about 0.4 GB per worker; with 8 workers on that Mac, 8 listeners at once had a worst
 lag under 0.1 s.

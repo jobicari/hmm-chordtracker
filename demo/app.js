@@ -66,7 +66,8 @@ function colour(chord) {
 }
 
 function chordName(label) {
-  // "C:maj" -> "C", "A:min" -> "Am" (the model's 24 labels), as chordtracker.play_along.chord_name.
+  // "C:maj" -> "C", "A:min" -> "Am" (the model's 24 labels), "N" -> "N.C.", as chordtracker.play_along.chord_name.
+  if (label === "N" || label === "X") return "N.C.";
   const [root, q = "maj"] = label.split(":");
   return root + (q === "min" ? "m" : "");
 }
@@ -306,7 +307,9 @@ function buildDiagram() {
   box(xs[1], MAIN_Y, W, "", "2", "Harmonic part", [`STFT ${P.harmonic.nFft}, hop ${P.harmonic.stftHop}`,
     `past ${P.harmonic.medianFrames}-frame median`, "keeps sustained notes"]);
   box(xs[2], MAIN_Y, W, "", "3", "Log-CQT", [`${P.cqt.binsPerOctave} bins per octave`,
-    `tuning: first ${P.cqt.tuningSeconds} s`, `log(1 + ${P.compression.gamma} x)`]);
+    P.silence && P.silence.dbfs !== null ? `tuning: ${P.cqt.tuningSeconds} s from onset`
+      : `tuning: first ${P.cqt.tuningSeconds} s`,
+    `log(1 + ${P.compression.gamma} x)`]);
   box(xs[3], MAIN_Y, W, "model", "4", "CRNN", [`${P.network.windowFrames} frames, ${P.network.inputLookaheadFrames} ahead`,
     `${P.cqt.networkLowest} to ${P.cqt.networkHighest}`, `causal GRU, ${P.network.classes} chords`]);
   for (let i = 0; i < 3; i++) arrow(`M${xs[i] + W} ${MAIN_Y + H / 2} H${xs[i + 1] - 3}`);
@@ -329,6 +332,7 @@ function buildPipeline() {
   // The stages in the order the code runs them, with the values of this run (metadata.pipeline).
   const m = view.sample.metadata, P = m.pipeline, p = view.point;
   const ms = Math.round(m.frameSeconds * 1000);
+  const gated = Boolean(P.silence && P.silence.dbfs !== null);
   const stages = [
     ["Audio input", `The recording, mono, resampled to ${P.sampleRate.toLocaleString("en")} Hz. A live `
       + `system receives it in blocks of ${m.hopLength.toLocaleString("en")} samples (${ms} ms), one per frame.`],
@@ -338,7 +342,8 @@ function buildPipeline() {
       + `This needs ${P.harmonic.lookaheadFrames} frame of future audio.`],
     ["Log constant-Q spectrum", `${P.cqt.binsPerOctave} bins per octave (${P.cqt.nBins} bins), one column `
       + `per ${ms} ms frame, each bin delayed so it reads only past audio. Tuning is estimated on the first `
-      + `${P.cqt.tuningSeconds} s; values are divided by the running ${P.compression.levelPercentile}th `
+      + `${P.cqt.tuningSeconds} s${gated ? ` of sound, from the first frame at or above ${P.silence.dbfs} dBFS `
+        + "(a silent intro does not count)" : ""}; values are divided by the running ${P.compression.levelPercentile}th `
       + `percentile and compressed as log(1 + ${P.compression.gamma} x). Computed column by column, as live.`],
     ["Acoustic model (CRNN)", `For each frame, a window of ${P.network.windowFrames} columns `
       + `(${P.cqt.networkBins} bins, ${P.cqt.networkLowest} to ${P.cqt.networkHighest}) that ends `
@@ -357,6 +362,10 @@ function buildPipeline() {
       : `The most likely chord path, decided with a lag of ${p.lagFrames} frames: frame t's chord is fixed `
         + `once frame t + ${p.lagFrames} has arrived and never changes afterwards. p_self ${p.pSelf}. `
         + `This is the Decoded row.`],
+    ...(gated ? [["Silence gate", `A frame is shown as N.C. (no chord) on both rows when its own audio and `
+      + `that of the ${P.silence.frames - 1} frames before it are below ${P.silence.dbfs} dBFS, so short rests keep `
+      + `their chord. The network and the decoder keep running underneath: the chord comes back with the `
+      + `first audible frame.`]] : []),
     ["Segments and display", `Runs of one chord become segments, cut halfway between frames. Each chord `
       + `appears once decided: ${p.decisionDelaySeconds.toFixed(2)} s after its frame for the decoded row, `
       + `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s for the framewise row.`],

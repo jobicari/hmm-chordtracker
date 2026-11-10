@@ -218,16 +218,18 @@ def test_settings_come_from_flags_then_the_environment(server_module, monkeypatc
     default = parse([], env={})
     assert (default.host, default.port, default.allowed_origins) == ("127.0.0.1", 8000, [])
     assert (default.workers, default.max_sessions, default.max_seconds, default.live_margin) == (8, 8, 600.0, 0.15)
+    assert default.silence_dbfs == -55.0
     monkeypatch.setattr(server_module, "available_cpus", lambda: 2)
     assert parse([], env={}).workers == 2                                      # the CPUs, at most 8 by default
     assert parse([], env={"PORT": "9000"}).port == 9000
     assert parse([], env={"PORT": "9000", "CHORD_DEMO_PORT": "9100"}).port == 9100
     env = {"CHORD_DEMO_HOST": "0.0.0.0", "CHORD_DEMO_PORT": "9100", "CHORD_DEMO_WORKERS": "12",
            "CHORD_DEMO_MAX_SESSIONS": "4", "CHORD_DEMO_MAX_SECONDS": "60", "CHORD_DEMO_LIVE_MARGIN": "0.4",
-           "CHORD_DEMO_ALLOWED_ORIGINS": " https://a.example.org, ,https://b.example.org "}
+           "CHORD_DEMO_SILENCE_DBFS": "-50", "CHORD_DEMO_ALLOWED_ORIGINS": " https://a.example.org, ,https://b.example.org "}
     s = parse([], env=env)
     assert (s.host, s.port, s.workers, s.max_sessions, s.max_seconds, s.live_margin) == ("0.0.0.0", 9100, 12, 4, 60.0, 0.4)
-    assert s.allowed_origins == ["https://a.example.org", "https://b.example.org"]
+    assert s.allowed_origins == ["https://a.example.org", "https://b.example.org"] and s.silence_dbfs == -50.0
+    assert parse(["--silence-dbfs", "-60"], env=env).silence_dbfs == -60.0
     flags = parse(["--host", "::", "--port", "8010", "--allowed-origins", "https://c.example.org", "--workers", "3"],
                   env=env)
     assert (flags.host, flags.port, flags.allowed_origins, flags.workers) == ("::", 8010, ["https://c.example.org"], 3)
@@ -239,9 +241,24 @@ def test_health_reports_the_settings_in_use(server_module, tmp_path):
     async def test(host, pool):
         health = json.loads((await AsyncHTTPClient().fetch(f"http://{host}/healthz")).body)
         assert (health["maxSessions"], health["maxSeconds"], health["liveMarginSeconds"]) == (3, 120.0, 0.4)
+        assert health["silenceDbfs"] == -50.0
         assert health["workers"] == {"alive": 2, "count": 2}
     run(server_module, tmp_path, test, workers=2,
-        env={"CHORD_DEMO_MAX_SESSIONS": "3", "CHORD_DEMO_MAX_SECONDS": "120", "CHORD_DEMO_LIVE_MARGIN": "0.4"})
+        env={"CHORD_DEMO_MAX_SESSIONS": "3", "CHORD_DEMO_MAX_SECONDS": "120", "CHORD_DEMO_LIVE_MARGIN": "0.4",
+             "CHORD_DEMO_SILENCE_DBFS": "-50"})
+
+
+def test_the_silence_gate_can_be_turned_off(server_module):
+    settings = server_module.parse_args([], env={"CHORD_DEMO_SILENCE_DBFS": "-inf"})
+    class NoWorkers:
+        info, alive, n = None, 0, 1
+    assert server_module.health(NoWorkers(), settings)["silenceDbfs"] is None      # JSON has no -inf
+
+
+def test_the_servers_default_level_is_the_prototypes(server_module):
+    from chordtracker import play_along
+    assert server_module.DEFAULT_SILENCE_DBFS == play_along.SILENCE_DBFS
+    assert server_module.Chain.__init__.__defaults__ == (play_along.SILENCE_DBFS,)
 
 
 def test_the_real_chain_gives_the_same_labels_through_a_worker(server_module, tmp_path):
@@ -258,3 +275,51 @@ def test_the_real_chain_gives_the_same_labels_through_a_worker(server_module, tm
         _, received = await session(host, pcm, block=3000)
         assert received == {p: [int(x) for x in labels] for p, labels in here.labels.items()}
     run(server_module, tmp_path, test, chain=server_module.Chain)
+
+
+def triads(chords, seconds, cents=0.0):
+    """Root-position triads (Harte "C:maj", "A:min") in octave 3 with 6 harmonics each, `seconds` apiece."""
+    import librosa
+    t = np.arange(int(seconds * SR)) / SR
+    out = []
+    for chord in chords:
+        root, quality = chord.split(":")
+        base = librosa.note_to_midi(root + "3")
+        y = np.zeros(len(t))
+        for midi in (base, base + (4 if quality == "maj" else 3), base + 7):
+            for h in range(1, 7):
+                y += np.sin(2 * np.pi * h * librosa.midi_to_hz(midi + cents / 100) * t) / h
+        out.append(0.05 * y * np.minimum(1, t / 0.01))
+    return np.concatenate(out).astype(np.float32)
+
+
+def test_a_silent_intro_is_no_chord_then_the_recordings_chords(server_module, tmp_path):
+    """3.7 s of digital silence (40 frames), then 12 s of triads 15 cents sharp, through a worker of the real
+    chain: N (label 24) on the intro at every point, a chord from the onset on, the tuning of the music
+    alone, and its labels once the running level has forgotten the intro (its silent columns lower the
+    99th percentile for a few seconds)."""
+    import functools
+    music = triads(["C:maj", "A:min", "F:maj", "G:maj", "E:min", "D:min"], 2.0, cents=15.0)
+    intro = 40
+    y = np.concatenate([np.zeros(intro * HOP, np.float32), music])
+    pcm = np.clip(np.round(y * 32767), -32768, 32767).astype("<i2")
+    chain = server_module.Chain(-55.0)
+
+    def run_here(samples):
+        a = chain.new_session()
+        for i in range(0, len(samples), 3000):
+            a.step(samples[i:i + 3000].astype(np.float32) / 32768.0)
+        a.finish()
+        return a
+    here, alone = run_here(pcm), run_here(pcm[intro * HOP:])
+    assert here.features.tuned.tuning == alone.features.tuned.tuning
+    for point, labels in here.labels.items():
+        assert set(labels[:intro]) == {24} and 24 not in labels[intro:]
+        settled = 43                                      # 4 s after the onset
+        assert np.mean(np.array(labels[intro + settled:]) == np.array(alone.labels[point][settled:])) > 0.9
+
+    async def test(host, pool):
+        ready, received = await session(host, pcm, block=3000)
+        assert len(ready["labels"]) == 25 and ready["labels"][24] == "N"
+        assert received == {p: [int(x) for x in labels] for p, labels in here.labels.items()}
+    run(server_module, tmp_path, test, chain=functools.partial(server_module.Chain, -55.0))
