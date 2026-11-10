@@ -91,12 +91,29 @@ select, button, input { font: inherit; }
 .points label:has(input:checked) { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .points label:has(input:checked) .sub { color: #3b4150; }
 .points label:has(input:focus-visible) { outline: 2px solid var(--input); outline-offset: 2px; }
+@media (max-width: 480px) {            /* four points do not fit on one line: an even 2 x 2 grid */
+  .points { display: grid; grid-template-columns: 1fr 1fr; }
+  .points legend { grid-column: 1 / -1; float: none; }
+  .points label { margin: 0 0 -1px -1px; text-align: center; border-radius: 0; }
+  .points label:nth-of-type(odd) { margin-left: 0; }
+  .points label:nth-of-type(1) { border-radius: .45rem 0 0 0; }
+  .points label:nth-of-type(2) { border-radius: 0 .45rem 0 0; }
+  .points label:nth-last-of-type(2):nth-of-type(odd) { border-radius: 0 0 0 .45rem; }
+  .points label:last-of-type:nth-of-type(even) { border-radius: 0 0 .45rem 0; }
+  .points label:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; border-radius: 0 0 .45rem .45rem; }
+}
 .points:disabled label { cursor: default; opacity: .5; }
 .checks { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .5rem 1.6rem; }
 .checks .label { flex-basis: 100%; }
 .check { display: flex; align-items: center; gap: .5rem; font-size: .95rem; }
 .check input { accent-color: var(--input); width: 1rem; height: 1rem; }
 .check:has(input:disabled) { color: var(--muted); }
+.check.lead select {                   /* the lead: inline in the sentence "Show chords [0.3 s early]" */
+  color: var(--fg); background: var(--surface-2); border: 1px solid var(--line); border-radius: .4rem;
+  padding: .15rem .35rem; font-size: .92rem;
+}
+.check.lead:has(select:disabled) { color: var(--muted); }
+.check.lead select:disabled { color: var(--muted); }
 
 .delay-panel {
   grid-column: 1 / -1;
@@ -233,11 +250,12 @@ select, button, input { font: inherit; }
   margin-top: .8rem;
   display: flex;
   align-items: center;
-  gap: .45rem;
+  gap: .3rem 1.2rem;                   /* items wrap as wholes: a key stays with its text */
   flex-wrap: wrap;
 }
-.key { display: inline-block; width: 1.1rem; height: .85rem; margin-left: 1rem; vertical-align: middle; }
-.key:first-child { margin-left: 0; }
+.legend .item { display: inline-flex; align-items: center; gap: .45rem; }
+.legend .item[hidden] { display: none; }
+.key { display: inline-block; flex: none; width: 1.1rem; height: .85rem; vertical-align: middle; }
 .playhead-key { width: 2px; background: var(--accent); }
 .input-key { width: 0; border-left: 2px dashed var(--input); }
 .mask-key { background: repeating-linear-gradient(135deg, var(--mask-a) 0 3px, var(--mask-b) 3px 6px); border: 1px solid var(--line); }
@@ -258,6 +276,7 @@ select, button, input { font: inherit; }
 
 /* Below the timeline: two collapsible sections. */
 .more { display: grid; gap: 1.2rem; }
+.more > * { min-width: 0; }              /* grid items: the diagram scrolls in its box, not the page */
 .more details { border-top: 1px solid var(--line); padding-top: 1rem; }
 .more summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
 .more summary:focus-visible { outline: 2px solid var(--input); outline-offset: 3px; }
@@ -331,4 +350,5 @@ body.analyzing .status::before {
   .source { grid-row: auto; }
   .player { grid-template-columns: 1fr 10rem; }
   .player .transport { grid-column: 1 / -1; grid-row: 2; }
+  .row-name { max-width: calc(100vw - 2.4rem); box-sizing: border-box; }    /* the timeline's visible width: wrap, do not run past it */
 }

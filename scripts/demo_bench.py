@@ -4,11 +4,12 @@
     python scripts/demo_bench.py --sessions 8        # and 8 listeners at once, at playback speed
     docker run --rm chord-tracker-demo python scripts/demo_bench.py --sessions 8      # in the image
 
-Alone: each prepared sample (demo/samples) runs through a fresh session (play_along.Analysis, as a
-worker runs it) one frame of 2,048 samples (93 ms of audio) at a time, as fast as it goes. Per sample:
-the median, p99 and worst time of a step, the CPU it takes as a fraction of real time, and the worst lag
-(the step times played as a queue at playback speed: how long after a frame's audio has arrived its
-labels are out; a slow step delays the frames behind it until the queue drains).
+Alone: each prepared sample (demo/samples) runs through a fresh session of the model the server would
+run (CHORD_DEMO_MODEL and its silence gate; play_along.Analysis, as a worker runs it) one frame of 2,048
+samples (93 ms of audio) at a time, as fast as it goes. Per sample: the median, p99 and worst time of a
+step, the CPU it takes as a fraction of real time, and the worst lag (the step times played as a queue
+at playback speed: how long after a frame's audio has arrived its labels are out; a slow step delays
+the frames behind it until the queue drains).
 
 --sessions N: N sessions through the server's worker processes (chordtracker.live_workers, as many
 workers as the server would start: CHORD_DEMO_WORKERS, or --workers), the first sample streamed as
@@ -22,6 +23,7 @@ the margin the server would use: chords would then come later than the page's de
 """
 import argparse
 import asyncio
+import functools
 import json
 import math
 import sys
@@ -80,9 +82,11 @@ def load(sample_id: str, sr: int) -> np.ndarray:
     return librosa.load(str(SAMPLES / meta["audio"]), sr=sr, mono=True)[0]    # as the page resamples it
 
 
-async def sessions_at_once(n: int, workers: int, y: np.ndarray, block: int, sr: int) -> np.ndarray:
-    """Every frame's lag, s, for n sessions streaming y at playback speed through `workers` worker processes."""
-    pool = Workers(demo_server.Chain, workers)
+async def sessions_at_once(n: int, workers: int, y: np.ndarray, block: int, sr: int,
+                           factory=demo_server.Chain) -> np.ndarray:
+    """Every frame's lag, s, for n sessions streaming y at playback speed through `workers` worker processes,
+    each loading factory() (a demo_server.Chain)."""
+    pool = Workers(factory, workers)
     await pool.start()
     pcm = np.clip(np.round(y * 32767), -32768, 32767).astype("<i2")
 
@@ -122,7 +126,8 @@ def main() -> None:
     args = parser.parse_args()
     ids = args.samples or [s["id"] for s in json.loads((SAMPLES / "index.json").read_text())["samples"]]
 
-    chain = demo_server.Chain()
+    factory = functools.partial(demo_server.Chain, server.model, server.silence_dbfs)   # CHORD_DEMO_MODEL, ...
+    chain = factory()
     block, sr = chain.hop, chain.sr
     frame_s = block / sr
 
@@ -139,7 +144,7 @@ def main() -> None:
               f"worst lag {1000 * lag.max():.0f} ms")
 
     if args.sessions:
-        every = asyncio.run(sessions_at_once(args.sessions, args.workers, load(ids[0], sr), block, sr))
+        every = asyncio.run(sessions_at_once(args.sessions, args.workers, load(ids[0], sr), block, sr, factory))
         worst_lag = max(worst_lag, every.max())
         print(f"{args.sessions} sessions at once on {args.workers} workers ({ids[0]}, at playback speed): lag median "
               f"{1000 * np.median(every):.0f} ms, p99 {1000 * np.percentile(every, 99):.0f} ms, "

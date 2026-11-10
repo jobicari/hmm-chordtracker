@@ -7,13 +7,14 @@
 The page decodes the recording (a prepared sample or the listener's own file), resamples it to the
 model's rate and streams it at playback speed; this server runs the listening prototype's live chain on
 it (play_along.Analysis: block-by-block features, the causal CRNN, the three operating points' decoders,
-the silence gate) and sends every chord back as soon as it is decided; N (no chord) where it is silent. Routes:
+the silence gate if on) and sends every chord back as soon as it is decided. With v15 (the default) and v14
+N (no chord) is the network's own class; with v7_2 it comes from the silence gate. Routes:
 
     GET  /api/health    {"live": true, "points": [...], "metadata": {...}, "maxSeconds": ...,
-                        "liveMarginSeconds": ..., "silenceDbfs": ..., "maxSessions": ...,
+                        "liveMarginSeconds": ..., "model": ..., "silenceDbfs": ..., "maxSessions": ...,
                         "workers": {"alive": ..., "count": ...}}: what a page needs to decode a file of its
                         own (the same fields as a sample's JSON), the margin it adds to its playback delay,
-                        the silence gate's level, and this server's capacity
+                        the model, the silence gate's level (null: off), and this server's capacity
     GET  /healthz       the same, for a container's health check: 503 while no worker is up
     WS   /api/live      one session per connection:
                           client {"type": "start"}         -> {"type": "ready", "labels": [...], "sampleRate": ...}
@@ -41,8 +42,13 @@ restart, without a rebuild):
     --max-seconds       CHORD_DEMO_MAX_SECONDS       600: audio per session
     --live-margin       CHORD_DEMO_LIVE_MARGIN       0.15: s the page adds to its playback delay for the network
                                                      and the server (more for a slow or distant host)
-    --silence-dbfs      CHORD_DEMO_SILENCE_DBFS      -55: the silence gate's level (play_along.SILENCE_DBFS): N where
-                                                     the input stays below it for 3 frames; -inf turns the gate off
+    --model             CHORD_DEMO_MODEL             v15: V14 fine-tuned for dim, aug and hdim7 (97 classes,
+                                                     results/v15/ft_seed0); v14: V14's network with an N class
+                                                     (61 classes, results/v14/n_seed0); v7_2: V7.2's 24-class
+                                                     network (results/v7_2/c2_la2_seed0)
+    --silence-dbfs      CHORD_DEMO_SILENCE_DBFS      the silence gate's level: N where the input stays below it for 3
+                                                     frames; -inf turns it off. Default: off for v15 and v14 (own N),
+                                                     -55 (play_along.SILENCE_DBFS) for v7_2
 """
 import argparse
 import asyncio
@@ -65,7 +71,9 @@ from chordtracker.live_workers import Workers  # noqa: E402
 
 PAGE_FILES = r"/(|index\.html|style\.css|app\.js|live\.js|samples/[^/]+)"     # not README.md
 DEFAULT_WORKERS_CAP = 8
-DEFAULT_SILENCE_DBFS = -55.0       # play_along.SILENCE_DBFS (not imported: this process loads no model code)
+MODELS = ("v15", "v14", "v7_2")           # demo.MODELS, and demo_export.DEFAULT_SILENCE_DBFS below (not imported:
+DEFAULT_MODEL = "v15"              # this process loads no model code)
+DEFAULT_SILENCE_DBFS = {"v15": float("-inf"), "v14": float("-inf"), "v7_2": -55.0}
 
 
 def origin_key(origin: str) -> str:
@@ -86,25 +94,25 @@ def available_cpus() -> int:
 
 
 class Chain:
-    """The model and its settings, loaded once in a worker and warmed up; new_session() -> a fresh
-    play_along.Analysis with the silence gate at silence_dbfs (N is label 24, after the model's 24)."""
+    """A model's chain (demo_export.Analyzer), loaded once in a worker and warmed up; new_session() -> a
+    fresh play_along.Analysis with the silence gate at silence_dbfs (-inf: off; None: the model's default).
+    N is the last label (97 labels for v15, 61 for v14, 25 for v7_2)."""
 
-    def __init__(self, silence_dbfs: float = DEFAULT_SILENCE_DBFS):
+    def __init__(self, model: str = DEFAULT_MODEL, silence_dbfs: float | None = None):
         import torch
         import demo_export
         from chordtracker import demo
-        from chordtracker.learned_emission import LABELS
-        from chordtracker.play_along import V7_2_POINTS, Analysis
         torch.set_num_threads(1)                               # one block at a time per worker
-        self.Analysis, self.points, self.labels, self.demo = Analysis, V7_2_POINTS, list(LABELS) + ["N"], demo
-        self.silence_dbfs = silence_dbfs
-        self.analyzer = a = demo_export.Analyzer()
-        self.sr, self.hop = a.cfg["audio"]["sr"], a.cfg["cqt"]["hop_length"]
+        self.demo = demo
+        self.silence_dbfs = DEFAULT_SILENCE_DBFS[model] if silence_dbfs is None else silence_dbfs
+        self.analyzer = a = demo_export.Analyzer(model)
+        self.labels, self.points = a.labels, a.points
+        self.sr, self.hop = a.sr, a.hop
         self.metadata = {"sampleRate": self.sr, "hopLength": self.hop, "featureName": demo_export.FEATURE,
                          "model": str(a.run.relative_to(paths.REPO_ROOT)),
                          "inputLookaheadFrames": demo_export.INPUT_LOOKAHEAD,
                          "frameSeconds": round(self.hop / self.sr, 6),
-                         "pipeline": demo_export.pipeline_settings(a.cfg, a.run, silence_dbfs)}
+                         "pipeline": demo_export.pipeline_settings(a, self.silence_dbfs)}
         self.warm_up()
 
     def warm_up(self) -> None:
@@ -117,12 +125,11 @@ class Chain:
         session.finish()
 
     def new_session(self):
-        a = self.analyzer
-        return self.Analysis(a.cfg, a.model, a.prior, a.Q, self.points, self.silence_dbfs)
+        return self.analyzer.session(self.silence_dbfs)
 
     def info(self) -> dict:
         """What the server needs from the chain: the page's fields, the class labels, the sample rate."""
-        return {"points": self.demo.point_info(self.sr, self.hop), "defaultPoint": self.demo.DEFAULT_POINT,
+        return {"points": self.demo.point_info(self.sr, self.hop, self.points), "defaultPoint": self.demo.DEFAULT_POINT,
                 "framewiseDecisionDelaySeconds": self.demo.framewise_decision_delay(self.sr, self.hop),
                 "metadata": self.metadata, "labels": self.labels, "sampleRate": self.sr}
 
@@ -132,6 +139,7 @@ def health(workers: Workers, settings) -> dict:
     return {"live": True, **{k: info.get(k) for k in ("points", "defaultPoint", "framewiseDecisionDelaySeconds",
                                                        "metadata")},
             "maxSeconds": settings.max_seconds, "liveMarginSeconds": settings.live_margin,
+            "model": settings.model,
             "silenceDbfs": settings.silence_dbfs if math.isfinite(settings.silence_dbfs) else None,
             "maxSessions": settings.max_sessions, "workers": {"alive": workers.alive, "count": workers.n}}
 
@@ -260,22 +268,28 @@ def parse_args(argv=None, env=os.environ) -> argparse.Namespace:
     parser.add_argument("--max-sessions", type=int, default=int(env.get("CHORD_DEMO_MAX_SESSIONS", 8)))
     parser.add_argument("--max-seconds", type=float, default=float(env.get("CHORD_DEMO_MAX_SECONDS", 600.0)))
     parser.add_argument("--live-margin", type=float, default=float(env.get("CHORD_DEMO_LIVE_MARGIN", 0.15)))
+    parser.add_argument("--model", choices=MODELS, default=env.get("CHORD_DEMO_MODEL", DEFAULT_MODEL))
     parser.add_argument("--silence-dbfs", type=float,
-                        default=float(env.get("CHORD_DEMO_SILENCE_DBFS", DEFAULT_SILENCE_DBFS)))
+                        default=float(env["CHORD_DEMO_SILENCE_DBFS"]) if "CHORD_DEMO_SILENCE_DBFS" in env else None)
     args = parser.parse_args(argv)
     if args.workers < 1 or args.max_sessions < 1:
         parser.error("--workers and --max-sessions must be at least 1")
+    if args.model not in MODELS:
+        parser.error(f"CHORD_DEMO_MODEL must be one of {', '.join(MODELS)}")
+    if args.silence_dbfs is None:
+        args.silence_dbfs = DEFAULT_SILENCE_DBFS[args.model]
     args.allowed_origins = [o for o in (s.strip() for s in args.allowed_origins.split(",")) if o]
     return args
 
 
 async def serve(settings) -> None:
-    workers = Workers(functools.partial(Chain, settings.silence_dbfs), settings.workers)
+    workers = Workers(functools.partial(Chain, settings.model, settings.silence_dbfs), settings.workers)
     await workers.start()
     server = make_app(workers, paths.REPO_ROOT / "demo", settings).listen(settings.port, address=settings.host)
     print(f"Demo: http://localhost:{settings.port} (listening on {settings.host}; {settings.workers} decoding "
           f"workers, at most {settings.max_sessions} sessions, live margin {settings.live_margin:g} s, "
-          f"silence gate {settings.silence_dbfs:g} dBFS)", flush=True)
+          f"model {settings.model}, silence gate "
+          f"{'off' if not math.isfinite(settings.silence_dbfs) else f'{settings.silence_dbfs:g} dBFS'})", flush=True)
     stop = asyncio.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         asyncio.get_running_loop().add_signal_handler(sig, stop.set)

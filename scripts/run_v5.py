@@ -41,9 +41,12 @@ def parse_args(argv=None) -> argparse.Namespace:
 
 
 def load_config(path: Path) -> dict:
-    """The V5 config on top of its base (v2.yaml): V5 sections replace the base's."""
-    cfg = yaml.safe_load(path.read_text())
-    return {**yaml.safe_load((path.parent / cfg["base_config"]).read_text()), **cfg}
+    """A config on top of its base (base_config, e.g. v2.yaml), and the base on its own if it has one
+    (v15.yaml on v14.yaml on v2.yaml): each config's sections replace its base's."""
+    cfg = yaml.safe_load(Path(path).read_text())
+    if "base_config" not in cfg:
+        return cfg
+    return {**load_config(Path(path).parent / cfg["base_config"]), **cfg}
 
 
 def change_prior(cfg: dict) -> np.ndarray:

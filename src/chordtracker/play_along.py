@@ -1,18 +1,34 @@
 """The listening prototype's logic, without audio or window (scripts/play_along.py runs it live).
 
 A recording reaches the prototype as it plays (from a file read at real-time pace, or from another
-application through a virtual audio cable). It is analysed block by block with the live chain and the
-frozen V11 student (vocabulary A: maj, min, 7, maj7, min7, 60 classes; configs/v11.yaml `frozen`), and
-played back to the musician `delay` seconds late, so the label of every frame is ready when that frame
-is heard. This module holds what does not depend on sound devices:
+application through a virtual audio cable). It is analysed block by block with the live chain and one of
+the systems (SYSTEMS; scripts/play_along.py runs v15 unless told otherwise), and played back to the musician `delay` seconds late, so the label of every frame
+is ready when that frame is heard:
+
+    v11    the frozen V11 student (vocabulary A: maj, min, 7, maj7, min7, 60 classes; configs/v11.yaml
+           `frozen`), with the silence gate for N
+    v14    V14's network with an N class (61 classes, N last; results/v14/n_seed0, configs/v14.yaml) at
+           its best decoder setting on validation (N weight x0.1, chord -> N rate x0.5): N comes from the
+           network, the silence gate is off unless asked for. V14 did not pass its checks (reports/v14.md:
+           it calls N on some chords); this is for listening to a learned N
+    v15    V14's network fine-tuned to also name dim, aug and hdim7 (97 classes; results/v15/ft_seed0, the
+           run reports/v15.md recommends, configs/v15.yaml), decoded as V15 scores it (the evidence divided
+           by the fine-tune's target mix); the network's outputs are put in decode order (N last), so its
+           labels are system_labels("v15", cfg)
+
+This module holds what does not depend on sound devices:
 
     OPERATING_POINTS               V11's four frozen points (input look-ahead 2): the decoder lag and
                                    p_self of each, and so its total look-ahead
+    V14_POINTS                     V14's points: the same lags, V8's p_self
+    SYSTEMS, System                the two systems: config, run, points, silence gate on or off by default
+    load_chain(system, cfg, run)   (model, decoding prior, Q) of a system's saved run
+    system_labels(system, cfg)     the Harte label of every index the system outputs, N last
     V7_2_POINTS                    the demo website's three points (V7.2's network and p_self)
     CLASS_LABELS                   the Harte label of each of the 60 classes ('C:maj' .. 'B:min7')
     SILENCE_DBFS, SILENCE_FRAMES   the silence gate: -55 dBFS for 3 frames
     Analysis                       the live chain fed with blocks; per frame, the label of every point
-                                   (N, index n_classes, where the gate finds silence); finish() at the end
+                                   (N, index n_label, where the gate finds silence); finish() at the end
                                    of a recording
     silent_frames(levels, ...)     which frames the gate labels N, from every frame's dBFS
     Reference                      an Isophonics annotation, every chord reduced to vocabulary A (the
@@ -36,8 +52,9 @@ silent). The decoders run underneath, so the chord returns with the first audibl
 (0.28 s) keep the short rests of a performance: on the 60 GuitarSet validation takes a gate on single
 frames at -50 dBFS would label 703 frames N in 35 takes, this one 117 frames in 4 takes (the pauses of
 a player), and none in the demo's samples. Digital silence and quiet noise (-60 dBFS) are N. With the
-gate the tuning seconds start at the first frame at or above the level (StreamingFeatures), so a quiet
-intro no longer stands for the tuning of the whole recording.
+the tuning seconds start at the first frame at or above the same level (Analysis onset_dbfs,
+StreamingFeatures), so a quiet intro no longer stands for the tuning of the whole recording; this holds
+with the gate off too.
 
 Times: input time s = samples received / sample rate. A frame f is the 2,048-sample block starting at
 f * hop / sr of input time. The musician hears input time s at wall time s + delay; the window shows, at
@@ -69,6 +86,15 @@ V7_2_POINTS = {             # the demo website's points: V7.2's 24-class network
     "0.46 s": {"lag": 2, "p_self": 0.9},
     "0.65 s": {"lag": 4, "p_self": 0.98},
 }
+V14_POINTS = {              # V14's points (configs/v14.yaml decoder.points, V8's frozen p_self)
+    "0.28 s": {"lag": 0, "p_self": None},
+    "0.46 s": {"lag": 2, "p_self": 0.5},
+    "0.65 s": {"lag": 4, "p_self": 0.8},
+    "1.02 s": {"lag": 8, "p_self": 0.98},
+}
+V14_N_WEIGHT = 0.1          # N's decoding evidence times this (reports/v14.md, best setting on validation)
+V14_RATE_FACTOR = 0.5       # the counted chord -> N rate times this
+N_LABEL = len(CLASS_LABELS)  # N in vocabulary A: V14's class 60, and the gate's label for the 60-class models
 QUALITIES = {"maj": "", "min": "m", "7": "7", "maj7": "maj7", "min7": "m7", "dim": "dim", "aug": "aug",
              "dim7": "dim7", "hdim7": "m7b5", "sus4": "sus4", "sus2": "sus2", "maj6": "6", "min6": "m6",
              "9": "9", "maj9": "maj9", "min9": "m9", "5": "5", "1": "(1)"}
@@ -166,8 +192,10 @@ class Analysis:
 
     prior: what the decoders divide by (transitions_v8.tempered_prior of the training prior); Q: the change
     matrix (zero diagonal) that each point's p_self completes; points: OPERATING_POINTS or V7_2_POINTS.
-    silence_dbfs: the silence gate's level (None: no gate, the tuning seconds from time 0); a silent frame
-    gets N, index len(prior), at every point.
+    silence_dbfs: the silence gate's level (None: no gate); a silent frame gets N at every point, index
+    n_label (default len(prior): the class after the chords of a network without N; a network with an N
+    class passes its own). onset_dbfs: the tuning seconds start at the first frame at or above it (None:
+    at time 0; StreamingFeatures), with or without the gate.
     """
     cfg: dict
     model: object
@@ -175,11 +203,13 @@ class Analysis:
     Q: np.ndarray
     points: dict = field(default_factory=lambda: OPERATING_POINTS)
     silence_dbfs: float | None = None
+    n_label: int | None = None
+    onset_dbfs: float | None = None
 
     def __post_init__(self):
         self.labels = {p: [] for p in self.points}
-        self.n_index = len(self.prior)
-        self.features = StreamingFeatures(self.cfg, self.silence_dbfs)
+        self.n_index = len(self.prior) if self.n_label is None else self.n_label
+        self.features = StreamingFeatures(self.cfg, self.onset_dbfs)
         self.silent, self.run = [], SILENCE_FRAMES              # the gate per frame, and the quiet frames in a row
         self.crnn = LookaheadStreamingCRNN(self.model, INPUT_LOOKAHEAD)
         self.decoders = {p: online_hmm.FixedLagViterbi(transitions.transition(self.Q, v["p_self"]), v["lag"])
@@ -234,24 +264,26 @@ class Analysis:
         return self.silent[f]
 
 
-def class_name(index: int) -> str:
-    """A label index as a musician reads it: a class's name, "N.C." for N (index len(CLASS_LABELS))."""
-    return chord_name(CLASS_LABELS[index]) if index < len(CLASS_LABELS) else chord_name("N")
+def class_name(index: int, names: list[str] | None = None) -> str:
+    """A label index as a musician reads it: names[index] (system_labels; default vocabulary A then N),
+    "N.C." for N and for an index past the vocabulary."""
+    names = names or CLASS_LABELS
+    return chord_name(names[index]) if index < len(names) else chord_name("N")
 
 
-def system_at(labels: list[int], frame: int) -> tuple[str, str]:
+def system_at(labels: list[int], frame: int, names: list[str] | None = None) -> tuple[str, str]:
     """(chord of frame, next different chord already decided) from a point's labels; "" if not known yet."""
     if frame < 0 or frame >= len(labels):
         return "", ""
-    now = class_name(labels[frame])
+    now = class_name(labels[frame], names)
     for later in labels[frame + 1:]:
-        if class_name(later) != now:
-            return now, class_name(later)
+        if class_name(later, names) != now:
+            return now, class_name(later, names)
     return now, ""
 
 
 def shown(labels: list[int], reference: Reference | None, onset: float | None, playback_s: float, lead_s: float,
-          nudge_s: float, sr: int, hop: int) -> dict:
+          nudge_s: float, sr: int, hop: int, names: list[str] | None = None) -> dict:
     """What the window shows when the musician hears input time playback_s.
 
     The chords are those of input time playback_s + lead_s. The analysis starts at the onset, so the
@@ -260,7 +292,7 @@ def shown(labels: list[int], reference: Reference | None, onset: float | None, p
     """
     t = playback_s + lead_s
     frame = int(np.floor((t - (onset or 0.0)) * sr / hop))
-    system_now, system_next = system_at(labels, frame)
+    system_now, system_next = system_at(labels, frame, names)
     ref_now = ref_next = ""
     if reference is not None and onset is not None:
         ref_now, ref_next = reference.at(t - onset - nudge_s)
@@ -296,12 +328,107 @@ def load_system(cfg: dict, run: Path):
     return model.eval(), transitions_v8.tempered_prior(prior, cfg["decoder"]["prior_power"])
 
 
-def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rate: int, timing=None) -> None:
+@dataclass(frozen=True)
+class System:
+    """A system the play-along can run: its config and saved run (relative to the repository), its
+    operating points, and whether the silence gate is on unless told otherwise."""
+    config: str
+    run: str
+    points: dict
+    gate: bool
+
+
+SYSTEMS = {
+    "v11": System("configs/v11.yaml", "results/v11/pool_kd1_seed1", OPERATING_POINTS, gate=True),
+    "v14": System("configs/v14.yaml", "results/v14/n_seed0", V14_POINTS, gate=False),
+    "v15": System("configs/v15.yaml", "results/v15/ft_seed0", V14_POINTS, gate=False),
+}
+
+
+def system_labels(system: str, cfg: dict) -> list[str]:
+    """The Harte label of every index the system outputs, N last: vocabulary A then N for v11 and v14,
+    V15's vocabulary in decode order (its chords, then N) for v15."""
+    if system == "v15":
+        from chordtracker import data_v15
+        return data_v15.vocab_from_cfg(cfg).decode_names()
+    return CLASS_LABELS + ["N"]
+
+
+def decode_order_head(model, order):
+    """The model with its classifier's outputs put in `order` (output i = old output order[i]): a network
+    trained in another order then decodes as one whose classes are in decode order."""
+    import torch
+    from torch import nn
+
+    class Reorder(nn.Module):
+        def __init__(self, order):
+            super().__init__()
+            self.register_buffer("order", torch.as_tensor(np.asarray(order), dtype=torch.long))
+
+        def forward(self, x):
+            return x.index_select(-1, self.order)
+
+    model.classifier.append(Reorder(order))
+    return model
+
+
+def billboard_counts(cfg: dict) -> np.ndarray:
+    """The Billboard change counts the transition matrices are built from (cfg's transitions.counts)."""
+    import json
+
+    from chordtracker import paths
+
+    return np.array(json.loads((paths.REPO_ROOT / cfg["transitions"]["counts"]).read_text())["counts"], dtype=float)
+
+
+def load_chain(system: str, cfg: dict, run: Path):
+    """(model on CPU in eval mode, decoding prior, Q) of a system's saved run.
+
+    v11: load_system, and V8's Billboard matrix weighted by the training prior (run_v8.decoder_parts).
+    The matrices follow cfg's vocabulary (cfg["vocab"], vocabulary A without one).
+    v14: model_v14's network with N last (run.json: n_classes); the training prior raised to the prior
+    power, N's entry divided by V14_N_WEIGHT (its evidence times the weight); Q with N's row and column at
+    the counted chord -> N rate (n_counts.json) times V14_RATE_FACTOR (run_v14.specs).
+    v15: the fine-tuned network with its outputs in decode order (decode_order_head); Q and the decoding
+    prior from eval_v15.decode_parts with configs/v15.yaml's decoder (the evidence divided by the target mix,
+    mix_prior.json), as run_v15 scores it.
+    """
+    import json
+
+    from chordtracker import model_v14, transitions_v8
+
+    run = Path(run)
+    t, vocab = cfg["transitions"], cfg.get("vocab", VOCAB)
+    prior = np.array(json.loads((run / "prior.json").read_text()))
+    if system == "v11":
+        model, decode_prior = load_system(cfg, run)
+        Q = transitions_v8.change_matrix(billboard_counts(cfg), vocab, prior, t["alpha"], t["tau"])
+        return model, decode_prior, Q
+    if system == "v15":
+        from chordtracker import data_v15, eval_v15
+        vocab, d = data_v15.vocab_from_cfg(cfg), cfg["decoder"]
+        rate = json.loads((run / "n_counts.json").read_text())["chord_to_n_rate"] * d["n_rate_factor"]
+        mix = np.array(json.loads((run / "mix_prior.json").read_text()))       # decode order, as prior.json
+        Q, decode_prior = eval_v15.decode_parts(vocab.qualities, billboard_counts(cfg), prior, mix, rate,
+                                                d["n_weight"], d["prior_power"], t["alpha"], t["tau"])
+        return decode_order_head(model_v14.load(run, cfg).cpu(), vocab.decode_order), decode_prior, Q
+    if system != "v14":
+        raise ValueError(f"unknown system {system!r}: one of {sorted(SYSTEMS)}")
+    rate = json.loads((run / "n_counts.json").read_text())["chord_to_n_rate"] * V14_RATE_FACTOR
+    Q = transitions_v8.change_matrix(billboard_counts(cfg), vocab, prior, t["alpha"], t["tau"], rate)
+    decode_prior = transitions_v8.tempered_prior(prior, cfg["decoder"]["prior_power"])
+    decode_prior[-1] /= V14_N_WEIGHT
+    return model_v14.load(run, cfg).cpu(), decode_prior / decode_prior.sum(), Q
+
+
+def analysis_worker(blocks, results, cfg: dict, run_dir: str, rate: int, timing=None, system: str = "v11",
+                    silence_dbfs: float | None = SILENCE_DBFS) -> None:
     """The analysis, in its own process so it never holds up the audio callbacks.
 
     blocks: ("reset", generation) or (generation, mono block at `rate`); results: (generation, {point:
-    new labels}, onset time). Resamples to cfg's rate, finds the onset, runs Analysis. timing: a queue
-    that gets (samples at `rate`, seconds) for every analysed block, or None.
+    new labels}, onset time). Resamples to cfg's rate, finds the onset, runs Analysis with the system's
+    chain (load_chain) and the silence gate at silence_dbfs (None: off). timing: a queue that gets
+    (samples at `rate`, seconds) for every analysed block, or None.
     """
     import time as _time
 
@@ -309,7 +436,9 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rat
     import torch
 
     torch.set_num_threads(1)
-    model, prior = load_system(cfg, Path(run_dir))
+    model, prior, Q = load_chain(system, cfg, Path(run_dir))
+    points = SYSTEMS[system].points
+    n_label = len(system_labels(system, cfg)) - 1
     sr = cfg["audio"]["sr"]
     generation, analysis, onset, resampler, analysed, sent = None, None, None, None, 0, {}
     while True:
@@ -318,9 +447,10 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rat
             return
         if message[0] == "reset":
             generation = message[1]
-            analysis, onset = Analysis(cfg, model, prior, Q, silence_dbfs=SILENCE_DBFS), Onset()
+            analysis = Analysis(cfg, model, prior, Q, points, silence_dbfs, n_label=n_label, onset_dbfs=SILENCE_DBFS)
+            onset = Onset()
             resampler = soxr.ResampleStream(rate, sr, 1, dtype="float32")
-            analysed, sent = 0, {p: 0 for p in OPERATING_POINTS}
+            analysed, sent = 0, {p: 0 for p in points}
             continue
         if message[0] != generation or analysis is None:
             continue
@@ -333,7 +463,7 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, Q: np.ndarray, rat
         analysis.step(y)                            # from the onset block on: the tuning reads the song's 10 s
         if timing is not None:
             timing.put((len(message[1]), _time.perf_counter() - start))
-        new = {p: analysis.labels[p][sent[p]:] for p in OPERATING_POINTS}
+        new = {p: analysis.labels[p][sent[p]:] for p in points}
         if any(new.values()) or onset.time is not None:
-            sent = {p: len(analysis.labels[p]) for p in OPERATING_POINTS}
+            sent = {p: len(analysis.labels[p]) for p in points}
             results.put((generation, new, onset.time))

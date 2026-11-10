@@ -175,3 +175,16 @@ def test_tetrads_tables_and_the_per_quality_scores():
     r = eval_v15.score({"s": half}, songs, V, 0.1, ("sevenths", "tetrads"))
     assert r["quality"]["dim"]["recall"] == pytest.approx(50.0) and r["quality"]["dim"]["precision"] == 100.0
     assert r["quality"]["min"]["precision"] == 0.0 and r["sets"]["rwc"]["tetrads"] == pytest.approx(75.0)
+
+
+def test_a_config_on_a_config_on_a_base_reads_all_three():
+    """run_v5.load_config follows base_config down (v15.yaml on v14.yaml on v2.yaml), as run_v15.config does."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import run_v5
+    import run_v15
+    from chordtracker import paths
+    assert run_v5.load_config(paths.REPO_ROOT / "configs" / "v15.yaml") == run_v15.config()
+    v14 = run_v5.load_config(paths.REPO_ROOT / "configs" / "v14.yaml")
+    assert v14["compression"]["gamma"] == 10 and v14["version"] == "v14"          # one level, as before

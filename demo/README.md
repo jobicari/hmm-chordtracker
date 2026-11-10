@@ -2,10 +2,22 @@
 
 A page that plays a recording and shows its chords as the real-time system does: the decoded row
 (fixed-lag Viterbi) above the framewise row (the network alone), so the flicker the decoder removes is
-visible. One setting picks the look-ahead (the listening prototype's 0.28 / 0.46 / 0.65 s points); a
-checkbox really delays playback to match it, and a panel states the delay and what it is made of. A
+visible. One setting picks the look-ahead (0.28 / 0.46 / 0.65 / 1.02 s: the network alone and fixed-lag
+Viterbi at lag 2 / 4 / 8; V7.2 has the first three); a checkbox really delays playback to match it, and a
+panel states the delay and what it is made of. With the delay on, a choice shows each chord up to 0.5 s
+before you hear it (0.1 s steps; the listening prototype ended on 1 s, reports/play_along.md, which felt
+long here; the page remembers the choice): the delay grows by as much, so the chords shown early are
+already decided. A
 checkbox adds the GuitarSet lead-sheet chords as a reference row, and a diagram shows the analysis
 stages with the run's settings. See [reports/demo.md](../reports/demo.md).
+
+The model is V15 (`results/v15/ft_seed0`, the run reports/v15.md recommends): V14's network with an N
+class fine-tuned to also name diminished, augmented and half-diminished chords, 96 chords (major, minor,
+7, maj7, m7, dim, aug and m7b5 in 12 keys) plus N.C., decoded as V15 is scored (N weight x0.1, chord to N
+rate x0.5, the evidence divided by the fine-tune's mix of training chords). N.C. is the network's own call,
+so it can land on a real chord (reports/v14.md, reports/v15.md). V14's 60-chord network
+(`results/v14/n_seed0`) and V7.2's 24-chord network (`results/v7_2/c2_la2_seed0`, N.C. from a level gate)
+stay available with `--model v14` and `--model v7_2`. The weights of all three are in git.
 
 No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`.
 
@@ -13,6 +25,8 @@ No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`.
 PYTHONPATH=src python scripts/demo_export.py 00_Funk2-108-Eb_comp 00_Rock3-148-C_comp 00_SS3-98-C_comp
 PYTHONPATH=src python scripts/demo_server.py
 ```
+
+(`--model v7_2` on both for V7.2: the prepared samples and the server must use the same model.)
 
 Then open http://localhost:8000. Space plays and pauses; click or drag on the timeline, or use the seek
 bar, to seek.
@@ -40,10 +54,12 @@ lead-sheet chords, metadata with the pipeline settings). Only GuitarSet validati
 ## Deploy with Docker
 
 The `Dockerfile` at the repo root packages the live server: the page, the prepared samples, the model
-(`results/v7_2/c2_la2_seed0`), its configs and the Billboard counts, with CPU-only PyTorch and the
-packages of `requirements-demo.txt`. `.dockerignore` lets in only those files, so `data/` and the other
-results never enter the build. `demo/samples/` is git-ignored, so export it first (above): the build
-stops if `demo/samples/index.json` is missing.
+(`results/v15/ft_seed0`: model.pt, prior.json, mix_prior.json, run.json, n_counts.json; the same for
+`results/v14/n_seed0` but mix_prior.json; and `results/v7_2/c2_la2_seed0`), their
+configs and the Billboard counts, with CPU-only PyTorch and the packages of `requirements-demo.txt`.
+`.dockerignore` lets in only those files, so `data/` and the other results never enter the build.
+`demo/samples/` is git-ignored, so export the samples first (above): the build stops if
+`demo/samples/index.json` is missing.
 
 ```bash
 docker build -t chord-tracker-demo .
@@ -65,7 +81,7 @@ stops is restarted, and its listeners get an error and can start again.
 Settings are environment variables (or the same flags of `scripts/demo_server.py`), read when the server
 starts: change them with `docker run -e ...` and restart the container, no rebuild needed. The server
 logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`,
-`silenceDbfs`).
+`model`, `silenceDbfs`).
 
 | Variable | Default | |
 |---|---|---|
@@ -76,7 +92,8 @@ logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, 
 | `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once, over all workers |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
-| `CHORD_DEMO_SILENCE_DBFS` | `-55` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames, and the 10 s the tuning is estimated on start at the first frame at or above it; `-inf` turns the gate off (reported as `null`) |
+| `CHORD_DEMO_MODEL` | `v15` | `v15`: V15, with dim, aug and m7b5 and its own N.C.; `v14`: V14's 60 chords and its own N.C.; `v7_2`: V7.2's 24 chords (`--model`). The prepared samples must be exported with the same model |
+| `CHORD_DEMO_SILENCE_DBFS` | off for `v15` and `v14`, `-55` for `v7_2` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames; `-inf` turns it off (reported as `null`). The 10 s the tuning is estimated on start at the first frame at or above -55 dBFS either way |
 
 ```bash
 docker run --rm -p 8000:8000 -e CHORD_DEMO_WORKERS=2 -e CHORD_DEMO_MAX_SESSIONS=4 chord-tracker-demo

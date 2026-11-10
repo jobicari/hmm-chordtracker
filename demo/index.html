@@ -35,6 +35,15 @@
       <div class="control checks">
         <span class="label">Options</span>
         <label class="check"><input id="delay" type="checkbox" checked> Delay playback to match the look-ahead</label>
+        <label class="check lead">Show chords
+          <select id="lead">
+            <option value="0">on time</option>
+            <option value="0.1">0.1 s early</option>
+            <option value="0.2">0.2 s early</option>
+            <option value="0.3">0.3 s early</option>
+            <option value="0.4">0.4 s early</option>
+            <option value="0.5">0.5 s early</option>
+          </select></label>
         <label class="check"><input id="show-reference" type="checkbox" disabled> Show reference annotations</label>
       </div>
       <div id="delay-note" class="delay-panel" aria-live="polite"></div>
@@ -42,7 +51,7 @@
 
     <section class="player">
       <div class="now">
-        <span class="caption">Chord now</span>
+        <span id="now-caption" class="caption">Chord now</span>
         <span id="now" class="chord-big"></span>
       </div>
       <div class="transport">
@@ -80,10 +89,11 @@
           <div id="playhead" class="playhead" title="What you hear"></div>
         </div>
       </div>
-      <p class="legend"><span class="key playhead-key"></span> what you hear
-        <span class="key input-key"></span> what the system has heard
-        <span class="key mask-key"></span> not decided yet
-        <span class="ref-only" hidden><span class="key out-key"></span> reference chord outside the system's 24 major / minor chords</span></p>
+      <p class="legend"><span class="item"><span class="key playhead-key"></span> what you hear</span>
+        <span class="item"><span class="key input-key"></span> what the system has heard</span>
+        <span class="item"><span class="key mask-key"></span> not decided yet</span>
+        <span class="item ref-only" hidden><span class="key out-key"></span><span>reference chord outside the
+          system's <span id="vocab-legend">chords</span></span></span></p>
       <p id="reference-note" class="reference-note"></p>
     </section>
 
@@ -102,11 +112,9 @@
       <details class="notes" open>
         <summary>Notes and limitations</summary>
         <ul>
-          <li><strong>Chords:</strong> major and minor triads only, no sevenths or other qualities. A seventh chord
-            is shown as its triad at best. The network always gives a chord; "N.C." (no chord) comes from a level
-            gate, where the input is silent, not from the network.</li>
-          <li><strong>Training:</strong> the network was trained on the RWC Popular Music and GuitarSet training
-            takes. The prepared samples are GuitarSet validation takes, which it did not train on.</li>
+          <li><strong>Chords:</strong> <span id="note-chords"></span></li>
+          <li><strong>Training:</strong> <span id="note-training"></span> The prepared samples are GuitarSet
+            validation takes, which it did not train on.</li>
           <li><strong>Real time:</strong> the chords were computed ahead of time and are revealed when the live system
             would output them. After a seek, the page shows the decisions of an uninterrupted run; a live system
             restarted at that point would need a few seconds to settle (running level, tuning, memory).</li>

@@ -113,7 +113,14 @@ PYTHONPATH=src python -m pytest tests/test_play_along.py
 PYTHONPATH=src python scripts/play_along.py --list-devices
 PYTHONPATH=src python scripts/play_along.py --input-device "VB-Cable A" --output-device "MacBook Pro Speakers"
 PYTHONPATH=src python scripts/play_along.py --file data/rwc/RWC-P/RWC_P037.wav --dry-run 30
+PYTHONPATH=src python scripts/play_along.py --model v14 --file data/rwc/RWC-P/RWC_P037.wav
+PYTHONPATH=src python scripts/play_along.py --model v14 --silence-gate --input-device "VB-Cable A"
 ```
+
+`--model v14` runs V14's network with an N class (results/v14/n_seed0; `--run` points at
+another folder) at its best decoder setting on validation (N weight x0.1, chord -> N rate x0.5), with
+the silence gate off, so the N shown is the network's own. V14 did not pass its checks
+([reports/v14.md](v14.md)): it calls N on some chords. The default stays V11 with the silence gate.
 
 The Isophonics annotations go in `data/beatles/chordlab/` (from isophonics.net, "The Beatles
 Annotations"); the audio comes from your own player.

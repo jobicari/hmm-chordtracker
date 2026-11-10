@@ -16,7 +16,8 @@ def make(framewise, points=None, reference=None):
     framewise = np.array(framewise)
     points = points or {p: framewise for p in OPERATING_POINTS}
     return demo.result("x", "X", "x.wav", len(framewise) * STEP, {k: np.array(v) for k, v in points.items()},
-                       framewise, LABELS, reference, "test" if reference is not None else None, {}, META)
+                       framewise, LABELS, reference, "test" if reference is not None else None, {}, META,
+                       OPERATING_POINTS)
 
 
 def point(r, pid):
@@ -80,3 +81,28 @@ def test_outputs_of_different_runs_are_refused():
 def test_every_point_is_required():
     with pytest.raises(ValueError):
         make([0] * 3, {"0.65 s": [0] * 3})
+
+
+def test_the_reference_reads_in_the_models_spelling():
+    roots = demo.spelling(["Eb:maj", "Ab:min", "C#:7", "N"])
+    assert roots == {3: "Eb", 8: "Ab", 1: "C#"}
+    assert demo.respell("G#:min7", roots) == "Ab:min7" and demo.respell("D#/5", roots) == "Eb/5"
+    assert demo.respell("N", roots) == "N" and demo.respell("A:maj", roots) == "A:maj"
+    ref = ChordAnnotation(np.array([[0.0, 1.0], [1.0, 2.0]]), ["G#:min", "A#:7"])
+    r = demo.result("x", "X", "x.wav", 2.0, {p: np.zeros(3, int) for p in demo.MODELS["v14"]}, np.zeros(3, int),
+                    ["Ab:min", "Bb:7"], ref, "test", {}, META)
+    assert [(s["chord"], s["name"]) for s in r["reference"]] == [("G#:min", "Abm"), ("A#:7", "Bb7")]
+
+
+def test_the_models_points():
+    """v15 (the default) and v14 show V14's four points (lag 0 / 2 / 4 / 8, its p_self); v7_2 keeps V7.2's
+    three."""
+    assert demo.DEFAULT_MODEL == "v15" and set(demo.MODELS) == {"v15", "v14", "v7_2"}
+    assert demo.MODELS["v15"] == demo.MODELS["v14"]
+    for model, ids, p_selfs in (("v14", ["0.28 s", "0.46 s", "0.65 s", "1.02 s"], [None, 0.5, 0.8, 0.98]),
+                                ("v7_2", ["0.28 s", "0.46 s", "0.65 s"], [None, 0.9, 0.98])):
+        info = demo.point_info(SR, HOP, demo.MODELS[model])
+        assert [p["id"] for p in info] == ids and [p["pSelf"] for p in info] == p_selfs
+    lag8 = demo.point_info(SR, HOP, demo.MODELS["v14"])[-1]          # input 2 + 1 + lag 8 frames
+    assert lag8["lookaheadSeconds"] == round(11 * STEP, 3) and lag8["decisionDelaySeconds"] == round(12 * STEP, 3)
+    assert demo.decoder_name("0.65 s") == "fixed-lag Viterbi (lag 4 frames, p_self 0.8)"
