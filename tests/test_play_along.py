@@ -195,3 +195,77 @@ def test_a_late_frame_keeps_the_last_chord_on_screen():
     assert pa.held(at(11.5 * hop_s), None)["system"] == ""            # nothing labelled yet: nothing to keep
     assert pa.held(at(-1.0), last)["system"] == ""                    # before the song: nothing shown
     assert pa.held(at(2.5 * hop_s), last)["system"] == "C"            # a labelled frame shows its own chord
+
+
+GATE_CFG = {"audio": {"sr": SR, "mono": True, "harmonic_margin": 4.0, "harmonic_median_frames": 9},
+            "cqt": {"hop_length": HOP, "fmin": "F#1", "bins_per_octave": 24, "n_bins": 168, "tuning_seconds": 10.0},
+            "compression": {"enabled": True, "level_percentile": 99, "gamma": 10}}
+
+
+def gated_analysis(y, silence_dbfs=pa.SILENCE_DBFS, block=1000):
+    """V7.2's points on a random 24-class network, fed y in blocks and finished."""
+    torch.manual_seed(0)
+    Q = np.full((24, 24), 1 / 23)
+    np.fill_diagonal(Q, 0)
+    a = pa.Analysis(GATE_CFG, model_v8.ChordCRNN(24, bidirectional=False).eval(), np.full(24, 1 / 24), Q,
+                    pa.V7_2_POINTS, silence_dbfs)
+    for i in range(0, len(y), block):
+        a.step(y[i:i + block])
+    a.finish()
+    return a
+
+
+def tone(seconds, amplitude=0.1, hz=220.0):
+    return (amplitude * np.sin(2 * np.pi * hz * np.arange(int(seconds * SR)) / SR)).astype(np.float32)
+
+
+def noise(seconds, db, seed=0):
+    return (10 ** (db / 20) * np.random.default_rng(seed).standard_normal(int(seconds * SR))).astype(np.float32)
+
+
+def test_the_silence_gate_needs_three_quiet_frames():
+    assert pa.silent_frames([-80, -30, -60, -60, -60, -30]).tolist() == [True, False, False, False, True, False]
+    assert pa.silent_frames([-np.inf, -np.inf]).tolist() == [True, True]             # before the song counts
+    assert not pa.silent_frames([-54.9] * 10).any()
+
+
+@pytest.mark.parametrize("y", [np.zeros(3 * SR, np.float32), noise(3.0, -60)], ids=["digital silence", "noise -60 dBFS"])
+def test_silence_is_no_chord_on_every_frame(y):
+    a = gated_analysis(y)
+    for labels in a.labels.values():
+        assert len(labels) == 1 + len(y) // HOP and set(labels) == {24}
+
+
+def test_without_the_gate_silence_shows_chords():
+    a = gated_analysis(noise(3.0, -60), silence_dbfs=None)
+    assert 24 not in a.labels["0.28 s"]
+
+
+def test_the_gate_only_replaces_the_silent_frames():
+    """Rests of 1, 2, 3 and 6 frames in a tone: N on the gated frames only, the decoders' labels elsewhere
+    (they run underneath), and the gate block by block is silent_frames of the whole file's levels."""
+    from chordtracker import streaming_features
+    rest = lambda frames: np.zeros(frames * HOP, np.float32)
+    y = np.concatenate([tone(1.0), rest(1), tone(0.5), rest(2), tone(0.5), rest(3), tone(0.5), rest(6), tone(1.0)])
+    gated, plain = gated_analysis(y, block=777), gated_analysis(y, silence_dbfs=None, block=777)
+    silent = pa.silent_frames(streaming_features.frame_dbfs(y, HOP))
+    assert 0 < silent.sum() < len(silent) and gated.silent == silent.tolist()
+    for point in pa.V7_2_POINTS:
+        expected = np.where(silent, 24, plain.labels[point])
+        assert gated.labels[point] == expected.tolist()
+
+
+def test_the_chord_returns_with_the_first_audible_frame():
+    intro = 40
+    a = gated_analysis(np.concatenate([np.zeros(intro * HOP, np.float32), tone(2.0)]))
+    for labels in a.labels.values():
+        assert set(labels[:intro]) == {24} and 24 not in labels[intro:]
+
+
+def test_quiet_but_audible_input_is_not_gated():
+    assert 24 not in gated_analysis(noise(2.0, -50)).labels["0.65 s"]
+
+
+def test_no_chord_reads_n_c():
+    assert pa.class_name(60) == "N.C." and pa.class_name(0) == "C"
+    assert pa.system_at([0, 0, 60, 60], 1) == ("C", "N.C.") and pa.system_at([60, 7], 0) == ("N.C.", "G")
