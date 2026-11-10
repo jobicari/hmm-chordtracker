@@ -19,7 +19,8 @@ first taking half of every minor chord's mass away.
 
 The fine-tune. Each batch holds replay_per_batch excerpts of the normal train data (V14's: the songs
 tiled from a random offset, one random shift each, no other augmentation; replay_excerpts of them per
-epoch) and focus_per_batch focus excerpts: an excerpt of excerpt_frames (11.9 s) placed at random
+epoch; replay_per_batch 0 trains on focus excerpts only, batches_per_epoch batches) and focus_per_batch
+focus excerpts: an excerpt of excerpt_frames (11.9 s) placed at random
 around one run of new-quality frames, so the run comes with the chords around it. Focus runs are drawn
 quality first (each new quality equally often), then a run of it; the epoch's focus excerpts take the 12
 shifts in turn, a time stretch uniform in 1 +/- stretch and a gain uniform in +/- gain_db dB.
@@ -163,7 +164,8 @@ def run_epoch(model, opt, songs: list[Song], focus: list, rng: np.random.Generat
     n_rep, n_foc = t["replay_per_batch"], t["focus_per_batch"]
     replay = data_v6.excerpt_starts(songs, length, rng)
     replay = replay[rng.permutation(len(replay))[:t["replay_excerpts"]]]
-    n_batches = int(np.ceil(len(replay) / n_rep))
+    n_batches = t.get("batches_per_epoch") or int(np.ceil(len(replay) / n_rep))    # set it when n_rep is 0
+    replay = replay[:n_batches * n_rep]
     foc = focus_starts(focus, n_batches * n_foc, length, rng)
     foc_shifts = rng.permutation(np.resize(np.array(list(data_v5.SHIFTS)), len(foc)))
     foc_rates = 1.0 + rng.uniform(-1, 1, len(foc)) * t["stretch"]
@@ -172,11 +174,14 @@ def run_epoch(model, opt, songs: list[Song], focus: list, rng: np.random.Generat
     for b in range(n_batches):
         r = slice(b * n_rep, (b + 1) * n_rep)
         f = slice(b * n_foc, (b + 1) * n_foc)
-        xr, yr = make_batch(songs, replay[r], rep_shifts[r], np.ones(len(replay[r])), length, la, vocab)
         xf, yf = make_batch(songs, foc[f], foc_shifts[f], foc_rates[f], length, la, vocab)
         if t.get("gain_db", 0):
             xf = torch.from_numpy(train_v10.augment(xf.numpy(), aug_rng, {"gain_db": t["gain_db"]}))
-        x, y = torch.cat([xr, xf]), torch.cat([yr, yf])
+        if n_rep:
+            xr, yr = make_batch(songs, replay[r], rep_shifts[r], np.ones(len(replay[r])), length, la, vocab)
+            x, y = torch.cat([xr, xf]), torch.cat([yr, yf])
+        else:                                                         # focus only
+            x, y = xf, yf
         counts += np.bincount(y[y >= 0].numpy(), minlength=vocab.n_classes)
         opt.zero_grad()
         logits = model(x.to(dev))

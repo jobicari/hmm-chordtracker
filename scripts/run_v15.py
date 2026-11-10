@@ -3,6 +3,7 @@
     python scripts/run_v15.py tables                                    # val scoring tables (once, cached)
     python scripts/run_v15.py train --seed 0 --out results/v15/ft_seed0
     python scripts/run_v15.py train --seed 0 --replay 4 --focus 4 --out results/v15/ft_r50_seed0
+    python scripts/run_v15.py train --seed 0 --replay 0 --focus 8 --out results/v15/ft_focus_seed0   # no replay
     python scripts/run_v15.py train --seed 0 --limit 3 --max-epochs 1 --replay-excerpts 16 --out <dir>  # dry run
     python scripts/run_v15.py posteriors --run results/v15/ft_seed0     # val posteriors of a saved run again
     python scripts/run_v15.py score                                     # -> results/v15/val_table.md, val_results.json
@@ -45,7 +46,8 @@ CONFIG = paths.REPO_ROOT / "configs" / "v15.yaml"
 OUT = paths.REPO_ROOT / "results" / "v15"
 TABLES = paths.DATA_DIR / "v15_cache" / "val_tables.npz"
 SET_NAMES = {"rwc": "RWC-P", "guitarset": "GuitarSet", "choco": "ChoCo", "mean": "mean"}
-RUNS = {"V15 seed 0 (62.5 % replay)": OUT / "ft_seed0", "V15 seed 0 (50 % replay)": OUT / "ft_r50_seed0"}
+RUNS = {"V15 seed 0 (62.5 % replay)": OUT / "ft_seed0", "V15 seed 0 (50 % replay)": OUT / "ft_r50_seed0",
+        "V15 seed 0 (focus only)": OUT / "ft_focus_seed0"}
 OLD = ("maj", "min", "7", "maj7", "min7")
 
 
@@ -164,6 +166,8 @@ def train(args) -> None:
         t["max_epochs"] = args.max_epochs
     if args.replay_excerpts:
         t["replay_excerpts"] = args.replay_excerpts
+    if t["replay_per_batch"] == 0:                     # focus only: as many batches as the default 5 + 3 epoch
+        t["batches_per_epoch"] = int(np.ceil(t["replay_excerpts"] / 5))
     vocab = data_v15.vocab_from_cfg(cfg)
     first = (lambda xs: xs[:args.limit]) if args.limit else (lambda xs: xs)
     out = args.out
