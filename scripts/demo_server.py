@@ -136,6 +136,14 @@ def health(workers: Workers, settings) -> dict:
             "maxSessions": settings.max_sessions, "workers": {"alive": workers.alive, "count": workers.n}}
 
 
+class PageFileHandler(tornado.web.StaticFileHandler):
+    """The page's files and the samples, revalidated on every load ("no-cache", answered 304 from the ETag
+    when unchanged): without it browsers keep using a cached app.js after a new image is deployed."""
+
+    def set_extra_headers(self, path):
+        self.set_header("Cache-Control", "no-cache")
+
+
 class HealthHandler(tornado.web.RequestHandler):
     def initialize(self, workers, settings, strict=False):
         self.workers, self.settings_, self.strict = workers, settings, strict
@@ -229,7 +237,7 @@ def make_app(workers: Workers, static_dir: Path, settings) -> tornado.web.Applic
         (r"/api/health", HealthHandler, shared),
         (r"/healthz", HealthHandler, {**shared, "strict": True}),
         (r"/api/live", LiveHandler, {**shared, "allowed_origins": origins}),
-        (PAGE_FILES, tornado.web.StaticFileHandler, {"path": str(static_dir), "default_filename": "index.html"}),
+        (PAGE_FILES, PageFileHandler, {"path": str(static_dir), "default_filename": "index.html"}),
     ], websocket_max_message_size=2 ** 20)
 
 

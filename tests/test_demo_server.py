@@ -127,6 +127,19 @@ def test_health_and_page(server_module, tmp_path):
     run(server_module, tmp_path, test)
 
 
+def test_page_files_are_revalidated_on_every_load(server_module, tmp_path):
+    """A new image's page reaches browsers that loaded the old one: no-cache, and 304 while unchanged."""
+    async def test(host, pool):
+        client = AsyncHTTPClient()
+        for path in ("", "index.html", "samples/index.json"):
+            first = await client.fetch(f"http://{host}/{path}")
+            assert first.headers["Cache-Control"] == "no-cache" and first.headers["Etag"]
+            again = await client.fetch(f"http://{host}/{path}", headers={"If-None-Match": first.headers["Etag"]},
+                                       raise_error=False)
+            assert again.code == 304
+    run(server_module, tmp_path, test)
+
+
 def test_a_session_streams_labels_in_order_and_flushes_at_the_end(server_module, tmp_path):
     async def test(host, pool):
         ready, received = await session(host, np.zeros(5500))
