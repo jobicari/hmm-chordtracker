@@ -47,8 +47,9 @@ silent). The decoders run underneath, so the chord returns with the first audibl
 (0.28 s) keep the short rests of a performance: on the 60 GuitarSet validation takes a gate on single
 frames at -50 dBFS would label 703 frames N in 35 takes, this one 117 frames in 4 takes (the pauses of
 a player), and none in the demo's samples. Digital silence and quiet noise (-60 dBFS) are N. With the
-gate the tuning seconds start at the first frame at or above the level (StreamingFeatures), so a quiet
-intro no longer stands for the tuning of the whole recording.
+the tuning seconds start at the first frame at or above the same level (Analysis onset_dbfs,
+StreamingFeatures), so a quiet intro no longer stands for the tuning of the whole recording; this holds
+with the gate off too.
 
 Times: input time s = samples received / sample rate. A frame f is the 2,048-sample block starting at
 f * hop / sr of input time. The musician hears input time s at wall time s + delay; the window shows, at
@@ -186,9 +187,10 @@ class Analysis:
 
     prior: what the decoders divide by (transitions_v8.tempered_prior of the training prior); Q: the change
     matrix (zero diagonal) that each point's p_self completes; points: OPERATING_POINTS or V7_2_POINTS.
-    silence_dbfs: the silence gate's level (None: no gate, the tuning seconds from time 0); a silent frame
-    gets N at every point, index n_label (default len(prior): the class after the chords of a network
-    without N; a network with an N class passes its own).
+    silence_dbfs: the silence gate's level (None: no gate); a silent frame gets N at every point, index
+    n_label (default len(prior): the class after the chords of a network without N; a network with an N
+    class passes its own). onset_dbfs: the tuning seconds start at the first frame at or above it (None:
+    at time 0; StreamingFeatures), with or without the gate.
     """
     cfg: dict
     model: object
@@ -197,11 +199,12 @@ class Analysis:
     points: dict = field(default_factory=lambda: OPERATING_POINTS)
     silence_dbfs: float | None = None
     n_label: int | None = None
+    onset_dbfs: float | None = None
 
     def __post_init__(self):
         self.labels = {p: [] for p in self.points}
         self.n_index = len(self.prior) if self.n_label is None else self.n_label
-        self.features = StreamingFeatures(self.cfg, self.silence_dbfs)
+        self.features = StreamingFeatures(self.cfg, self.onset_dbfs)
         self.silent, self.run = [], SILENCE_FRAMES              # the gate per frame, and the quiet frames in a row
         self.crnn = LookaheadStreamingCRNN(self.model, INPUT_LOOKAHEAD)
         self.decoders = {p: online_hmm.FixedLagViterbi(transitions.transition(self.Q, v["p_self"]), v["lag"])
@@ -396,7 +399,7 @@ def analysis_worker(blocks, results, cfg: dict, run_dir: str, rate: int, timing=
             return
         if message[0] == "reset":
             generation = message[1]
-            analysis = Analysis(cfg, model, prior, Q, points, silence_dbfs, n_label=N_LABEL)
+            analysis = Analysis(cfg, model, prior, Q, points, silence_dbfs, n_label=N_LABEL, onset_dbfs=SILENCE_DBFS)
             onset = Onset()
             resampler = soxr.ResampleStream(rate, sr, 1, dtype="float32")
             analysed, sent = 0, {p: 0 for p in points}
