@@ -95,8 +95,10 @@ def test_the_reference_reads_in_the_models_spelling():
 
 
 def test_the_models_points():
-    """v14 (the default) shows V14's four points (lag 0 / 2 / 4 / 8, its p_self); v7_2 keeps V7.2's three."""
-    assert demo.DEFAULT_MODEL == "v14" and set(demo.MODELS) == {"v14", "v7_2"}
+    """v15 (the default) and v14 show V14's four points (lag 0 / 2 / 4 / 8, its p_self); v7_2 keeps V7.2's
+    three."""
+    assert demo.DEFAULT_MODEL == "v15" and set(demo.MODELS) == {"v15", "v14", "v7_2"}
+    assert demo.MODELS["v15"] == demo.MODELS["v14"]
     for model, ids, p_selfs in (("v14", ["0.28 s", "0.46 s", "0.65 s", "1.02 s"], [None, 0.5, 0.8, 0.98]),
                                 ("v7_2", ["0.28 s", "0.46 s", "0.65 s"], [None, 0.9, 0.98])):
         info = demo.point_info(SR, HOP, demo.MODELS[model])

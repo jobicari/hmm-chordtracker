@@ -20,7 +20,8 @@ Labels are aligned: frame t's label is what the live system outputs for frame t,
 t * hop / sr + decisionDelaySeconds and never changed afterwards (a fixed-lag decision is final), so
 revealing each label at that time shows exactly what a live decoder would have shown.
 
-Two models (MODELS, the points of each): v14, V14's network with an N class (61 classes: vocabulary A
+Three models (MODELS, the points of each): v15, V14's network fine-tuned to also name dim, aug and hdim7
+(97 classes; the default); v14, V14's network with an N class (61 classes: vocabulary A
 and N; the default), and v7_2, V7.2's 24-class network (major and minor, no N).
 """
 import numpy as np
@@ -30,10 +31,11 @@ from chordtracker.data.data import ChordAnnotation
 from chordtracker.play_along import V7_2_POINTS, V14_POINTS, chord_name, required_delay, total_lookahead
 
 MODELS = {                      # the points the demo shows, per model: the same names (look-aheads), its p_self
-    "v14": V14_POINTS,                                     # 0.28 / 0.46 / 0.65 / 1.02 s (lag 0 / 2 / 4 / 8)
+    "v15": V14_POINTS,                                     # 0.28 / 0.46 / 0.65 / 1.02 s (lag 0 / 2 / 4 / 8)
+    "v14": V14_POINTS,
     "v7_2": V7_2_POINTS,
 }
-DEFAULT_MODEL = "v14"
+DEFAULT_MODEL = "v15"
 DEFAULT_POINT = "0.65 s"        # fixed-lag Viterbi, lag 4: the steadiest point by ear (reports/play_along.md)
 FRAMEWISE_POINT = "0.28 s"      # the network alone
 

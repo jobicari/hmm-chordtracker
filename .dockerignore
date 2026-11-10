@@ -13,6 +13,7 @@
 !configs/v2.yaml
 !configs/v7_2.yaml
 !configs/v14.yaml
+!configs/v15.yaml
 !results/v3/billboard_counts.json
 !results/v7_2/c2_la2_seed0/model.pt
 !results/v7_2/c2_la2_seed0/prior.json
@@ -20,6 +21,11 @@
 !results/v14/n_seed0/prior.json
 !results/v14/n_seed0/run.json
 !results/v14/n_seed0/n_counts.json
+!results/v15/ft_seed0/model.pt
+!results/v15/ft_seed0/prior.json
+!results/v15/ft_seed0/mix_prior.json
+!results/v15/ft_seed0/run.json
+!results/v15/ft_seed0/n_counts.json
 !demo/
 demo/README.md
 **/__pycache__

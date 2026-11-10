@@ -250,11 +250,12 @@ select, button, input { font: inherit; }
   margin-top: .8rem;
   display: flex;
   align-items: center;
-  gap: .45rem;
+  gap: .3rem 1.2rem;                   /* items wrap as wholes: a key stays with its text */
   flex-wrap: wrap;
 }
-.key { display: inline-block; width: 1.1rem; height: .85rem; margin-left: 1rem; vertical-align: middle; }
-.key:first-child { margin-left: 0; }
+.legend .item { display: inline-flex; align-items: center; gap: .45rem; }
+.legend .item[hidden] { display: none; }
+.key { display: inline-block; flex: none; width: 1.1rem; height: .85rem; vertical-align: middle; }
 .playhead-key { width: 2px; background: var(--accent); }
 .input-key { width: 0; border-left: 2px dashed var(--input); }
 .mask-key { background: repeating-linear-gradient(135deg, var(--mask-a) 0 3px, var(--mask-b) 3px 6px); border: 1px solid var(--line); }

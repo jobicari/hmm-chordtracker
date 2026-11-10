@@ -385,19 +385,26 @@ function qualityList(P) {
   return words.length > 1 ? `${words.slice(0, -1).join(", ")} and ${words.at(-1)}` : words[0];
 }
 
+function others(P) {
+  // Examples of chords the model does not name: "dim, aug, sus, 6, 9" without the qualities it has.
+  const known = new Set(P.network.qualities || []);
+  return [["dim", "dim"], ["aug", "aug"], ["sus4", "sus"], ["maj6", "6"], ["9", "9"]]
+    .filter(([q]) => !known.has(q)).map(([, name]) => name).join(", ");
+}
+
 function describeModel() {
   // The notes that depend on the model: its chords, what it was trained on, the legend's vocabulary.
   const P = view.sample.metadata.pipeline, n = P.network, chords = n.classes - (n.noChordClass ? 1 : 0);
   $("note-chords").textContent = n.noChordClass
     ? `${qualityList(P)} chords in all 12 keys (${chords}), plus N.C. (no chord), which the network learned `
-      + "from the passages the training songs' annotations mark as no chord. It can say N.C. over a real chord, and names other "
-      + "chords (dim, sus, 6, 9...) by the nearest one it knows."
+      + "from the passages the training songs' annotations mark as no chord. It can say N.C. over a real chord, "
+      + `and names other chords (${others(P)}...) by the nearest one it knows.`
     : `${qualityList(P)} triads only (${chords}), no sevenths or other qualities. A seventh chord is shown as `
       + "its triad at best. The network always gives a chord; \"N.C.\" (no chord) comes from a level gate, "
       + "where the input is silent, not from the network.";
   $("note-training").textContent = `the network was trained on ${n.trainedOn || "the RWC Popular Music and "
     + "GuitarSet training takes"}.`;
-  $("vocab-legend").textContent = `${chords} chords (${(n.qualities || ["maj", "min"]).join(", ")})`;
+  $("vocab-legend").textContent = `${chords} chords (${qualityList(P)})`;
 }
 
 function buildPipeline() {
@@ -430,7 +437,8 @@ function buildPipeline() {
     ["Framewise output", "The most probable chord of each frame, alone. This is the Framewise row: it "
       + "changes whenever the network's top choice does, hence the flicker."],
     ["HMM", `${P.hmm.states} states, one per ${learnedN ? "chord and one for N" : "chord"}. Evidence: the `
-      + `network's probability of a chord divided by how often it occurred in training. Transitions: stay on `
+      + `network's probability of a chord divided by how often it occurred in ${P.hmm.priorSource || "training"}. `
+      + `Transitions: stay on `
       + `the chord with probability p_self, or move as in chord-change counts from ${P.hmm.changeCountsSource} `
       + `(alpha ${P.hmm.alpha}, tau ${P.hmm.tau}), the same for every key.`
       + (learnedN ? ` N is held back: its evidence is weighted x${P.hmm.noChordWeight} and the rate of chord `

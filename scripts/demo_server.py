@@ -7,8 +7,8 @@
 The page decodes the recording (a prepared sample or the listener's own file), resamples it to the
 model's rate and streams it at playback speed; this server runs the listening prototype's live chain on
 it (play_along.Analysis: block-by-block features, the causal CRNN, the three operating points' decoders,
-the silence gate if on) and sends every chord back as soon as it is decided. With v14 (the default) N (no
-chord) is the network's own class; with v7_2 it comes from the silence gate. Routes:
+the silence gate if on) and sends every chord back as soon as it is decided. With v15 (the default) and v14
+N (no chord) is the network's own class; with v7_2 it comes from the silence gate. Routes:
 
     GET  /api/health    {"live": true, "points": [...], "metadata": {...}, "maxSeconds": ...,
                         "liveMarginSeconds": ..., "model": ..., "silenceDbfs": ..., "maxSessions": ...,
@@ -42,10 +42,12 @@ restart, without a rebuild):
     --max-seconds       CHORD_DEMO_MAX_SECONDS       600: audio per session
     --live-margin       CHORD_DEMO_LIVE_MARGIN       0.15: s the page adds to its playback delay for the network
                                                      and the server (more for a slow or distant host)
-    --model             CHORD_DEMO_MODEL             v14: V14's network with an N class (61 classes, results/v14/n_seed0);
-                                                     v7_2: V7.2's 24-class network (results/v7_2/c2_la2_seed0)
+    --model             CHORD_DEMO_MODEL             v15: V14 fine-tuned for dim, aug and hdim7 (97 classes,
+                                                     results/v15/ft_seed0); v14: V14's network with an N class
+                                                     (61 classes, results/v14/n_seed0); v7_2: V7.2's 24-class
+                                                     network (results/v7_2/c2_la2_seed0)
     --silence-dbfs      CHORD_DEMO_SILENCE_DBFS      the silence gate's level: N where the input stays below it for 3
-                                                     frames; -inf turns it off. Default: off for v14 (its own N),
+                                                     frames; -inf turns it off. Default: off for v15 and v14 (own N),
                                                      -55 (play_along.SILENCE_DBFS) for v7_2
 """
 import argparse
@@ -69,9 +71,9 @@ from chordtracker.live_workers import Workers  # noqa: E402
 
 PAGE_FILES = r"/(|index\.html|style\.css|app\.js|live\.js|samples/[^/]+)"     # not README.md
 DEFAULT_WORKERS_CAP = 8
-MODELS = ("v14", "v7_2")           # demo.MODELS, and demo_export.DEFAULT_SILENCE_DBFS below (not imported:
-DEFAULT_MODEL = "v14"              # this process loads no model code)
-DEFAULT_SILENCE_DBFS = {"v14": float("-inf"), "v7_2": -55.0}
+MODELS = ("v15", "v14", "v7_2")           # demo.MODELS, and demo_export.DEFAULT_SILENCE_DBFS below (not imported:
+DEFAULT_MODEL = "v15"              # this process loads no model code)
+DEFAULT_SILENCE_DBFS = {"v15": float("-inf"), "v14": float("-inf"), "v7_2": -55.0}
 
 
 def origin_key(origin: str) -> str:
@@ -94,7 +96,7 @@ def available_cpus() -> int:
 class Chain:
     """A model's chain (demo_export.Analyzer), loaded once in a worker and warmed up; new_session() -> a
     fresh play_along.Analysis with the silence gate at silence_dbfs (-inf: off; None: the model's default).
-    N is the last label (61 labels for v14, 25 for v7_2)."""
+    N is the last label (97 labels for v15, 61 for v14, 25 for v7_2)."""
 
     def __init__(self, model: str = DEFAULT_MODEL, silence_dbfs: float | None = None):
         import torch

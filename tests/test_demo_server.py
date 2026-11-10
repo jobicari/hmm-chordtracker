@@ -236,7 +236,8 @@ def test_settings_come_from_flags_then_the_environment(server_module, monkeypatc
     default = parse([], env={})
     assert (default.host, default.port, default.allowed_origins) == ("127.0.0.1", 8000, [])
     assert (default.workers, default.max_sessions, default.max_seconds, default.live_margin) == (8, 8, 600.0, 0.15)
-    assert default.model == "v14" and default.silence_dbfs == float("-inf")         # v14: its own N, no gate
+    assert default.model == "v15" and default.silence_dbfs == float("-inf")         # v15: its own N, no gate
+    assert parse([], env={"CHORD_DEMO_MODEL": "v14"}).silence_dbfs == float("-inf")
     assert parse([], env={"CHORD_DEMO_MODEL": "v7_2"}).silence_dbfs == -55.0        # v7_2: the gate
     assert parse(["--model", "v7_2"], env={"CHORD_DEMO_MODEL": "v14"}).model == "v7_2"
     with pytest.raises(SystemExit):
@@ -263,7 +264,7 @@ def test_health_reports_the_settings_in_use(server_module, tmp_path):
     async def test(host, pool):
         health = json.loads((await AsyncHTTPClient().fetch(f"http://{host}/healthz")).body)
         assert (health["maxSessions"], health["maxSeconds"], health["liveMarginSeconds"]) == (3, 120.0, 0.4)
-        assert health["silenceDbfs"] == -50.0 and health["model"] == "v14"
+        assert health["silenceDbfs"] == -50.0 and health["model"] == "v15"
         assert health["workers"] == {"alive": 2, "count": 2}
     run(server_module, tmp_path, test, workers=2,
         env={"CHORD_DEMO_MAX_SESSIONS": "3", "CHORD_DEMO_MAX_SECONDS": "120", "CHORD_DEMO_LIVE_MARGIN": "0.4",
@@ -288,9 +289,11 @@ def test_the_servers_lists_are_the_models(server_module):
 
 V14_MODEL = SCRIPTS.parent / "results" / "v14" / "n_seed0" / "model.pt"
 needs_v14 = pytest.mark.skipif(not V14_MODEL.exists(), reason="results/v14/n_seed0/model.pt is not in git: copy it in")
+V15_MODEL = SCRIPTS.parent / "results" / "v15" / "ft_seed0" / "model.pt"
+needs_v15 = pytest.mark.skipif(not V15_MODEL.exists(), reason="results/v15/ft_seed0/model.pt is not in git: copy it in")
 
 
-@pytest.mark.parametrize("model", [pytest.param("v14", marks=needs_v14), "v7_2"])
+@pytest.mark.parametrize("model", [pytest.param("v15", marks=needs_v15), pytest.param("v14", marks=needs_v14), "v7_2"])
 def test_the_real_chain_gives_the_same_labels_through_a_worker(server_module, tmp_path, model):
     """The process path changes nothing: the labels of a worker session are those of the chain run here."""
     import functools
@@ -304,7 +307,7 @@ def test_the_real_chain_gives_the_same_labels_through_a_worker(server_module, tm
 
     async def test(host, pool):
         ready, received = await session(host, pcm, block=3000)
-        assert len(ready["labels"]) == {"v14": 61, "v7_2": 25}[model] and ready["labels"][-1] == "N"
+        assert len(ready["labels"]) == {"v15": 97, "v14": 61, "v7_2": 25}[model] and ready["labels"][-1] == "N"
         assert received == {p: [int(x) for x in labels] for p, labels in here.labels.items()}
         health = json.loads((await AsyncHTTPClient().fetch(f"http://{host}/healthz")).body)
         assert health["metadata"]["pipeline"]["network"]["name"] == model
@@ -382,7 +385,7 @@ def test_v14_says_no_chord_itself_on_a_silent_intro(server_module):
         assert set(labels[:intro]) == {60} and sum(x == 60 for x in labels[intro:]) <= 2
 
 
-@pytest.mark.parametrize("model", [pytest.param("v14", marks=needs_v14), "v7_2"])
+@pytest.mark.parametrize("model", [pytest.param("v15", marks=needs_v15), pytest.param("v14", marks=needs_v14), "v7_2"])
 def test_the_prepared_sample_is_the_live_session(server_module, tmp_path, model):
     """demo_export's JSON of a file has, at every point, the labels a live session gives for the same PCM."""
     import soundfile as sf
@@ -416,3 +419,17 @@ def test_the_labels_come_from_the_runs_vocabulary(server_module):
     assert a.labels == data_v8.class_names(a.cfg["vocab"], with_n=True)
     assert a.qualities == list(data_v8.VOCABULARIES[a.cfg["vocab"]])
     assert demo_export.pipeline_settings(a, float("-inf"))["network"]["classes"] == len(a.labels)
+
+
+@needs_v15
+def test_v15_labels_are_its_vocabulary_in_decode_order(server_module):
+    """V15: 97 labels, its 60 old chords, then dim, aug and hdim7, N last; the page's qualities follow."""
+    sys.path.insert(0, str(SCRIPTS))
+    import demo_export
+    from chordtracker import data_v15
+    a = demo_export.Analyzer("v15")
+    assert a.labels == data_v15.vocab_from_cfg(a.cfg).decode_names()
+    assert len(a.labels) == 97 and a.labels[60] == "C:dim" and a.labels[-2] == "B:hdim7" and a.labels[-1] == "N"
+    assert a.qualities == ["maj", "min", "7", "maj7", "min7", "dim", "aug", "hdim7"]
+    hmm = demo_export.pipeline_settings(a, float("-inf"))["hmm"]
+    assert hmm["states"] == 97 and hmm["priorSource"]
