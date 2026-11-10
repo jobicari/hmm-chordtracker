@@ -27,7 +27,8 @@
 const PX_PER_SECOND = 40;           // minimum scale; the timeline scrolls when the recording is longer
 const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const EPS = 1e-4;
-const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only
+const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only,
+                                    // unless the server sets its own (liveMarginSeconds in api/health)
 const MAX_UPLOAD_BYTES = 100 * 2 ** 20;
 
 const $ = (id) => document.getElementById(id);
@@ -65,7 +66,8 @@ function colour(chord) {
 }
 
 function chordName(label) {
-  // "C:maj" -> "C", "A:min" -> "Am" (the model's 24 labels), as chordtracker.play_along.chord_name.
+  // "C:maj" -> "C", "A:min" -> "Am" (the model's 24 labels), "N" -> "N.C.", as chordtracker.play_along.chord_name.
+  if (label === "N" || label === "X") return "N.C.";
   const [root, q = "maj"] = label.split(":");
   return root + (q === "min" ? "m" : "");
 }
@@ -90,11 +92,15 @@ function segmentAt(segs, t) {
 // ---------------------------------------------------------------------------------------------------
 // Clocks
 
+function liveMargin() {
+  return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
+}
+
 function playbackDelay() {
   // With "Delay playback" on: the point's decision delay + half a frame, so that every label is
   // decided by the time its segment starts being heard (chordtracker.demo.playback_delay); else 0.
   if (!$("delay").checked || !view.point) return 0;
-  return view.point.playbackDelaySeconds + (view.mode === "live" ? LIVE_MARGIN : 0);
+  return view.point.playbackDelaySeconds + (view.mode === "live" ? liveMargin() : 0);
 }
 
 function heardTime(s, d) {
@@ -301,7 +307,9 @@ function buildDiagram() {
   box(xs[1], MAIN_Y, W, "", "2", "Harmonic part", [`STFT ${P.harmonic.nFft}, hop ${P.harmonic.stftHop}`,
     `past ${P.harmonic.medianFrames}-frame median`, "keeps sustained notes"]);
   box(xs[2], MAIN_Y, W, "", "3", "Log-CQT", [`${P.cqt.binsPerOctave} bins per octave`,
-    `tuning: first ${P.cqt.tuningSeconds} s`, `log(1 + ${P.compression.gamma} x)`]);
+    P.silence && P.silence.dbfs !== null ? `tuning: ${P.cqt.tuningSeconds} s from onset`
+      : `tuning: first ${P.cqt.tuningSeconds} s`,
+    `log(1 + ${P.compression.gamma} x)`]);
   box(xs[3], MAIN_Y, W, "model", "4", "CRNN", [`${P.network.windowFrames} frames, ${P.network.inputLookaheadFrames} ahead`,
     `${P.cqt.networkLowest} to ${P.cqt.networkHighest}`, `causal GRU, ${P.network.classes} chords`]);
   for (let i = 0; i < 3; i++) arrow(`M${xs[i] + W} ${MAIN_Y + H / 2} H${xs[i + 1] - 3}`);
@@ -324,6 +332,7 @@ function buildPipeline() {
   // The stages in the order the code runs them, with the values of this run (metadata.pipeline).
   const m = view.sample.metadata, P = m.pipeline, p = view.point;
   const ms = Math.round(m.frameSeconds * 1000);
+  const gated = Boolean(P.silence && P.silence.dbfs !== null);
   const stages = [
     ["Audio input", `The recording, mono, resampled to ${P.sampleRate.toLocaleString("en")} Hz. A live `
       + `system receives it in blocks of ${m.hopLength.toLocaleString("en")} samples (${ms} ms), one per frame.`],
@@ -333,7 +342,8 @@ function buildPipeline() {
       + `This needs ${P.harmonic.lookaheadFrames} frame of future audio.`],
     ["Log constant-Q spectrum", `${P.cqt.binsPerOctave} bins per octave (${P.cqt.nBins} bins), one column `
       + `per ${ms} ms frame, each bin delayed so it reads only past audio. Tuning is estimated on the first `
-      + `${P.cqt.tuningSeconds} s; values are divided by the running ${P.compression.levelPercentile}th `
+      + `${P.cqt.tuningSeconds} s${gated ? ` of sound, from the first frame at or above ${P.silence.dbfs} dBFS `
+        + "(a silent intro does not count)" : ""}; values are divided by the running ${P.compression.levelPercentile}th `
       + `percentile and compressed as log(1 + ${P.compression.gamma} x). Computed column by column, as live.`],
     ["Acoustic model (CRNN)", `For each frame, a window of ${P.network.windowFrames} columns `
       + `(${P.cqt.networkBins} bins, ${P.cqt.networkLowest} to ${P.cqt.networkHighest}) that ends `
@@ -352,6 +362,10 @@ function buildPipeline() {
       : `The most likely chord path, decided with a lag of ${p.lagFrames} frames: frame t's chord is fixed `
         + `once frame t + ${p.lagFrames} has arrived and never changes afterwards. p_self ${p.pSelf}. `
         + `This is the Decoded row.`],
+    ...(gated ? [["Silence gate", `A frame is shown as N.C. (no chord) on both rows when its own audio and `
+      + `that of the ${P.silence.frames - 1} frames before it are below ${P.silence.dbfs} dBFS, so short rests keep `
+      + `their chord. The network and the decoder keep running underneath: the chord comes back with the `
+      + `first audible frame.`]] : []),
     ["Segments and display", `Runs of one chord become segments, cut halfway between frames. Each chord `
       + `appears once decided: ${p.decisionDelaySeconds.toFixed(2)} s after its frame for the decoded row, `
       + `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s for the framewise row.`],
@@ -442,7 +456,7 @@ function updateDelayNote() {
     const items = [`network look-ahead ${ms(networkFrames)}`];
     if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
     items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
-    if (view.mode === "live") items.push(`network and server margin ${Math.round(LIVE_MARGIN * 1000)} ms`);
+    if (view.mode === "live") items.push(`network and server margin ${Math.round(liveMargin() * 1000)} ms`);
     parts.textContent = `${(playbackDelay()).toFixed(2)} s = ` + items.join(" + ");
     if (view.mode === "live") {
       title.textContent = `Applied delay: the audio is held back by ${playbackDelay().toFixed(2)} s.`;
@@ -581,7 +595,7 @@ function clearSample() {
 }
 
 let loadGeneration = 0;
-const upload = { file: null, sample: null, pcm: null };   // the listener's own file, decoded once
+const upload = { file: null, sample: null, pcm: null, playback: null };   // the listener's own file, decoded once
 
 function checkSample(sample, title) {
   // Refuse outputs that are missing or do not cover the recording: nothing partial is shown.
@@ -596,7 +610,8 @@ function checkSample(sample, title) {
 }
 
 function showSample(sample, audioBlob, pcm) {
-  // Build everything for one recording and its audio (a Blob or the uploaded File); pcm for live mode.
+  // Build everything for one recording and its audio (a Blob: the sample's WAV, or an upload's decoded
+  // audio as WAV); pcm for live mode.
   view.sample = sample;
   view.pcm = pcm;
   view.audioUrl = URL.createObjectURL(audioBlob);
@@ -640,6 +655,7 @@ async function openFile(file) {
   upload.file = file;
   upload.sample = null;
   upload.pcm = null;
+  upload.playback = null;
   setUploadOption(file.name);
   $("file-name").textContent = file.name;
   if (file.size === 0) throw new Error(`${file.name}: the file is empty.`);
@@ -665,8 +681,13 @@ async function openFile(file) {
     framewise: [], framewiseDecisionDelaySeconds: s.framewiseDecisionDelaySeconds,
     reference: null, referenceSource: null, metadata: s.metadata, source: { dataset: "your file" },
   };
+  if (!(decoded.playback instanceof Blob)) {   // an older live.js from the browser's cache, with this app.js
+    throw new Error("This page is out of date in your browser's cache: reload it from the server "
+      + "(Safari: Option-Command-R; other browsers: Shift-Ctrl-R or Shift-Command-R).");
+  }
   upload.pcm = decoded.pcm;
-  showSample(upload.sample, file, decoded.pcm);
+  upload.playback = decoded.playback;          // played instead of the file: exact seeks (live.js)
+  showSample(upload.sample, upload.playback, decoded.pcm);
   history.replaceState(null, "", "#upload");
 }
 
@@ -801,7 +822,7 @@ async function init() {
       if (upload.sample) {                                // back to the file decoded before
         ++loadGeneration;
         clearSample();
-        showSample(upload.sample, upload.file, upload.pcm);
+        showSample(upload.sample, upload.playback, upload.pcm);
       } else if (upload.file) {
         analyze(upload.file);
       }
@@ -901,6 +922,35 @@ function seek(t) {
   restartInput();
 }
 
+// Scrubbing (dragging the seek bar or the timeline): the playhead and the audio follow the pointer, the
+// input stops; one new input starts from where it is let go, so a drag starts one live session, not one
+// per pointer move. A drag ends on release, on cancel (the browser took the gesture, e.g. to scroll) and
+// on lost capture, so a gesture that never releases cannot leave the page seeking on every move.
+const scrub = { active: false, running: false };
+
+function scrubStart() {
+  if (scrub.active || !view.sample) return;
+  scrub.active = true;
+  scrub.running = !audio.paused || Boolean(view.preroll);
+  cancelPreroll();
+  stopSession();
+  view.primed = false;
+  pauseQuietly();
+}
+
+function scrubTo(t) {
+  if (!view.sample) return;
+  audio.currentTime = Math.max(0, Math.min(t, view.sample.duration));
+  render();
+}
+
+function scrubEnd() {
+  if (!scrub.active) return;
+  scrub.active = false;
+  if (scrub.running) play();
+  render();
+}
+
 audio.addEventListener("canplay", () => {
   if (!view.sample) return;
   setControls(true);
@@ -930,25 +980,47 @@ $("delay").addEventListener("change", () => { updateDelayNote(); restartInput();
 $("show-reference").addEventListener("change", showReference);
 
 const seekBar = $("seek");
-seekBar.addEventListener("pointerdown", () => { view.seeking = true; });
-seekBar.addEventListener("input", () => seek(Number(seekBar.value)));
-seekBar.addEventListener("change", () => { view.seeking = false; seek(Number(seekBar.value)); });
-seekBar.addEventListener("pointerup", () => { view.seeking = false; });
+const seekBarDone = () => { view.seeking = false; scrubEnd(); };
+seekBar.addEventListener("pointerdown", () => { view.seeking = true; scrubStart(); });
+seekBar.addEventListener("input", () => {                      // a drag scrubs; a key press seeks at once
+  if (scrub.active) scrubTo(Number(seekBar.value)); else seek(Number(seekBar.value));
+});
+seekBar.addEventListener("change", () => { if (scrub.active) { scrubTo(Number(seekBar.value)); seekBarDone(); } });
+for (const type of ["pointerup", "pointercancel"]) seekBar.addEventListener(type, seekBarDone);
 
 const timeline = $("timeline");
-let dragging = false;
-const seekFromPointer = (e) => {
-  if (!view.sample || $("play").disabled) return;
+let dragging = null;                                           // the pointer id of the drag on the timeline
+const timeAt = (e) => {
   const rect = rows.decoded.track.getBoundingClientRect();
-  seek(((e.clientX - rect.left) / rect.width) * view.sample.duration);
+  return ((e.clientX - rect.left) / rect.width) * view.sample.duration;
 };
+const usable = () => view.sample && !$("play").disabled;
 timeline.addEventListener("pointerdown", (e) => {
-  dragging = true;
-  seekFromPointer(e);
+  if (!usable() || e.button !== 0) return;
+  if (e.pointerType === "touch") return;                       // touch: a swipe scrolls, a tap seeks (pointerup)
+  dragging = e.pointerId;
+  scrubStart();
+  scrubTo(timeAt(e));
   try { timeline.setPointerCapture(e.pointerId); } catch { /* synthetic events have no capturable pointer */ }
 });
-timeline.addEventListener("pointermove", (e) => { if (dragging) seekFromPointer(e); });
-timeline.addEventListener("pointerup", () => { dragging = false; });
+timeline.addEventListener("pointermove", (e) => {
+  if (dragging === e.pointerId && (e.buttons & 1)) scrubTo(timeAt(e));
+});
+const dragDone = (e) => {
+  if (dragging === null || e.pointerId !== dragging) return;
+  dragging = null;
+  scrubEnd();
+};
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) timeline.addEventListener(type, dragDone);
+let tap = null;                                                // touch: where a touch started, to tell a tap
+timeline.addEventListener("pointerdown", (e) => { if (e.pointerType === "touch") tap = { id: e.pointerId, x: e.clientX }; });
+timeline.addEventListener("pointercancel", (e) => { if (tap && tap.id === e.pointerId) tap = null; });
+timeline.addEventListener("pointerup", (e) => {
+  if (!tap || tap.id !== e.pointerId) return;
+  const moved = Math.abs(e.clientX - tap.x);
+  tap = null;
+  if (moved < 10 && usable()) seek(timeAt(e));
+});
 
 document.addEventListener("keydown", (e) => {
   if (!view.sample || $("play").disabled || ["SELECT", "INPUT", "BUTTON"].includes(e.target.tagName)) return;

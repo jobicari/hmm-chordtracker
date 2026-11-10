@@ -10,14 +10,28 @@ from test_features_v7_1 import CFG, HOP, SR, synthetic
 C2 = {**CFG, "audio": {**CFG["audio"], "harmonic_median_frames": 9}, "cqt": {**CFG["cqt"], "fmin": "F#1"}}
 
 
-def stream(y, cfg, block=HOP):
-    s, cols, ready_at = sf.StreamingFeatures(cfg), [], []
+def stream(y, cfg, block=HOP, audible_dbfs=None):
+    s, cols, ready_at = sf.StreamingFeatures(cfg, audible_dbfs), [], []
     for i in range(0, len(y), block):
         new = s.step(y[i:i + block])
         cols += new
         ready_at += [min(i + block, len(y))] * len(new)
     cols += s.flush()
     return np.stack(cols, axis=1), ready_at
+
+
+def streamed_features(y, cfg, block=HOP, audible_dbfs=None):
+    """The StreamingFeatures object after the whole of y, flushed."""
+    s = sf.StreamingFeatures(cfg, audible_dbfs)
+    for i in range(0, len(y), block):
+        s.step(y[i:i + block])
+    s.flush()
+    return s
+
+
+def noise(seconds, db, seed=1):
+    """White noise at db dBFS (RMS)."""
+    return (10 ** (db / 20) * np.random.default_rng(seed).standard_normal(int(seconds * SR))).astype(np.float32)
 
 
 @pytest.mark.parametrize("seconds", [14.0, 6.0])        # past and short of the 10 s tuning point
@@ -49,6 +63,39 @@ def test_the_harmonic_part_is_features_v7_1s():
         s.step(y[i:i + HOP])
     s.flush()
     np.testing.assert_allclose(s.y_h.view, features_v7_1.causal_harmonic(y, SR, C2), atol=1e-5)
+
+
+@pytest.mark.parametrize("block", [HOP, 777, 2 * HOP])
+def test_the_tuning_medians_computed_ahead_are_exactly_start_tunings(block):
+    """Frame by frame while the first 10 s arrive: bitwise the medians of the whole call, and the same tuning."""
+    y = synthetic(seconds=12.0, cents=15.0).astype(np.float32)
+    n = int(C2["cqt"]["tuning_seconds"] * SR)
+    medians = sf.TuningMedians(C2, n)
+    for i in range(0, len(y), block):
+        medians.update(y[:i + block])
+    mag = np.abs(librosa.stft(y[:n], n_fft=features_v7_1.N_FFT, hop_length=features_v7_1.STFT_HOP))
+    ahead = medians.mag.shape[1]
+    assert mag.shape[1] - 3 <= ahead < mag.shape[1]          # all but the frames that read zeros after n
+    H, P = features_v7_1.harmonic_medians(mag, C2)
+    H_ahead, P_ahead = medians(mag, C2)
+    assert np.array_equal(H, H_ahead) and np.array_equal(P, P_ahead)
+    fresh = sf.TuningMedians(C2, n)
+    for i in range(0, len(y), block):
+        fresh.update(y[:i + block])
+    assert features_v7_1.start_tuning(y, C2, fresh) == features_v7_1.start_tuning(y, C2)
+
+
+def test_tuning_medians_recompute_frames_that_differ():
+    """A frame seen ahead that is not the whole call's (here: changed on purpose) is computed again."""
+    y = synthetic(seconds=11.0).astype(np.float32)
+    n = int(C2["cqt"]["tuning_seconds"] * SR)
+    medians = sf.TuningMedians(C2, n)
+    medians.update(y)
+    medians.mag[:, 200] += 1.0
+    mag = np.abs(librosa.stft(y[:n], n_fft=features_v7_1.N_FFT, hop_length=features_v7_1.STFT_HOP))
+    H, P = features_v7_1.harmonic_medians(mag, C2)
+    H_ahead, P_ahead = medians(mag, C2)
+    assert np.array_equal(H, H_ahead) and np.array_equal(P, P_ahead)
 
 
 def test_close_to_the_cached_librosa_features_away_from_the_edges():
@@ -93,4 +140,61 @@ def test_the_live_path_reads_a_tone_40_cents_sharp_on_its_semitone_bin():
     first = int(np.ceil(10 * SR / HOP)) - 1
     peaks = streamed.argmax(axis=0)
     assert (peaks[20:first - 2] == a4 + 1).all()
+    assert (peaks[first + 2:-4] == a4).all()
+
+
+def test_frame_levels_in_dbfs():
+    t = np.arange(4 * HOP + 100) / SR
+    sine = np.sin(2 * np.pi * 440 * t).astype(np.float32)
+    assert sf.dbfs(np.ones(HOP)) == 0.0 and sf.dbfs(np.zeros(HOP)) == -np.inf and sf.dbfs(np.zeros(0)) == -np.inf
+    levels = sf.frame_dbfs(sine, HOP)
+    assert len(levels) == 5                                   # the last frame: the 100 samples left
+    np.testing.assert_allclose(levels[:4], -3.01, atol=0.05)          # a sine: 1/2 mean square
+    assert sf.tuning_start(levels, HOP, None) == 0
+    assert sf.tuning_start([-80, -70, -40, -20], HOP, -55.0) == 2 * HOP
+    assert sf.tuning_start([-80, -70], HOP, -55.0) is None
+
+
+@pytest.mark.parametrize("intro", ["silence", "noise"])
+def test_with_a_threshold_block_by_block_gives_the_whole_file_columns(intro):
+    """A silent or quiet intro off the frame grid, then music: streaming and the whole file agree, and the
+    tuning seconds start at the first audible frame."""
+    head = np.zeros(int(3.3 * SR), np.float32) if intro == "silence" else noise(3.3, -60)
+    y = np.concatenate([head, synthetic(seconds=11.0, cents=15.0)])
+    streamed, _ = stream(y, C2, block=777, audible_dbfs=-55.0)
+    # atol 1e-3: just after a silent intro the running level comes from few values and magnifies float32
+    # rounding of the harmonic part (1e-4 elsewhere)
+    np.testing.assert_allclose(streamed, sf.offline_log_cqt(y, C2, -55.0), atol=1e-3)
+    s = streamed_features(y, C2, audible_dbfs=-55.0)
+    assert s.start == (len(head) // HOP) * HOP
+    assert len(s.levels) == 1 + len(y) // HOP
+
+
+def test_a_quiet_intro_no_longer_sets_the_tuning():
+    """12 s of -60 dBFS noise, then music 15 cents sharp: from time 0 the estimate reads only the noise;
+    from the first audible frame it reads the music, exactly as for the music alone (intro on the grid)."""
+    music = synthetic(seconds=11.0, cents=15.0)
+    y = np.concatenate([noise(130 * HOP / SR, -60), music])
+    alone = streamed_features(music, C2, audible_dbfs=-55.0).tuned.tuning
+    assert streamed_features(y, C2, audible_dbfs=-55.0).tuned.tuning == alone
+    assert streamed_features(music, C2).tuned.tuning == alone                 # no intro: as without a threshold
+    assert alone == pytest.approx(0.3, abs=0.02)                              # 15 cents = 0.3 bins at 24 per octave
+    assert abs(streamed_features(y, C2).tuned.tuning - alone) > 0.1           # the old behaviour, on the noise
+
+
+def test_silence_only_is_never_tuned():
+    s = streamed_features(np.zeros(12 * SR, np.float32), C2, audible_dbfs=-55.0)
+    assert s.start is None and s.tuned is None
+
+
+def test_with_a_quiet_intro_the_tone_40_cents_sharp_is_on_its_bin_after_the_tuning_point():
+    """As the test above, after 12 s of quiet noise: the tuning point moves to 10 s after the onset."""
+    t = np.arange(int(14 * SR)) / SR
+    tone = (0.1 * np.sin(2 * np.pi * librosa.midi_to_hz(69 + 0.40) * t)).astype(np.float32)
+    y = np.concatenate([noise(130 * HOP / SR, -60), tone])
+    streamed, _ = stream(y, C2, block=1024, audible_dbfs=-55.0)
+    a4 = 2 * (69 - librosa.note_to_midi("F#1"))
+    first = 130 + int(np.ceil(10 * SR / HOP)) - 1
+    peaks = streamed.argmax(axis=0)
+    assert (peaks[150:first - 2] == a4 + 1).all()
     assert (peaks[first + 2:-4] == a4).all()

@@ -1,0 +1,22 @@
+# Whitelist: only what the demo image needs enters the build context (never data/ or other results).
+*
+!Dockerfile
+!requirements-demo.txt
+!src/chordtracker/
+!scripts/demo_server.py
+!scripts/demo_bench.py
+!scripts/demo_export.py
+!scripts/run_v5.py
+!scripts/run_v6.py
+!scripts/run_v7.py
+!scripts/run_v7_2.py
+!configs/v2.yaml
+!configs/v7_2.yaml
+!results/v3/billboard_counts.json
+!results/v7_2/c2_la2_seed0/model.pt
+!results/v7_2/c2_la2_seed0/prior.json
+!demo/
+demo/README.md
+**/__pycache__
+**/*.pyc
+**/.DS_Store
