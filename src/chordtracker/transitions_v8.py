@@ -18,8 +18,9 @@ of the training prior:
 
 share(q) = prior mass of q / prior mass of q's family, so C:maj -> G goes to G:maj and G:7 in the
 proportion the training data holds them. Families: maj, 7, maj7, maj6, 9 and sus4 (no third, counted
-with major) are family 0; min and min7 family 1. A change of quality on the same root (C:maj ->
-C:7) is a change, from counts[f, f, 0], which Billboard leaves at 0: it gets alpha only.
+with major) are family 0; min and min7 family 1 (V15: aug is family 0; dim, dim7 and hdim7, with a
+minor third, family 1). A change of quality on the same root (C:maj -> C:7) is a change, from
+counts[f, f, 0], which Billboard leaves at 0: it gets alpha only.
 With only maj and min in the prior this is transitions.change_matrix's chord block.
 
 transitions.source train counts the moves in the training targets instead, by (quality_from,
@@ -47,7 +48,8 @@ import numpy as np
 
 from chordtracker.data_v8 import VOCABULARIES
 
-FAMILY = {"maj": 0, "7": 0, "maj7": 0, "maj6": 0, "9": 0, "sus4": 0, "min": 1, "min7": 1}
+FAMILY = {"maj": 0, "7": 0, "maj7": 0, "maj6": 0, "9": 0, "sus4": 0, "aug": 0, "min": 1, "min7": 1,
+          "dim": 1, "dim7": 1, "hdim7": 1}
 
 
 def training_prior(targets: np.ndarray, n_classes: int, n_chords: int | None = None) -> np.ndarray:
@@ -66,16 +68,17 @@ def training_prior(targets: np.ndarray, n_classes: int, n_chords: int | None = N
     return counts / counts.sum()
 
 
-def families(vocab: str) -> np.ndarray:
-    """(n_qualities,) family of each quality of the vocabulary, in class-block order."""
-    return np.array([FAMILY[q] for q in VOCABULARIES[vocab]])
+def families(vocab: str | tuple[str, ...]) -> np.ndarray:
+    """(n_qualities,) family of each quality of the vocabulary (a name, or its qualities), in class-block order."""
+    return np.array([FAMILY[q] for q in (VOCABULARIES[vocab] if isinstance(vocab, str) else vocab)])
 
 
-def change_matrix(counts: np.ndarray, vocab: str, prior: np.ndarray, alpha: float = 1.0,
+def change_matrix(counts: np.ndarray, vocab: str | tuple[str, ...], prior: np.ndarray, alpha: float = 1.0,
                   tau: float = 1.0, chord_to_n: float | None = None) -> np.ndarray:
     """(n, n) Q over the vocabulary's classes; counts is transitions.change_counts' (2, 2, 12) array.
 
     chord_to_n (V14): prior has an N entry after the chords and Q gets its N row and column (add_n).
+    vocab (V15) may also be the qualities in class-block order (data_v15.Vocab.qualities).
     """
     fam = families(vocab)
     if chord_to_n is not None:

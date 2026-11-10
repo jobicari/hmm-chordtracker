@@ -1,0 +1,36 @@
+# V15: V14's N model (results/v14/n_seed0, vocabulary A + N) fine-tuned to also name diminished, augmented
+# and half-diminished chords (vocabulary A+, data_v15). Same features as V14 (12-bin tuning cache for
+# RWC-P and GuitarSet, ChoCo's V8 cache). Judged on validation only.
+version: v15
+base_config: v14.yaml
+
+base_run: results/v14/n_seed0      # the model fine-tuned, and the baseline
+
+vocab_plus:
+  new: [dim, aug, hdim7]           # new qualities, after N: 61 + 12 j + root (data_v15)
+  merge: {dim7: dim, "min7(b5)": hdim7, "aug(b7)": aug}    # spellings trained as one of them
+  # new: [dim, aug, dim7, hdim7] gives dim7 its own 12 classes (109 in all)
+
+finetune:
+  seed: 0
+  lr: 0.0001                       # V14 trained at 0.001
+  head_lr: 0.0005                  # the output layer (its new rows start far from where they end)
+  max_epochs: 12
+  patience: 4
+  excerpt_frames: 128
+  input_lookahead: 2
+  replay_excerpts: 2000            # normal train excerpts per epoch (V14's epoch is about 5,000)
+  replay_per_batch: 5              # 5 replay + 3 focus excerpts per batch: 62.5 % replay
+  focus_per_batch: 3
+  stretch: 0.06                    # focus excerpts: tempo uniform in 1 +/- 0.06
+  gain_db: 3                       # focus excerpts: gain uniform in +/- 3 dB
+  penalty: 10                      # criterion: new-quality recall - 10 x (sevenths points below epoch 0 - 0.3)
+  tolerance: 0.3
+
+decoder:                           # V14 n_seed0's demo point
+  prior_power: 0.25
+  lag: 8
+  p_self: 0.98
+  n_weight: 0.1
+  n_rate_factor: 0.5
+  prior_source: [mix, natural]     # divide by the fine-tune's target mix, or by the natural train labels
