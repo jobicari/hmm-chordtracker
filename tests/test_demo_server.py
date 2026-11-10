@@ -288,9 +288,9 @@ def test_the_servers_lists_are_the_models(server_module):
 
 
 V14_MODEL = SCRIPTS.parent / "results" / "v14" / "n_seed0" / "model.pt"
-needs_v14 = pytest.mark.skipif(not V14_MODEL.exists(), reason="results/v14/n_seed0/model.pt is not in git: copy it in")
+needs_v14 = pytest.mark.skipif(not V14_MODEL.exists(), reason="results/v14/n_seed0/model.pt missing")
 V15_MODEL = SCRIPTS.parent / "results" / "v15" / "ft_seed0" / "model.pt"
-needs_v15 = pytest.mark.skipif(not V15_MODEL.exists(), reason="results/v15/ft_seed0/model.pt is not in git: copy it in")
+needs_v15 = pytest.mark.skipif(not V15_MODEL.exists(), reason="results/v15/ft_seed0/model.pt missing")
 
 
 @pytest.mark.parametrize("model", [pytest.param("v15", marks=needs_v15), pytest.param("v14", marks=needs_v14), "v7_2"])

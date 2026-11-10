@@ -4,21 +4,21 @@
     python scripts/play_along.py --input-device "VB-Cable A"        # e.g. Spotify's output set to VB-Cable A
     python scripts/play_along.py --file song.wav                     # a file, read at real-time pace
     python scripts/play_along.py --file song.wav --dry-run 30        # no window, no sound: timing only
-    python scripts/play_along.py --model v14 --file song.wav         # V14's network with an N class
+    python scripts/play_along.py --model v11 --file song.wav         # V11's network with the silence gate
 
 The recording is analysed block by block with the live chain and the system chosen with --model
 (chordtracker.play_along.SYSTEMS), and played back on the output device `delay` seconds late, so every
 chord is ready when its moment is heard:
 
-    v11 (default)  the frozen V11 student (results/v11/pool_kd1_seed1, configs/v11.yaml: vocabulary A,
+    v11            the frozen V11 student (results/v11/pool_kd1_seed1, configs/v11.yaml: vocabulary A,
                    60 classes, prior power 0.25, Billboard change matrix); N from the silence gate
     v14            V14's network with an N class (results/v14/n_seed0, configs/v14.yaml: 61 classes) at
                    its best decoder setting on validation; N from the network, the silence gate off
-    v15            V14 fine-tuned to also name dim, aug and hdim7 (results/v15/ft_seed0, configs/v15.yaml:
+    v15 (default)  V14 fine-tuned to also name dim, aug and hdim7 (results/v15/ft_seed0, configs/v15.yaml:
                    97 classes), decoded as V15 scores it; N from the network, the silence gate off
 
---run DIR takes the model from another folder (model.pt, prior.json, and for v14 run.json and
-n_counts.json; the weights are not in git, so a worktree points at the main clone's). --silence-gate /
+--run DIR takes the model from another folder (model.pt, prior.json, and for v14 and v15 run.json and
+n_counts.json, for v15 mix_prior.json; the weights of V7.2, V14 and V15 are in git). --silence-gate /
 --no-silence-gate turn the -55 dBFS gate on or off whatever the system's default. The tuning is read on
 the first 10 s from the first audible frame either way.
 
@@ -367,7 +367,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--file", type=Path, help="play a file instead of an input device")
     parser.add_argument("--output-device", help="name (or part of it) of the output; default: the system's")
     parser.add_argument("--dry-run", type=float, metavar="SECONDS", help="with --file: timing only, no window or sound")
-    parser.add_argument("--model", choices=sorted(pa.SYSTEMS), default="v11", help="the system to run (default v11)")
+    parser.add_argument("--model", choices=sorted(pa.SYSTEMS), default="v15", help="the system to run (default v15)")
     parser.add_argument("--run", type=Path, help="the saved run's folder, instead of the system's own")
     parser.add_argument("--silence-gate", action=argparse.BooleanOptionalAction, default=None,
                         help=f"N where the input stays below {pa.SILENCE_DBFS:g} dBFS (default: on for v11, off for v14 and v15)")

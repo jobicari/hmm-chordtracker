@@ -19,11 +19,8 @@ COPY scripts/ scripts/
 COPY configs/ configs/
 COPY results/ results/
 COPY demo/ demo/
-# demo/samples is git-ignored (scripts/demo_export.py writes it), and the weights of V15's run (the default
-# model) and V14's are not in git (V7.2's are): refuse to build a page without them.
+# demo/samples is git-ignored (scripts/demo_export.py writes it): refuse to build a page without samples.
 RUN test -f demo/samples/index.json || { echo "demo/samples/index.json missing: run scripts/demo_export.py first" >&2; exit 1; } \
- && test -f results/v14/n_seed0/model.pt || { echo "results/v14/n_seed0/model.pt missing: copy in V14's run (seed 0)" >&2; exit 1; } \
- && test -f results/v15/ft_seed0/model.pt || { echo "results/v15/ft_seed0/model.pt missing: copy in V15's run (ft_seed0)" >&2; exit 1; } \
  && chmod -R a+rX /app
 
 USER demo

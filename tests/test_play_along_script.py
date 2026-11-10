@@ -19,9 +19,10 @@ def script():
     return module
 
 
-def test_v11_by_default_with_the_gate(script):
+def test_v15_by_default_v11_with_the_gate(script):
     from chordtracker import paths, play_along as pa
-    cfg, run, gate = script.chain_settings(script.parse_args(["--file", "x.wav"]))
+    assert script.parse_args(["--file", "x.wav"]).model == "v15"
+    cfg, run, gate = script.chain_settings(script.parse_args(["--model", "v11", "--file", "x.wav"]))
     assert run == paths.REPO_ROOT / "results" / "v11" / "pool_kd1_seed1" and gate == pa.SILENCE_DBFS
     assert cfg["version"] == "v11"
 

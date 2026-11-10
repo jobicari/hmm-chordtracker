@@ -2,11 +2,11 @@
 
 A recording reaches the prototype as it plays (from a file read at real-time pace, or from another
 application through a virtual audio cable). It is analysed block by block with the live chain and one of
-two systems (SYSTEMS), and played back to the musician `delay` seconds late, so the label of every frame
+the systems (SYSTEMS; scripts/play_along.py runs v15 unless told otherwise), and played back to the musician `delay` seconds late, so the label of every frame
 is ready when that frame is heard:
 
     v11    the frozen V11 student (vocabulary A: maj, min, 7, maj7, min7, 60 classes; configs/v11.yaml
-           `frozen`), with the silence gate for N (the default)
+           `frozen`), with the silence gate for N
     v14    V14's network with an N class (61 classes, N last; results/v14/n_seed0, configs/v14.yaml) at
            its best decoder setting on validation (N weight x0.1, chord -> N rate x0.5): N comes from the
            network, the silence gate is off unless asked for. V14 did not pass its checks (reports/v14.md:

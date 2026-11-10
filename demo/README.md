@@ -17,8 +17,7 @@ class fine-tuned to also name diminished, augmented and half-diminished chords, 
 rate x0.5, the evidence divided by the fine-tune's mix of training chords). N.C. is the network's own call,
 so it can land on a real chord (reports/v14.md, reports/v15.md). V14's 60-chord network
 (`results/v14/n_seed0`) and V7.2's 24-chord network (`results/v7_2/c2_la2_seed0`, N.C. from a level gate)
-stay available with `--model v14` and `--model v7_2`. The two `model.pt` of V15 and V14 are not in git:
-copy them into those folders before exporting or building.
+stay available with `--model v14` and `--model v7_2`. The weights of all three are in git.
 
 No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`.
 
@@ -59,9 +58,8 @@ The `Dockerfile` at the repo root packages the live server: the page, the prepar
 `results/v14/n_seed0` but mix_prior.json; and `results/v7_2/c2_la2_seed0`), their
 configs and the Billboard counts, with CPU-only PyTorch and the packages of `requirements-demo.txt`.
 `.dockerignore` lets in only those files, so `data/` and the other results never enter the build.
-`demo/samples/` is git-ignored and the `model.pt` of V15 and V14 are not in git, so export the samples
-first (above) and copy the weights in: the build stops if `demo/samples/index.json` or either `model.pt` is
-missing.
+`demo/samples/` is git-ignored, so export the samples first (above): the build stops if
+`demo/samples/index.json` is missing.
 
 ```bash
 docker build -t chord-tracker-demo .
