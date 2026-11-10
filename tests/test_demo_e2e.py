@@ -112,3 +112,10 @@ def test_a_scrub_opens_one_session_on_release_and_chords_follow(page, files):
     d = page.evaluate("demoChecks.decidedAfter(4)")
     assert d["playing"] and d["segments"] > 0
     assert d["knownEnd"] >= d["heard"] - 0.05                # every chord heard so far is decided (delay on)
+
+
+def test_an_older_cached_live_js_gives_a_reload_message_not_a_type_error(page):
+    """A browser that kept an older live.js (cached before the page files were sent no-cache) with this
+    app.js: the import says to reload instead of failing with a TypeError (Safari: "Type error")."""
+    r = page.evaluate("demoChecks.staleLiveJs()")
+    assert "out of date" in r["status"] and "TypeError" not in r["status"]
