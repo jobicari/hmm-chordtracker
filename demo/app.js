@@ -29,6 +29,11 @@ const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const EPS = 1e-4;
 const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only,
                                     // unless the server sets its own (liveMarginSeconds in api/health)
+const EXTRA_KEY = "chord-demo-extra-margin";   // the margin this connection needs, remembered in this browser
+const EXTRA_MAX = 4;                // s: the most the page adds on its own
+const EXTRA_HEADROOM = 0.15;        // s kept above the measured arrival time
+const ARRIVALS_KEPT = 300;          // recent arrival times the extra margin is computed from
+const ARRIVALS_MIN = 20;            // before that many, the extra margin only grows
 const MAX_UPLOAD_BYTES = 100 * 2 ** 20;
 const HEALTH_RETRY_WAITS = [0, 1, 2, 3];   // s before each try of the demo server's health (about 6 s in all)
 const HEALTH_TIMEOUT = 4;                  // s per try
@@ -47,7 +52,8 @@ const QUALITY_NAMES = {               // as chordtracker.play_along.QUALITIES: a
 };
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
-               live: null, conn: null };   // conn: the LiveSession connection, kept across seeks
+               live: null, conn: null,     // conn: the LiveSession connection, kept across seeks
+               extra: 0, arrivals: [] };   // extra: s of margin this connection needs on top of the server's
 
 // ---------------------------------------------------------------------------------------------------
 // Chords
@@ -103,8 +109,35 @@ function segmentAt(segs, t) {
 // ---------------------------------------------------------------------------------------------------
 // Clocks
 
-function liveMargin() {
+function serverMargin() {
   return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
+}
+
+function liveMargin() {
+  // The server's margin, plus what this connection has been measured to need (adaptMargin).
+  return serverMargin() + view.extra;
+}
+
+function restoreExtra() {
+  let saved = null;
+  try { saved = Number(localStorage.getItem(EXTRA_KEY)); } catch { /* storage unavailable: start from 0 */ }
+  if (Number.isFinite(saved)) view.extra = Math.min(EXTRA_MAX, Math.max(0, saved));
+}
+
+function adaptMargin() {
+  // Before a new pre-roll (never during one, the input clock depends on it): the extra margin that covers
+  // the 95th percentile of how late recent chords reached the page beyond their decision delay (network
+  // and server time, the same for every operating point). It grows on any evidence, and shrinks only once
+  // enough chords were measured (a short session says little).
+  if (view.mode !== "live" || view.arrivals.length === 0) return;
+  const sorted = [...view.arrivals].sort((a, b) => a - b);
+  const p95 = sorted[Math.min(sorted.length - 1, Math.floor(0.95 * sorted.length))];
+  let extra = Math.min(EXTRA_MAX, Math.max(0, Math.ceil((p95 + EXTRA_HEADROOM - serverMargin()) * 10) / 10));
+  if (view.arrivals.length < ARRIVALS_MIN) extra = Math.max(extra, view.extra);
+  if (extra === view.extra) return;
+  view.extra = extra;
+  try { localStorage.setItem(EXTRA_KEY, String(extra)); } catch { /* not remembered */ }
+  updateDelayNote();
 }
 
 const LEAD_KEY = "chord-demo-lead";   // the viewer's lead, remembered in this browser
@@ -548,7 +581,8 @@ function updateDelayNote() {
     const items = [`network look-ahead ${ms(networkFrames)}`];
     if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
     items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
-    if (view.mode === "live") items.push(`network and server margin ${Math.round(liveMargin() * 1000)} ms`);
+    if (view.mode === "live") items.push(`network and server margin ${Math.round(serverMargin() * 1000)} ms`);
+    if (view.mode === "live" && view.extra > 0) items.push(`${Math.round(view.extra * 1000)} ms more measured on this connection`);
     if (lead() > 0) items.push(`lead ${lead().toFixed(2)} s (chords shown before you hear them)`);
     parts.textContent = `${(playbackDelay()).toFixed(2)} s = ` + items.join(" + ");
     if (view.mode === "live") {
@@ -587,7 +621,8 @@ function showMeasured() {
     : `This session: each chord reached the page ${range} after its moment of audio, so you see it that late.`;
   if ($("delay").checked && a.max > budget) {
     el.textContent = `This session: some chords reached the page ${a.max.toFixed(2)} s after their moment of `
-      + `audio, more than the ${budget.toFixed(2)} s the delay leaves: those were shown late.`;
+      + `audio, more than the ${budget.toFixed(2)} s the delay leaves: those were shown late. The delay grows `
+      + "to cover this connection at the next Play, Restart or seek.";
   }
 }
 
@@ -950,6 +985,8 @@ function receiveLabels(point, first, labels) {
     const heard = heardTime(Math.min(audio.currentTime, d), d);
     if (heard < d) {
       const after = heard - (view.live.from + (first + labels.length - 1) * h);
+      view.arrivals.push(after - (view.point.playbackDelaySeconds - h / 2));   // beyond the decision delay
+      if (view.arrivals.length > ARRIVALS_KEPT) view.arrivals.shift();
       const a = view.live.arrival;
       const before = a ? `${Math.round(a.min * 100)} ${Math.round(a.max * 100)}` : "";
       view.live.arrival = a ? { min: Math.min(a.min, after), max: Math.max(a.max, after) } : { min: after, max: after };
@@ -1038,6 +1075,7 @@ function play() {
   const D = playbackDelay();
   if (D === 0 || view.primed) { startAudio(); return; }
   cancelPreroll();
+  adaptMargin();
   // The pre-roll's clock starts once the server's session is ready: the input then runs alone for D
   // seconds, so the first chords are decided in time even when setting up the session took a while.
   view.preroll = { from: audio.currentTime, t0: null, timer: null };
@@ -1153,6 +1191,7 @@ $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
 $("delay").addEventListener("change", () => { updateDelayNote(); restartInput(); });
 restoreLead();
+restoreExtra();
 $("lead").addEventListener("change", () => {
   try { localStorage.setItem(LEAD_KEY, $("lead").value); } catch { /* not remembered */ }
   updateDelayNote();
