@@ -21,6 +21,9 @@ N (no chord) is the network's own class; with v7_2 it comes from the silence gat
                           client {"type": "start"}         -> {"type": "ready", "labels": [...], "sampleRate": ...}
                           client binary: 16-bit mono PCM at sampleRate, any block size
                                                            -> {"type": "labels", "points": {id: {"from": k, "labels": [...]}}}
+                          client {"type": "restart"}       -> {"type": "ready", ...}: a new session on the same
+                                                              connection, its place kept (a seek: no new connection
+                                                              to set up); labels of the old one stop before "ready"
                           client {"type": "end"}           -> the last labels (decoders flushed), {"type": "done"},
                                                               then the server closes
                           no audio for idle seconds        -> {"type": "idle"}, then the server closes (a paused
@@ -204,14 +207,18 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
                 return self.fail("The session has already started.")
             if LiveHandler.sessions >= self.settings_.max_sessions:
                 return self.fail("The demo server is busy; try again in a moment.")
-            sid = next(LiveHandler.ids)
-            if not self.workers.open(sid, self.on_worker):
+            if not self.open_session():
                 return self.fail("The decoder is starting; try again in a moment.")
-            self.sid, self.counted = sid, True
+            self.counted = True
             LiveHandler.sessions += 1
-            self.wait_for_audio()
-            info = self.workers.info
-            self.send({"type": "ready", "labels": info["labels"], "sampleRate": info["sampleRate"]})
+        elif kind == "restart":
+            if self.sid is None:
+                return self.fail("No session.")
+            self.stop_waiting()
+            self.workers.close(self.sid)                       # its labels stop here, before the new "ready"
+            self.sid = None
+            if not self.open_session():
+                return self.fail("The decoder stopped; try again in a moment.")
         elif kind == "end":
             if self.sid is None:
                 return self.fail("No session.")
@@ -219,6 +226,17 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
             self.workers.end(self.sid)
         else:
             self.fail(f"Unknown message {kind!r}.")
+
+    def open_session(self) -> bool:
+        """A fresh session (features, network state, decoders) on a worker, then "ready"; False: no worker."""
+        sid = next(LiveHandler.ids)
+        if not self.workers.open(sid, self.on_worker):
+            return False
+        self.sid, self.samples = sid, 0
+        self.wait_for_audio()
+        info = self.workers.info
+        self.send({"type": "ready", "labels": info["labels"], "sampleRate": info["sampleRate"]})
+        return True
 
     def on_audio(self, data: bytes):
         if self.sid is None:

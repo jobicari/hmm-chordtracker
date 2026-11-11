@@ -16,9 +16,17 @@
 "use strict";
 
 window.demoChecks = (() => {
-  const sockets = [];
+  // Sessions opened: a "start" on a new connection or a "restart" on the kept one (a seek).
+  const sessions = { opened: 0 };
   const Native = window.WebSocket;
-  window.WebSocket = function (...args) { const ws = new Native(...args); sockets.push(ws); return ws; };
+  window.WebSocket = function (...args) {
+    const ws = new Native(...args), send = ws.send.bind(ws);
+    ws.send = (data) => {
+      if (typeof data === "string" && ["start", "restart"].includes(JSON.parse(data).type)) sessions.opened += 1;
+      return send(data);
+    };
+    return ws;
+  };
   Object.assign(window.WebSocket, { CONNECTING: 0, OPEN: 1, CLOSING: 2, CLOSED: 3 });
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   let ctx = null, source = null;
@@ -75,20 +83,20 @@ window.demoChecks = (() => {
     pointer("pointerdown", 5, 1);
     pointer("pointercancel", 5, 0);
     await sleep(200);
-    const opened = sockets.length, at = audio.currentTime;
+    const opened = sessions.opened, at = audio.currentTime;
     for (let i = 0; i < 10; i++) { pointer("pointermove", 6 + i, 0); await sleep(30); }
     await sleep(200);
-    return { sessionsOpened: sockets.length - opened, moved: Math.abs(audio.currentTime - at) > 1e-3 };
+    return { sessionsOpened: sessions.opened - opened, moved: Math.abs(audio.currentTime - at) > 1e-3 };
   }
 
   async function scrub(from, to) {
-    const opened = sockets.length;
+    const opened = sessions.opened;
     pointer("pointerdown", from, 1);
     for (let i = 1; i <= 20; i++) { pointer("pointermove", from + ((to - from) * i) / 20, 1); await sleep(20); }
-    const during = sockets.length - opened;
+    const during = sessions.opened - opened;
     pointer("pointerup", to, 0);
     await sleep(300);
-    return { sessionsDuring: during, sessionsOpened: sockets.length - opened, at: audio.currentTime };
+    return { sessionsDuring: during, sessionsOpened: sessions.opened - opened, at: audio.currentTime };
   }
 
   async function decidedAfter(wait) {

@@ -38,7 +38,10 @@ browser can play, up to 100 MB and 10 min. The page plays the browser's decoding
 the file itself: compressed files (FLAC and MP3 in Safari, MP3 without a seek index elsewhere) seek only
 approximately, so after a seek the player would play other samples than the ones the server decodes. A
 seek or a new look-ahead starts a new session; a drag on the seek bar or the timeline starts one, on
-release.
+release. A new session reuses the page's connection to the server (no new handshake on a seek), and the
+playback delay starts counting once the server's session is ready, so a slow network delays the start of
+playback rather than the chords. On load, the page tries the server for about 6 s before falling back to
+the precomputed chords.
 
 `tests/test_demo_e2e.py` checks this in Chromium (it needs Playwright: `pip install playwright` and
 `playwright install chromium`; skipped without it).

@@ -238,6 +238,41 @@ def test_a_session_without_audio_is_closed_as_idle_and_frees_its_place(server_mo
     run(server_module, tmp_path, test, env={"CHORD_DEMO_MAX_SESSIONS": "1", "CHORD_DEMO_IDLE_SECONDS": "0.3"})
 
 
+def test_a_restart_starts_a_fresh_session_on_the_same_connection_and_keeps_its_place(server_module, tmp_path):
+    async def test(host, pool):
+        ws = await websocket_connect(f"ws://{host}/api/live")
+        await ws.write_message(json.dumps({"type": "start"}))
+        assert json.loads(await ws.read_message())["type"] == "ready"
+        await ws.write_message(np.zeros(2500, "<i2").tobytes(), binary=True)
+        await ws.write_message(json.dumps({"type": "restart"}))           # a seek
+        before = await messages_until(ws, "ready")
+        assert before[-1]["type"] == "ready" and all(m["type"] == "labels" for m in before[:-1])
+        other = await websocket_connect(f"ws://{host}/api/live")           # the place is still taken
+        await other.write_message(json.dumps({"type": "start"}))
+        assert json.loads(await other.read_message())["type"] == "error"
+        await ws.write_message(np.zeros(1500, "<i2").tobytes(), binary=True)
+        await ws.write_message(json.dumps({"type": "end"}))
+        after = await messages_until(ws, "done")
+        assert after[-1]["type"] == "done"
+        received = {p: [] for p in POINTS}
+        for m in after[:-1]:
+            for point, value in m["points"].items():
+                assert value["from"] == len(received[point])                 # from frame 0: a fresh session
+                received[point] += value["labels"]
+        assert received[POINTS[0]] == [pool.slots[0].process.pid, 0]         # only the audio after the restart
+        assert await ws.read_message() is None
+        await session(host, np.zeros(1000))                                  # and the place is free again
+    run(server_module, tmp_path, test, env={"CHORD_DEMO_MAX_SESSIONS": "1"})
+
+
+def test_a_restart_needs_a_session(server_module, tmp_path):
+    async def test(host, pool):
+        ws = await websocket_connect(f"ws://{host}/api/live")
+        await ws.write_message(json.dumps({"type": "restart"}))
+        assert json.loads(await ws.read_message()) == {"type": "error", "message": "No session."}
+    run(server_module, tmp_path, test)
+
+
 async def live_with_origin(host, origin):
     """Open the live route as a browser page from `origin` would (None: no Origin, as a script) and start."""
     headers = {} if origin is None else {"Origin": origin}

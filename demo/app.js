@@ -30,6 +30,8 @@ const EPS = 1e-4;
 const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only,
                                     // unless the server sets its own (liveMarginSeconds in api/health)
 const MAX_UPLOAD_BYTES = 100 * 2 ** 20;
+const HEALTH_RETRY_WAITS = [0, 1, 2, 3];   // s before each try of the demo server's health (about 6 s in all)
+const HEALTH_TIMEOUT = 4;                  // s per try
 
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
@@ -45,7 +47,7 @@ const QUALITY_NAMES = {               // as chordtracker.play_along.QUALITIES: a
 };
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
-               live: null };
+               live: null, conn: null };   // conn: the LiveSession connection, kept across seeks
 
 // ---------------------------------------------------------------------------------------------------
 // Chords
@@ -132,6 +134,7 @@ function heardTime(s, d) {
   // the input runs alone for the delay while the audio waits (pre-roll), then stays that far ahead of
   // the audio, also across pause / resume. Delay off: the input is what you hear.
   const D = playbackDelay();
+  if (view.preroll && view.preroll.t0 === null) return view.preroll.from;      // waiting for the server
   if (view.preroll) return Math.min(view.preroll.from + Math.min((performance.now() - view.preroll.t0) / 1000, D), d);
   return Math.min(view.primed && D > 0 ? s + D : s, d);
 }
@@ -794,10 +797,32 @@ function setUploadOption(name) {
   select.value = "upload";
 }
 
+async function fetchHealth() {
+  // The demo server's health, tried again on a network failure, a timeout or a 5xx (a phone on a weak
+  // connection), not on a 404 (a static host without the server: precomputed mode at once).
+  let failure;
+  for (const wait of HEALTH_RETRY_WAITS) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), HEALTH_TIMEOUT * 1000);
+    try {
+      const r = await fetch("api/health", { cache: "no-store", signal: abort.signal });
+      if (r.ok) return await r.json();
+      failure = new Error(`api/health: HTTP ${r.status}`);
+      if (r.status < 500) break;
+    } catch (e) {
+      failure = e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw failure;
+}
+
 async function initServer() {
   // Live mode when scripts/demo_server.py answers; otherwise the precomputed samples only.
   try {
-    view.server = await fetchJSON("api/health");
+    view.server = await fetchHealth();
     if (!view.server.live) throw new Error("no live decoding");
     view.mode = "live";
     $("file").disabled = false;
@@ -808,6 +833,9 @@ async function initServer() {
       + `and decoded live as it plays.`;
     $("notice").textContent = "Decoded live: your browser streams the recording to the demo server, which runs "
       + "the model as you listen and sends back each chord as soon as it is decided.";
+    $("note-realtime").textContent = "the chords are decided live by the demo server as you listen, and each one "
+      + "appears once it is decided. After a seek, the server starts again from that point and needs a few "
+      + "seconds to settle (running level, tuning, memory).";
   } catch {
     view.server = null;
     view.mode = "precomputed";
@@ -824,32 +852,40 @@ async function initServer() {
 function startSession({ keep = false } = {}) {
   // A new live session from what you hear now: the rows start empty and fill as the server decides.
   // keep: the rows keep what they show up to now and continue from there (after an idle session).
+  // The connection is kept across sessions (a seek restarts on it): only a new one takes a handshake.
   const shown = keep && view.live ? Object.values(rows).map((row) => [row, row.segs.slice()]) : [];
   stopSession();
   const from = audio.currentTime;
-  const session = new LiveSession({
-    pcm: view.pcm, sampleRate: view.server.metadata.sampleRate, from,
-    onReady: (names) => { if (view.live && view.live.session === session) view.live.labelNames = names; },
-    onLabels: (point, first, labels) => {
-      if (!view.live || view.live.session !== session) return;
-      receiveLabels(point, first, labels);
+  const live = { from, labelNames: [], arrival: null, sender: null, idle: false, ready: false };
+  const current = () => view.live === live;
+  const callbacks = {
+    onReady: (names) => {
+      if (!current()) return;
+      live.labelNames = names;
+      live.ready = true;
+      if (view.preroll && view.preroll.t0 === null) beginPreroll();   // the pre-roll waited for the server
     },
+    onLabels: (point, first, labels) => { if (current()) receiveLabels(point, first, labels); },
     onDone: () => {
-      if (!view.live || view.live.session !== session) return;
+      view.conn = null;                                 // the server closes the connection after "done"
+      if (!current()) return;
       for (const row of Object.values(rows)) row.knownEnd = view.sample.duration;
       render();
     },
     onIdle: () => {
       // Paused long enough for the server to give the session's place back: the chords stay, the next
-      // Play continues with a new session from where the audio is, after a new pre-roll.
-      if (!view.live || view.live.session !== session) return;
-      clearInterval(view.live.sender);
-      view.live.idle = true;
+      // Play continues with a new session (and connection) from where the audio is, after a new pre-roll.
+      view.conn = null;
+      if (!current()) return;
+      clearInterval(live.sender);
+      live.idle = true;
       if (!audio.paused || view.preroll) startSession({ keep: true });     // still playing (a stalled tab)
       else view.primed = false;
     },
     onError: (message) => {
-      if (!view.live || view.live.session !== session) return;
+      if (view.conn) view.conn.close();
+      view.conn = null;
+      if (!current()) return;
       stopSession();
       cancelPreroll();
       view.primed = false;
@@ -857,25 +893,29 @@ function startSession({ keep = false } = {}) {
       $("play").textContent = "Play";
       setStatus(message, true);
     },
-  });
-  view.live = { session, from, labelNames: [], arrival: null, sender: null, idle: false };
+  };
+  const options = { pcm: view.pcm, from, ...callbacks };
+  if (view.conn && view.conn.usable) view.conn.restart(options);
+  else view.conn = new LiveSession({ sampleRate: view.server.metadata.sampleRate, ...options });
+  const conn = view.conn;
+  view.live = live;
   for (const [row, segs] of shown) keepUntil(row, segs, from);
   rows.decoded.knownEnd = rows.framewise.knownEnd = from;
   // Stream on a timer, not on animation frames, so the audio keeps flowing when the tab is hidden.
-  view.live.sender = setInterval(() => {
+  live.sender = setInterval(() => {
     if (!view.sample) return;
     const d = view.sample.duration;
     const heard = heardTime(Math.min(audio.currentTime, d), d);
-    session.sendUntil(heard >= d - 1e-6 ? Infinity : heard);   // at the end, every sample (the decoded
+    conn.sendUntil(heard >= d - 1e-6 ? Infinity : heard);      // at the end, every sample (the decoded
   }, 20);                                                       // length can differ from the player's by a few)
   showMeasured();
 }
 
 function stopSession() {
-  // End the live session; what it decided goes with it (a new session starts from scratch).
+  // Stop streaming; what the session decided goes with it (the next one starts from scratch). The
+  // connection stays for the next session; left unused, the server ends it after its idle time.
   if (!view.live) return;
   clearInterval(view.live.sender);
-  view.live.session.close();
   view.live = null;
   if (view.sample) for (const row of Object.values(rows)) buildRow(row, [], row.delay);
 }
@@ -985,15 +1025,24 @@ function play() {
   const D = playbackDelay();
   if (D === 0 || view.primed) { startAudio(); return; }
   cancelPreroll();
-  view.preroll = { from: audio.currentTime, t0: performance.now(), timer: null };
+  // The pre-roll's clock starts once the server's session is ready: the input then runs alone for D
+  // seconds, so the first chords are decided in time even when setting up the session took a while.
+  view.preroll = { from: audio.currentTime, t0: null, timer: null };
+  $("play").textContent = "Pause";
+  if (view.mode === "live" && view.live && !view.live.ready) setStatus("Connecting to the demo server...");
+  else beginPreroll();
+  requestAnimationFrame(loop);
+}
+
+function beginPreroll() {
+  const D = playbackDelay();
+  view.preroll.t0 = performance.now();
   view.preroll.timer = setTimeout(() => {
     view.preroll = null;
     view.primed = true;
     startAudio();
   }, D * 1000);
-  $("play").textContent = "Pause";
   setStatus(`Playback delayed ${D.toFixed(2)} s: the system is listening ahead...`);
-  requestAnimationFrame(loop);
 }
 
 function pauseQuietly() {
