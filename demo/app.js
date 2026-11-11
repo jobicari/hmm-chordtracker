@@ -883,7 +883,8 @@ async function initServer() {
       + "the model as you listen and sends back each chord as soon as it is decided.";
     $("note-realtime").textContent = "the chords are decided live by the demo server as you listen, and each one "
       + "appears once it is decided. After a seek, the server starts again from that point and needs a few "
-      + "seconds to settle (running level, tuning, memory).";
+      + "seconds to settle (running level, tuning, memory). With the delay on, the page measures how long chords "
+      + "take to reach it over your connection and lengthens the delay to match from the next Play or seek.";
   } catch {
     view.server = null;
     view.mode = "precomputed";
@@ -891,6 +892,12 @@ async function initServer() {
       + "(see demo/README.md).";
     $("notice").textContent = "The demo server is not running, so these chords were computed ahead of time. "
       + "Each one appears when the live system would have shown it, never earlier.";
+    $("note-realtime").textContent = "the chords were computed ahead of time and are revealed when the live system "
+      + "would output them. After a seek, the page shows the decisions of an uninterrupted run; a live system "
+      + "restarted at that point would need a few seconds to settle (running level, tuning, memory).";
+    $("note-files").textContent = "need the demo server, which streams them and decodes them live with the same model.";
+    $("pipeline-caption").textContent = "The audio went through the same stages as in the live system, one 93 ms "
+      + "frame at a time. The network's output feeds both rows: directly (framewise) and through the decoder.";
   }
 }
 

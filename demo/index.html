@@ -101,8 +101,9 @@
       <details id="pipeline" class="pipeline" open>
         <summary>Analysis pipeline: how each chord is computed</summary>
         <div id="pipeline-diagram" class="diagram" role="img" aria-label="Analysis pipeline diagram"></div>
-        <p class="diagram-caption">The audio goes through the same stages as in the live system, one 93 ms frame
-          at a time. The network's output feeds both rows: directly (framewise) and through the decoder.</p>
+        <p id="pipeline-caption" class="diagram-caption">The demo server runs these stages on your audio as it
+          arrives, one 93 ms frame at a time. The network's output feeds both rows: directly (framewise) and through
+          the decoder.</p>
         <details class="stage-details">
           <summary>Stage details</summary>
           <ol id="pipeline-stages"></ol>
@@ -115,12 +116,12 @@
           <li><strong>Chords:</strong> <span id="note-chords"></span></li>
           <li><strong>Training:</strong> <span id="note-training"></span> The prepared samples are GuitarSet
             validation takes, which it did not train on.</li>
-          <li><strong>Real time:</strong> <span id="note-realtime">the chords were computed ahead of time and are
-            revealed when the live system would output them. After a seek, the page shows the decisions of an
-            uninterrupted run; a live system restarted at that point would need a few seconds to settle (running
-            level, tuning, memory).</span></li>
-          <li><strong>Your files:</strong> analysed on this computer by the demo server with the same model; some
-            formats are lossy, which changes the chords slightly. No reference annotations exist for them.</li>
+          <li><strong>Real time:</strong> <span id="note-realtime">the chords are decided live by the demo server as
+            you listen, and each one appears once it is decided. After a seek, the server starts again from that
+            point and needs a few seconds to settle (running level, tuning, memory).</span></li>
+          <li><strong>Your files:</strong> <span id="note-files">streamed to the demo server and decoded live with the
+            same model as they play; some formats are lossy, which changes the chords slightly. No reference
+            annotations exist for them.</span></li>
           <li><strong>No scores here:</strong> the page shows outputs only. Accuracy figures, measured on validation and
             test songs, are in the project's reports.</li>
         </ul>
