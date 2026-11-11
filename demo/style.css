@@ -131,13 +131,14 @@ select, button, input { font: inherit; }
 /* Player: fixed sizes, so a chord change never moves the layout. */
 .player {
   display: grid;
-  grid-template-columns: 14rem 1fr 12rem;
+  grid-template-columns: 14rem minmax(0, 1fr) 12rem;
   gap: 2rem;
   align-items: end;
 }
-.now { display: flex; flex-direction: column; }
+.now { display: flex; flex-direction: column; min-width: 0; }
 .caption { color: var(--muted); font-size: .85rem; }
-.chord-big { font-size: 5rem; line-height: 1.05; font-weight: 650; min-height: 5.3rem; letter-spacing: -.02em; }
+/* Chord names sit in fixed boxes (one line, set height); app.js shrinks the font of a name too long to fit. */
+.chord-big { display: block; min-width: 0; max-width: 100%; font-size: 5rem; height: 5.3rem; line-height: 5.3rem; white-space: nowrap; overflow: hidden; font-weight: 650; letter-spacing: -.02em; }
 .transport { display: flex; flex-direction: column; gap: .7rem; padding-bottom: .3rem; min-width: 0; }
 .buttons { display: flex; align-items: center; gap: .7rem; }
 .buttons button {
@@ -166,7 +167,9 @@ select, button, input { font: inherit; }
   padding-bottom: .35rem;
 }
 .others dt { color: var(--muted); font-size: .85rem; }
-.others dd { margin: 0; font-size: 1.4rem; font-weight: 600; min-width: 3rem; text-align: right; min-height: 1.6rem; }
+.others div > * { min-width: 0; }
+.others dt { flex: none; }
+.others dd { margin: 0; flex: 1; font-size: 1.4rem; font-weight: 600; text-align: right; height: 1.8rem; line-height: 1.8rem; white-space: nowrap; overflow: hidden; }
 
 /* Timelines: one shared ruler and playhead over the rows; scrolls when the recording is long. */
 .scroller { overflow-x: auto; padding-bottom: .5rem; }
@@ -348,7 +351,7 @@ body.analyzing .status::before {
   .wrap { padding-left: 1.2rem; padding-right: 1.2rem; }
   .controls { grid-template-columns: 1fr; }
   .source { grid-row: auto; }
-  .player { grid-template-columns: 1fr 10rem; }
+  .player { grid-template-columns: minmax(0, 1fr) 10rem; }    /* minmax(0, ...): a long chord name never widens the column (Safari) */
   .player .transport { grid-column: 1 / -1; grid-row: 2; }
   .row-name { max-width: calc(100vw - 2.4rem); box-sizing: border-box; }    /* the timeline's visible width: wrap, do not run past it */
 }

@@ -206,6 +206,73 @@ def test_sessions_and_length_are_limited(server_module, tmp_path):
     run(server_module, tmp_path, test, env={"CHORD_DEMO_MAX_SESSIONS": "1", "CHORD_DEMO_MAX_SECONDS": "0.1"})
 
 
+def test_the_server_closes_a_finished_session_and_frees_its_place(server_module, tmp_path):
+    async def test(host, pool):
+        for _ in range(2):                                     # one place: the second session needs the first's
+            ws = await websocket_connect(f"ws://{host}/api/live")
+            await ws.write_message(json.dumps({"type": "start"}))
+            assert json.loads(await ws.read_message())["type"] == "ready"
+            await ws.write_message(np.zeros(2500, "<i2").tobytes(), binary=True)
+            await ws.write_message(json.dumps({"type": "end"}))
+            assert (await messages_until(ws, "done"))[-1]["type"] == "done"
+            assert await ws.read_message() is None              # closed by the server, not by this client
+    run(server_module, tmp_path, test, env={"CHORD_DEMO_MAX_SESSIONS": "1"})
+
+
+def test_a_session_without_audio_is_closed_as_idle_and_frees_its_place(server_module, tmp_path):
+    async def test(host, pool):
+        health = json.loads((await AsyncHTTPClient().fetch(f"http://{host}/api/health")).body)
+        assert health["idleSeconds"] == 0.3
+        ws = await websocket_connect(f"ws://{host}/api/live")
+        await ws.write_message(json.dumps({"type": "start"}))
+        assert json.loads(await ws.read_message())["type"] == "ready"
+        for _ in range(4):                                     # audio within the idle time keeps it open
+            await ws.write_message(np.zeros(100, "<i2").tobytes(), binary=True)
+            await asyncio.sleep(0.15)
+        while (m := json.loads(await ws.read_message()))["type"] == "labels":
+            pass
+        assert m == {"type": "idle"}                            # then paused: closed after the idle time
+        assert await ws.read_message() is None
+        _, received = await session(host, np.zeros(2000))       # the place is free again
+        assert received[POINTS[0]] == [pool.slots[0].process.pid] * 2 + [0]
+    run(server_module, tmp_path, test, env={"CHORD_DEMO_MAX_SESSIONS": "1", "CHORD_DEMO_IDLE_SECONDS": "0.3"})
+
+
+def test_a_restart_starts_a_fresh_session_on_the_same_connection_and_keeps_its_place(server_module, tmp_path):
+    async def test(host, pool):
+        ws = await websocket_connect(f"ws://{host}/api/live")
+        await ws.write_message(json.dumps({"type": "start"}))
+        assert json.loads(await ws.read_message())["type"] == "ready"
+        await ws.write_message(np.zeros(2500, "<i2").tobytes(), binary=True)
+        await ws.write_message(json.dumps({"type": "restart"}))           # a seek
+        before = await messages_until(ws, "ready")
+        assert before[-1]["type"] == "ready" and all(m["type"] == "labels" for m in before[:-1])
+        other = await websocket_connect(f"ws://{host}/api/live")           # the place is still taken
+        await other.write_message(json.dumps({"type": "start"}))
+        assert json.loads(await other.read_message())["type"] == "error"
+        await ws.write_message(np.zeros(1500, "<i2").tobytes(), binary=True)
+        await ws.write_message(json.dumps({"type": "end"}))
+        after = await messages_until(ws, "done")
+        assert after[-1]["type"] == "done"
+        received = {p: [] for p in POINTS}
+        for m in after[:-1]:
+            for point, value in m["points"].items():
+                assert value["from"] == len(received[point])                 # from frame 0: a fresh session
+                received[point] += value["labels"]
+        assert received[POINTS[0]] == [pool.slots[0].process.pid, 0]         # only the audio after the restart
+        assert await ws.read_message() is None
+        await session(host, np.zeros(1000))                                  # and the place is free again
+    run(server_module, tmp_path, test, env={"CHORD_DEMO_MAX_SESSIONS": "1"})
+
+
+def test_a_restart_needs_a_session(server_module, tmp_path):
+    async def test(host, pool):
+        ws = await websocket_connect(f"ws://{host}/api/live")
+        await ws.write_message(json.dumps({"type": "restart"}))
+        assert json.loads(await ws.read_message()) == {"type": "error", "message": "No session."}
+    run(server_module, tmp_path, test)
+
+
 async def live_with_origin(host, origin):
     """Open the live route as a browser page from `origin` would (None: no Origin, as a script) and start."""
     headers = {} if origin is None else {"Origin": origin}
@@ -236,6 +303,7 @@ def test_settings_come_from_flags_then_the_environment(server_module, monkeypatc
     default = parse([], env={})
     assert (default.host, default.port, default.allowed_origins) == ("127.0.0.1", 8000, [])
     assert (default.workers, default.max_sessions, default.max_seconds, default.live_margin) == (8, 8, 600.0, 0.15)
+    assert default.idle_seconds == 30.0
     assert default.model == "v15" and default.silence_dbfs == float("-inf")         # v15: its own N, no gate
     assert parse([], env={"CHORD_DEMO_MODEL": "v14"}).silence_dbfs == float("-inf")
     assert parse([], env={"CHORD_DEMO_MODEL": "v7_2"}).silence_dbfs == -55.0        # v7_2: the gate
@@ -248,16 +316,19 @@ def test_settings_come_from_flags_then_the_environment(server_module, monkeypatc
     assert parse([], env={"PORT": "9000", "CHORD_DEMO_PORT": "9100"}).port == 9100
     env = {"CHORD_DEMO_HOST": "0.0.0.0", "CHORD_DEMO_PORT": "9100", "CHORD_DEMO_WORKERS": "12",
            "CHORD_DEMO_MAX_SESSIONS": "4", "CHORD_DEMO_MAX_SECONDS": "60", "CHORD_DEMO_LIVE_MARGIN": "0.4",
-           "CHORD_DEMO_SILENCE_DBFS": "-50", "CHORD_DEMO_ALLOWED_ORIGINS": " https://a.example.org, ,https://b.example.org "}
+           "CHORD_DEMO_IDLE_SECONDS": "45", "CHORD_DEMO_SILENCE_DBFS": "-50", "CHORD_DEMO_ALLOWED_ORIGINS": " https://a.example.org, ,https://b.example.org "}
     s = parse([], env=env)
     assert (s.host, s.port, s.workers, s.max_sessions, s.max_seconds, s.live_margin) == ("0.0.0.0", 9100, 12, 4, 60.0, 0.4)
     assert s.allowed_origins == ["https://a.example.org", "https://b.example.org"] and s.silence_dbfs == -50.0
+    assert s.idle_seconds == 45.0 and parse(["--idle-seconds", "5"], env=env).idle_seconds == 5.0
     assert parse(["--silence-dbfs", "-60"], env=env).silence_dbfs == -60.0
     flags = parse(["--host", "::", "--port", "8010", "--allowed-origins", "https://c.example.org", "--workers", "3"],
                   env=env)
     assert (flags.host, flags.port, flags.allowed_origins, flags.workers) == ("::", 8010, ["https://c.example.org"], 3)
     with pytest.raises(SystemExit):
         parse([], env={"CHORD_DEMO_WORKERS": "0"})
+    with pytest.raises(SystemExit):
+        parse([], env={"CHORD_DEMO_IDLE_SECONDS": "0"})
 
 
 def test_health_reports_the_settings_in_use(server_module, tmp_path):

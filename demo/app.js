@@ -29,7 +29,14 @@ const PITCH = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const EPS = 1e-4;
 const LIVE_MARGIN = 0.15;           // s of playback delay for the network and the server, live mode only,
                                     // unless the server sets its own (liveMarginSeconds in api/health)
+const EXTRA_KEY = "chord-demo-extra-margin";   // the margin this connection needs, remembered in this browser
+const EXTRA_MAX = 4;                // s: the most the page adds on its own
+const EXTRA_HEADROOM = 0.15;        // s kept above the measured arrival time
+const ARRIVALS_KEPT = 300;          // recent arrival times the extra margin is computed from
+const ARRIVALS_MIN = 20;            // before that many, the extra margin only grows
 const MAX_UPLOAD_BYTES = 100 * 2 ** 20;
+const HEALTH_RETRY_WAITS = [0, 1, 2, 3];   // s before each try of the demo server's health (about 6 s in all)
+const HEALTH_TIMEOUT = 4;                  // s per try
 
 const $ = (id) => document.getElementById(id);
 const audio = $("audio");
@@ -45,7 +52,8 @@ const QUALITY_NAMES = {               // as chordtracker.play_along.QUALITIES: a
 };
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
-               live: null };
+               live: null, conn: null,     // conn: the LiveSession connection, kept across seeks
+               extra: 0, arrivals: [] };   // extra: s of margin this connection needs on top of the server's
 
 // ---------------------------------------------------------------------------------------------------
 // Chords
@@ -101,8 +109,35 @@ function segmentAt(segs, t) {
 // ---------------------------------------------------------------------------------------------------
 // Clocks
 
-function liveMargin() {
+function serverMargin() {
   return view.server?.liveMarginSeconds ?? LIVE_MARGIN;
+}
+
+function liveMargin() {
+  // The server's margin, plus what this connection has been measured to need (adaptMargin).
+  return serverMargin() + view.extra;
+}
+
+function restoreExtra() {
+  let saved = null;
+  try { saved = Number(localStorage.getItem(EXTRA_KEY)); } catch { /* storage unavailable: start from 0 */ }
+  if (Number.isFinite(saved)) view.extra = Math.min(EXTRA_MAX, Math.max(0, saved));
+}
+
+function adaptMargin() {
+  // Before a new pre-roll (never during one, the input clock depends on it): the extra margin that covers
+  // the 95th percentile of how late recent chords reached the page beyond their decision delay (network
+  // and server time, the same for every operating point). It grows on any evidence, and shrinks only once
+  // enough chords were measured (a short session says little).
+  if (view.mode !== "live" || view.arrivals.length === 0) return;
+  const sorted = [...view.arrivals].sort((a, b) => a - b);
+  const p95 = sorted[Math.min(sorted.length - 1, Math.floor(0.95 * sorted.length))];
+  let extra = Math.min(EXTRA_MAX, Math.max(0, Math.ceil((p95 + EXTRA_HEADROOM - serverMargin()) * 10) / 10));
+  if (view.arrivals.length < ARRIVALS_MIN) extra = Math.max(extra, view.extra);
+  if (extra === view.extra) return;
+  view.extra = extra;
+  try { localStorage.setItem(EXTRA_KEY, String(extra)); } catch { /* not remembered */ }
+  updateDelayNote();
 }
 
 const LEAD_KEY = "chord-demo-lead";   // the viewer's lead, remembered in this browser
@@ -132,6 +167,7 @@ function heardTime(s, d) {
   // the input runs alone for the delay while the audio waits (pre-roll), then stays that far ahead of
   // the audio, also across pause / resume. Delay off: the input is what you hear.
   const D = playbackDelay();
+  if (view.preroll && view.preroll.t0 === null) return view.preroll.from;      // waiting for the server
   if (view.preroll) return Math.min(view.preroll.from + Math.min((performance.now() - view.preroll.t0) / 1000, D), d);
   return Math.min(view.primed && D > 0 ? s + D : s, d);
 }
@@ -313,8 +349,7 @@ function renderReference(s) {
   if (reference.active >= 0) reference.divs[reference.active].classList.remove("active");
   if (i >= 0) reference.divs[i].classList.add("active");
   reference.active = i;
-  reference.nowEl.textContent = i >= 0 ? reference.segs[i].name : "";
-  reference.nowEl.title = i >= 0 ? reference.segs[i].chord : "";
+  showChord(reference.nowEl, i >= 0 ? reference.segs[i] : null);
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -546,7 +581,8 @@ function updateDelayNote() {
     const items = [`network look-ahead ${ms(networkFrames)}`];
     if (p.lagFrames > 0) items.push(`decoder lag ${ms(p.lagFrames)}`);
     items.push(`last frame of audio ${ms(1)}`, `half a frame ${ms(0.5)}`);
-    if (view.mode === "live") items.push(`network and server margin ${Math.round(liveMargin() * 1000)} ms`);
+    if (view.mode === "live") items.push(`network and server margin ${Math.round(serverMargin() * 1000)} ms`);
+    if (view.mode === "live" && view.extra > 0) items.push(`${Math.round(view.extra * 1000)} ms more measured on this connection`);
     if (lead() > 0) items.push(`lead ${lead().toFixed(2)} s (chords shown before you hear them)`);
     parts.textContent = `${(playbackDelay()).toFixed(2)} s = ` + items.join(" + ");
     if (view.mode === "live") {
@@ -585,7 +621,8 @@ function showMeasured() {
     : `This session: each chord reached the page ${range} after its moment of audio, so you see it that late.`;
   if ($("delay").checked && a.max > budget) {
     el.textContent = `This session: some chords reached the page ${a.max.toFixed(2)} s after their moment of `
-      + `audio, more than the ${budget.toFixed(2)} s the delay leaves: those were shown late.`;
+      + `audio, more than the ${budget.toFixed(2)} s the delay leaves: those were shown late. The delay grows `
+      + "to cover this connection at the next Play, Restart or seek.";
   }
 }
 
@@ -598,6 +635,7 @@ function layout() {
     for (const row of [rows.decoded, rows.framewise]) row.segs.forEach((seg, i) => placeSegment(row.divs[i], seg, d));
     markNarrow(reference);
   }
+  for (const el of [rows.decoded.nowEl, rows.framewise.nowEl, reference.nowEl]) fitChord(el);
   render();
 }
 
@@ -608,8 +646,21 @@ function renderRow(row, revealed) {
   if (row.active >= 0) row.divs[row.active].classList.remove("active");
   if (i >= 0) row.divs[i].classList.add("active");
   row.active = i;
-  row.nowEl.textContent = i >= 0 ? row.segs[i].name : "";
-  row.nowEl.title = i >= 0 ? row.segs[i].chord : "";
+  showChord(row.nowEl, i >= 0 ? row.segs[i] : null);
+}
+
+function showChord(el, seg) {
+  // Fixed box: a long name gets a smaller font instead of a wider or taller box, so the layout never moves.
+  el.textContent = seg ? seg.name : "";
+  el.title = seg ? seg.chord : "";
+  fitChord(el);
+}
+
+function fitChord(el) {
+  el.style.fontSize = "";
+  if (!el.textContent || el.clientWidth === 0 || el.scrollWidth <= el.clientWidth) return;
+  const full = parseFloat(getComputedStyle(el).fontSize);
+  el.style.fontSize = `${Math.floor(full * el.clientWidth / el.scrollWidth * 0.98)}px`;
 }
 
 function render() {
@@ -671,12 +722,12 @@ function clearSample() {
     mask.style.transform = "";
     row.track.replaceChildren(mask);
     Object.assign(row, { segs: [], divs: [], active: undefined });
-    row.nowEl.textContent = "";
+    showChord(row.nowEl, null);
   }
   $("ruler").replaceChildren();
   reference.track.replaceChildren();
   Object.assign(reference, { segs: [], divs: [], active: undefined });
-  reference.nowEl.textContent = "";
+  showChord(reference.nowEl, null);
   $("reference-note").textContent = "";
   $("pipeline-stages").replaceChildren();
   $("pipeline-diagram").replaceChildren();
@@ -794,19 +845,46 @@ function setUploadOption(name) {
   select.value = "upload";
 }
 
+async function fetchHealth() {
+  // The demo server's health, tried again on a network failure, a timeout or a 5xx (a phone on a weak
+  // connection), not on a 404 (a static host without the server: precomputed mode at once).
+  let failure;
+  for (const wait of HEALTH_RETRY_WAITS) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), HEALTH_TIMEOUT * 1000);
+    try {
+      const r = await fetch("api/health", { cache: "no-store", signal: abort.signal });
+      if (r.ok) return await r.json();
+      failure = new Error(`api/health: HTTP ${r.status}`);
+      if (r.status < 500) break;
+    } catch (e) {
+      failure = e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw failure;
+}
+
 async function initServer() {
   // Live mode when scripts/demo_server.py answers; otherwise the precomputed samples only.
   try {
-    view.server = await fetchJSON("api/health");
+    view.server = await fetchHealth();
     if (!view.server.live) throw new Error("no live decoding");
     view.mode = "live";
     $("file").disabled = false;
     $("upload").classList.remove("unavailable");
-    $("upload-help").textContent = `Any audio file your browser can play (WAV, MP3, FLAC, Ogg, M4A...), up to `
+    $("upload-help").textContent = `Any audio file your browser can play (WAV, FLAC, MP3, M4A, AAC, Ogg, Opus, `
+      + `WebM, AIFF, CAF...), up to `
       + `${MAX_UPLOAD_BYTES / 2 ** 20} MB and ${view.server.maxSeconds / 60} min. Streamed to the demo server `
       + `and decoded live as it plays.`;
     $("notice").textContent = "Decoded live: your browser streams the recording to the demo server, which runs "
       + "the model as you listen and sends back each chord as soon as it is decided.";
+    $("note-realtime").textContent = "the chords are decided live by the demo server as you listen, and each one "
+      + "appears once it is decided. After a seek, the server starts again from that point and needs a few "
+      + "seconds to settle (running level, tuning, memory). With the delay on, the page measures how long chords "
+      + "take to reach it over your connection and lengthens the delay to match from the next Play or seek.";
   } catch {
     view.server = null;
     view.mode = "precomputed";
@@ -814,30 +892,55 @@ async function initServer() {
       + "(see demo/README.md).";
     $("notice").textContent = "The demo server is not running, so these chords were computed ahead of time. "
       + "Each one appears when the live system would have shown it, never earlier.";
+    $("note-realtime").textContent = "the chords were computed ahead of time and are revealed when the live system "
+      + "would output them. After a seek, the page shows the decisions of an uninterrupted run; a live system "
+      + "restarted at that point would need a few seconds to settle (running level, tuning, memory).";
+    $("note-files").textContent = "need the demo server, which streams them and decodes them live with the same model.";
+    $("pipeline-caption").textContent = "The audio went through the same stages as in the live system, one 93 ms "
+      + "frame at a time. The network's output feeds both rows: directly (framewise) and through the decoder.";
   }
 }
 
 // ---------------------------------------------------------------------------------------------------
 // Live sessions
 
-function startSession() {
+function startSession({ keep = false } = {}) {
   // A new live session from what you hear now: the rows start empty and fill as the server decides.
+  // keep: the rows keep what they show up to now and continue from there (after an idle session).
+  // The connection is kept across sessions (a seek restarts on it): only a new one takes a handshake.
+  const shown = keep && view.live ? Object.values(rows).map((row) => [row, row.segs.slice()]) : [];
   stopSession();
   const from = audio.currentTime;
-  const session = new LiveSession({
-    pcm: view.pcm, sampleRate: view.server.metadata.sampleRate, from,
-    onReady: (names) => { if (view.live && view.live.session === session) view.live.labelNames = names; },
-    onLabels: (point, first, labels) => {
-      if (!view.live || view.live.session !== session) return;
-      receiveLabels(point, first, labels);
+  const live = { from, labelNames: [], arrival: null, sender: null, idle: false, ready: false };
+  const current = () => view.live === live;
+  const callbacks = {
+    onReady: (names) => {
+      if (!current()) return;
+      live.labelNames = names;
+      live.ready = true;
+      if (view.preroll && view.preroll.t0 === null) beginPreroll();   // the pre-roll waited for the server
     },
+    onLabels: (point, first, labels) => { if (current()) receiveLabels(point, first, labels); },
     onDone: () => {
-      if (!view.live || view.live.session !== session) return;
+      view.conn = null;                                 // the server closes the connection after "done"
+      if (!current()) return;
       for (const row of Object.values(rows)) row.knownEnd = view.sample.duration;
       render();
     },
+    onIdle: () => {
+      // Paused long enough for the server to give the session's place back: the chords stay, the next
+      // Play continues with a new session (and connection) from where the audio is, after a new pre-roll.
+      view.conn = null;
+      if (!current()) return;
+      clearInterval(live.sender);
+      live.idle = true;
+      if (!audio.paused || view.preroll) startSession({ keep: true });     // still playing (a stalled tab)
+      else view.primed = false;
+    },
     onError: (message) => {
-      if (!view.live || view.live.session !== session) return;
+      if (view.conn) view.conn.close();
+      view.conn = null;
+      if (!current()) return;
       stopSession();
       cancelPreroll();
       view.primed = false;
@@ -845,27 +948,37 @@ function startSession() {
       $("play").textContent = "Play";
       setStatus(message, true);
     },
-  });
-  view.live = { session, from, labelNames: [], arrival: null, sender: null };
-  for (const row of Object.values(rows)) buildRow(row, [], row.delay);
+  };
+  const options = { pcm: view.pcm, from, ...callbacks };
+  if (view.conn && view.conn.usable) view.conn.restart(options);
+  else view.conn = new LiveSession({ sampleRate: view.server.metadata.sampleRate, ...options });
+  const conn = view.conn;
+  view.live = live;
+  for (const [row, segs] of shown) keepUntil(row, segs, from);
   rows.decoded.knownEnd = rows.framewise.knownEnd = from;
   // Stream on a timer, not on animation frames, so the audio keeps flowing when the tab is hidden.
-  view.live.sender = setInterval(() => {
+  live.sender = setInterval(() => {
     if (!view.sample) return;
     const d = view.sample.duration;
     const heard = heardTime(Math.min(audio.currentTime, d), d);
-    session.sendUntil(heard >= d - 1e-6 ? Infinity : heard);   // at the end, every sample (the decoded
+    conn.sendUntil(heard >= d - 1e-6 ? Infinity : heard);      // at the end, every sample (the decoded
   }, 20);                                                       // length can differ from the player's by a few)
   showMeasured();
 }
 
 function stopSession() {
-  // End the live session; what it decided goes with it (a new session starts from scratch).
+  // Stop streaming; what the session decided goes with it (the next one starts from scratch). The
+  // connection stays for the next session; left unused, the server ends it after its idle time.
   if (!view.live) return;
   clearInterval(view.live.sender);
-  view.live.session.close();
   view.live = null;
   if (view.sample) for (const row of Object.values(rows)) buildRow(row, [], row.delay);
+}
+
+function keepUntil(row, segs, t) {
+  // The row with the blocks of segs up to t (the last one cut at t), for a session that continues from t.
+  const kept = segs.filter((seg) => seg.start < t - 1e-6).map((seg) => ({ ...seg, end: Math.min(seg.end, t) }));
+  buildRow(row, kept, row.delay);
 }
 
 function receiveLabels(point, first, labels) {
@@ -879,6 +992,8 @@ function receiveLabels(point, first, labels) {
     const heard = heardTime(Math.min(audio.currentTime, d), d);
     if (heard < d) {
       const after = heard - (view.live.from + (first + labels.length - 1) * h);
+      view.arrivals.push(after - (view.point.playbackDelaySeconds - h / 2));   // beyond the decision delay
+      if (view.arrivals.length > ARRIVALS_KEPT) view.arrivals.shift();
       const a = view.live.arrival;
       const before = a ? `${Math.round(a.min * 100)} ${Math.round(a.max * 100)}` : "";
       view.live.arrival = a ? { min: Math.min(a.min, after), max: Math.max(a.max, after) } : { min: after, max: after };
@@ -963,18 +1078,29 @@ function play() {
   // Live mode: the input is a session on the demo server, started here if there is none.
   if (audio.ended) { audio.currentTime = 0; view.primed = false; stopSession(); }
   if (view.mode === "live" && !view.live) startSession();
+  else if (view.mode === "live" && view.live.idle) startSession({ keep: true });
   const D = playbackDelay();
   if (D === 0 || view.primed) { startAudio(); return; }
   cancelPreroll();
-  view.preroll = { from: audio.currentTime, t0: performance.now(), timer: null };
+  adaptMargin();
+  // The pre-roll's clock starts once the server's session is ready: the input then runs alone for D
+  // seconds, so the first chords are decided in time even when setting up the session took a while.
+  view.preroll = { from: audio.currentTime, t0: null, timer: null };
+  $("play").textContent = "Pause";
+  if (view.mode === "live" && view.live && !view.live.ready) setStatus("Connecting to the demo server...");
+  else beginPreroll();
+  requestAnimationFrame(loop);
+}
+
+function beginPreroll() {
+  const D = playbackDelay();
+  view.preroll.t0 = performance.now();
   view.preroll.timer = setTimeout(() => {
     view.preroll = null;
     view.primed = true;
     startAudio();
   }, D * 1000);
-  $("play").textContent = "Pause";
   setStatus(`Playback delayed ${D.toFixed(2)} s: the system is listening ahead...`);
-  requestAnimationFrame(loop);
 }
 
 function pauseQuietly() {
@@ -1072,6 +1198,7 @@ $("play").addEventListener("click", togglePlay);
 $("restart").addEventListener("click", () => seek(0));
 $("delay").addEventListener("change", () => { updateDelayNote(); restartInput(); });
 restoreLead();
+restoreExtra();
 $("lead").addEventListener("change", () => {
   try { localStorage.setItem(LEAD_KEY, $("lead").value); } catch { /* not remembered */ }
   updateDelayNote();

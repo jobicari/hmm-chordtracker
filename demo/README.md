@@ -38,7 +38,10 @@ browser can play, up to 100 MB and 10 min. The page plays the browser's decoding
 the file itself: compressed files (FLAC and MP3 in Safari, MP3 without a seek index elsewhere) seek only
 approximately, so after a seek the player would play other samples than the ones the server decodes. A
 seek or a new look-ahead starts a new session; a drag on the seek bar or the timeline starts one, on
-release.
+release. A new session reuses the page's connection to the server (no new handshake on a seek), and the
+playback delay starts counting once the server's session is ready, so a slow network delays the start of
+playback rather than the chords. On load, the page tries the server for about 6 s before falling back to
+the precomputed chords.
 
 `tests/test_demo_e2e.py` checks this in Chromium (it needs Playwright: `pip install playwright` and
 `playwright install chromium`; skipped without it).
@@ -80,7 +83,7 @@ stops is restarted, and its listeners get an error and can start again.
 
 Settings are environment variables (or the same flags of `scripts/demo_server.py`), read when the server
 starts: change them with `docker run -e ...` and restart the container, no rebuild needed. The server
-logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`,
+logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `idleSeconds`, `liveMarginSeconds`,
 `model`, `silenceDbfs`).
 
 | Variable | Default | |
@@ -91,7 +94,8 @@ logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, 
 | `CHORD_DEMO_WORKERS` | the CPUs available, at most 8 | decoding worker processes (`--workers`); any value set is used as given |
 | `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once, over all workers |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
-| `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
+| `CHORD_DEMO_IDLE_SECONDS` | `30` | a session that receives no audio for this long (a paused or abandoned page) is closed and its place freed; the page starts a new one when it plays again (`--idle-seconds`) |
+| `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server, for every viewer. On top of it, each browser measures how late its chords arrive and adds what its own connection needs (up to 4 s, remembered in that browser) at the next Play, Restart or seek; keep this the floor a good connection needs |
 | `CHORD_DEMO_MODEL` | `v15` | `v15`: V15, with dim, aug and m7b5 and its own N.C.; `v14`: V14's 60 chords and its own N.C.; `v7_2`: V7.2's 24 chords (`--model`). The prepared samples must be exported with the same model |
 | `CHORD_DEMO_SILENCE_DBFS` | off for `v15` and `v14`, `-55` for `v7_2` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames; `-inf` turns it off (reported as `null`). The 10 s the tuning is estimated on start at the first frame at or above -55 dBFS either way |
 

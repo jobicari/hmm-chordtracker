@@ -5,8 +5,10 @@
 //                                       to mono and resampled to the model's rate (22,050 Hz); playback:
 //                                       the same decoded audio as a WAV Blob, for the player (wavBlob)
 //   wavBlob(audioBuffer)             -> 16-bit PCM WAV of every channel, at the buffer's rate
-//   new LiveSession({...})           -> one WebSocket session; sendUntil(t) streams the audio up to t
-//                                       seconds of the recording; close() ends it
+//   new LiveSession({...})           -> one WebSocket connection; sendUntil(t) streams the audio up to t
+//                                       seconds of the recording; restart({...}) starts a fresh session
+//                                       on the same connection (a seek); close() ends it. The server
+//                                       closes it after "done" and when no audio came for a while ("idle")
 //
 // The protocol is described in scripts/demo_server.py.
 "use strict";
@@ -53,38 +55,83 @@ function wavBlob(buffer) {
 }
 
 class LiveSession {
+  // One connection to the demo server, kept across seeks: restart() starts a fresh session on it from
+  // another second of the recording (no new connection to set up, the place on the server kept).
   // pcm: Float32Array at sampleRate; from: the second of the recording the session starts at.
-  // Callbacks: onReady(labelNames), onLabels(pointId, firstFrame, labels), onDone(), onError(message).
-  constructor({ pcm, sampleRate, from, onReady, onLabels, onDone, onError }) {
-    Object.assign(this, { pcm, sampleRate, from, onReady, onLabels, onDone, onError });
-    this.next = Math.round(from * sampleRate);    // next sample to send
-    this.ready = false;
+  // Callbacks: onReady(labelNames), onLabels(pointId, firstFrame, labels), onDone(), onIdle() (the server
+  // closed the session after a pause), onError(message).
+  constructor({ pcm, sampleRate, from, onReady, onLabels, onDone, onIdle, onError }) {
+    this.sampleRate = sampleRate;
+    this.closed = false;
+    this.reset({ pcm, from, onReady, onLabels, onDone, onIdle, onError });
+    this.connect();
+  }
+
+  reset({ pcm, from, ...callbacks }) {
+    Object.assign(this, callbacks);
+    this.pcm = pcm;
+    this.next = Math.round(from * this.sampleRate);    // next sample to send
+    this.ready = false;                                // until this session's "ready": older messages are ignored
     this.ended = false;
     this.finished = false;
-    this.closed = false;
+    this.reconnected = false;
+  }
+
+  connect() {
     const scheme = location.protocol === "https:" ? "wss" : "ws";
-    this.ws = new WebSocket(`${scheme}://${location.host}/api/live`);
-    this.ws.binaryType = "arraybuffer";
-    this.ws.onopen = () => this.ws.send(JSON.stringify({ type: "start" }));
-    this.ws.onmessage = (event) => this.receive(JSON.parse(event.data));
-    this.ws.onclose = () => {
-      if (!this.closed && !this.finished) this.onError("The connection to the demo server was lost.");
+    const ws = new WebSocket(`${scheme}://${location.host}/api/live`);
+    this.ws = ws;
+    this.awaiting = 1;                                 // "ready"s still to come: the last one is this session's
+    ws.binaryType = "arraybuffer";
+    ws.onopen = () => ws.send(JSON.stringify({ type: "start" }));
+    ws.onmessage = (event) => { if (ws === this.ws) this.receive(JSON.parse(event.data)); };
+    ws.onclose = () => {
+      if (ws !== this.ws || this.closed) return;
+      if (!this.ready && !this.reconnected) {
+        // A restart crossed the end of the old session (done or idle closed the connection): connect again.
+        this.reconnected = true;
+        this.connect();
+      } else if (!this.finished) {
+        this.onError("The connection to the demo server was lost.");
+      }
     };
+  }
+
+  get usable() {
+    // Can restart() continue on this connection (not closed, not ended by the server)?
+    return !this.closed && !this.finished && this.ws.readyState <= WebSocket.OPEN;
+  }
+
+  restart({ pcm, from, ...callbacks }) {
+    // A fresh session from `from` (a seek, Restart, another recording) on the same connection.
+    this.reset({ pcm, from, ...callbacks });
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.awaiting += 1;
+      this.ws.send(JSON.stringify({ type: "restart" }));
+    }
+    // still connecting: its "start" opens the session from the new position
   }
 
   receive(message) {
     if (this.closed) return;
     if (message.type === "ready") {
+      this.awaiting -= 1;
+      if (this.awaiting > 0) return;                   // a session already restarted again
       this.ready = true;
       this.onReady(message.labels);
+    } else if (message.type === "error") {
+      this.finished = true;
+      this.onError(message.message);
+    } else if (!this.ready) {
+      // the end of the session before a restart: labels, done or idle that no longer count
     } else if (message.type === "labels") {
       for (const [point, value] of Object.entries(message.points)) this.onLabels(point, value.from, value.labels);
     } else if (message.type === "done") {
       this.finished = true;
       this.onDone();
-    } else if (message.type === "error") {
+    } else if (message.type === "idle") {
       this.finished = true;
-      this.onError(message.message);
+      this.onIdle();
     }
   }
 
