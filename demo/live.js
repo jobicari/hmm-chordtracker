@@ -6,7 +6,8 @@
 //                                       the same decoded audio as a WAV Blob, for the player (wavBlob)
 //   wavBlob(audioBuffer)             -> 16-bit PCM WAV of every channel, at the buffer's rate
 //   new LiveSession({...})           -> one WebSocket session; sendUntil(t) streams the audio up to t
-//                                       seconds of the recording; close() ends it
+//                                       seconds of the recording; close() ends it. The server closes it
+//                                       after "done" and when no audio came for a while (paused: "idle")
 //
 // The protocol is described in scripts/demo_server.py.
 "use strict";
@@ -54,9 +55,10 @@ function wavBlob(buffer) {
 
 class LiveSession {
   // pcm: Float32Array at sampleRate; from: the second of the recording the session starts at.
-  // Callbacks: onReady(labelNames), onLabels(pointId, firstFrame, labels), onDone(), onError(message).
-  constructor({ pcm, sampleRate, from, onReady, onLabels, onDone, onError }) {
-    Object.assign(this, { pcm, sampleRate, from, onReady, onLabels, onDone, onError });
+  // Callbacks: onReady(labelNames), onLabels(pointId, firstFrame, labels), onDone(), onIdle() (the server
+  // closed the session after a pause), onError(message).
+  constructor({ pcm, sampleRate, from, onReady, onLabels, onDone, onIdle, onError }) {
+    Object.assign(this, { pcm, sampleRate, from, onReady, onLabels, onDone, onIdle, onError });
     this.next = Math.round(from * sampleRate);    // next sample to send
     this.ready = false;
     this.ended = false;
@@ -82,6 +84,9 @@ class LiveSession {
     } else if (message.type === "done") {
       this.finished = true;
       this.onDone();
+    } else if (message.type === "idle") {
+      this.finished = true;
+      this.onIdle();
     } else if (message.type === "error") {
       this.finished = true;
       this.onError(message.message);

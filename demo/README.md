@@ -80,7 +80,7 @@ stops is restarted, and its listeners get an error and can start again.
 
 Settings are environment variables (or the same flags of `scripts/demo_server.py`), read when the server
 starts: change them with `docker run -e ...` and restart the container, no rebuild needed. The server
-logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `liveMarginSeconds`,
+logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, `idleSeconds`, `liveMarginSeconds`,
 `model`, `silenceDbfs`).
 
 | Variable | Default | |
@@ -91,6 +91,7 @@ logs the values it uses, and `/healthz` reports them (`workers`, `maxSessions`, 
 | `CHORD_DEMO_WORKERS` | the CPUs available, at most 8 | decoding worker processes (`--workers`); any value set is used as given |
 | `CHORD_DEMO_MAX_SESSIONS` | `8` | live sessions at once, over all workers |
 | `CHORD_DEMO_MAX_SECONDS` | `600` | audio per session, in seconds |
+| `CHORD_DEMO_IDLE_SECONDS` | `30` | a session that receives no audio for this long (a paused or abandoned page) is closed and its place freed; the page starts a new one when it plays again (`--idle-seconds`) |
 | `CHORD_DEMO_LIVE_MARGIN` | `0.15` | seconds the page adds to its playback delay for the network and the server; raise it for a slow or distant host |
 | `CHORD_DEMO_MODEL` | `v15` | `v15`: V15, with dim, aug and m7b5 and its own N.C.; `v14`: V14's 60 chords and its own N.C.; `v7_2`: V7.2's 24 chords (`--model`). The prepared samples must be exported with the same model |
 | `CHORD_DEMO_SILENCE_DBFS` | off for `v15` and `v14`, `-55` for `v7_2` | the silence gate: a frame is N.C. (no chord) once the input has stayed below this level (dBFS) for 3 frames; `-inf` turns it off (reported as `null`). The 10 s the tuning is estimated on start at the first frame at or above -55 dBFS either way |

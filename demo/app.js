@@ -802,7 +802,8 @@ async function initServer() {
     view.mode = "live";
     $("file").disabled = false;
     $("upload").classList.remove("unavailable");
-    $("upload-help").textContent = `Any audio file your browser can play (WAV, MP3, FLAC, Ogg, M4A...), up to `
+    $("upload-help").textContent = `Any audio file your browser can play (WAV, FLAC, MP3, M4A, AAC, Ogg, Opus, `
+      + `WebM, AIFF, CAF...), up to `
       + `${MAX_UPLOAD_BYTES / 2 ** 20} MB and ${view.server.maxSeconds / 60} min. Streamed to the demo server `
       + `and decoded live as it plays.`;
     $("notice").textContent = "Decoded live: your browser streams the recording to the demo server, which runs "
@@ -820,8 +821,10 @@ async function initServer() {
 // ---------------------------------------------------------------------------------------------------
 // Live sessions
 
-function startSession() {
+function startSession({ keep = false } = {}) {
   // A new live session from what you hear now: the rows start empty and fill as the server decides.
+  // keep: the rows keep what they show up to now and continue from there (after an idle session).
+  const shown = keep && view.live ? Object.values(rows).map((row) => [row, row.segs.slice()]) : [];
   stopSession();
   const from = audio.currentTime;
   const session = new LiveSession({
@@ -836,6 +839,15 @@ function startSession() {
       for (const row of Object.values(rows)) row.knownEnd = view.sample.duration;
       render();
     },
+    onIdle: () => {
+      // Paused long enough for the server to give the session's place back: the chords stay, the next
+      // Play continues with a new session from where the audio is, after a new pre-roll.
+      if (!view.live || view.live.session !== session) return;
+      clearInterval(view.live.sender);
+      view.live.idle = true;
+      if (!audio.paused || view.preroll) startSession({ keep: true });     // still playing (a stalled tab)
+      else view.primed = false;
+    },
     onError: (message) => {
       if (!view.live || view.live.session !== session) return;
       stopSession();
@@ -846,8 +858,8 @@ function startSession() {
       setStatus(message, true);
     },
   });
-  view.live = { session, from, labelNames: [], arrival: null, sender: null };
-  for (const row of Object.values(rows)) buildRow(row, [], row.delay);
+  view.live = { session, from, labelNames: [], arrival: null, sender: null, idle: false };
+  for (const [row, segs] of shown) keepUntil(row, segs, from);
   rows.decoded.knownEnd = rows.framewise.knownEnd = from;
   // Stream on a timer, not on animation frames, so the audio keeps flowing when the tab is hidden.
   view.live.sender = setInterval(() => {
@@ -866,6 +878,12 @@ function stopSession() {
   view.live.session.close();
   view.live = null;
   if (view.sample) for (const row of Object.values(rows)) buildRow(row, [], row.delay);
+}
+
+function keepUntil(row, segs, t) {
+  // The row with the blocks of segs up to t (the last one cut at t), for a session that continues from t.
+  const kept = segs.filter((seg) => seg.start < t - 1e-6).map((seg) => ({ ...seg, end: Math.min(seg.end, t) }));
+  buildRow(row, kept, row.delay);
 }
 
 function receiveLabels(point, first, labels) {
@@ -963,6 +981,7 @@ function play() {
   // Live mode: the input is a session on the demo server, started here if there is none.
   if (audio.ended) { audio.currentTime = 0; view.primed = false; stopSession(); }
   if (view.mode === "live" && !view.live) startSession();
+  else if (view.mode === "live" && view.live.idle) startSession({ keep: true });
   const D = playbackDelay();
   if (D === 0 || view.primed) { startAudio(); return; }
   cancelPreroll();

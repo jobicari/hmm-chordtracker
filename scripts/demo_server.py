@@ -12,23 +12,28 @@ N (no chord) is the network's own class; with v7_2 it comes from the silence gat
 
     GET  /api/health    {"live": true, "points": [...], "metadata": {...}, "maxSeconds": ...,
                         "liveMarginSeconds": ..., "model": ..., "silenceDbfs": ..., "maxSessions": ...,
-                        "workers": {"alive": ..., "count": ...}}: what a page needs to decode a file of its
-                        own (the same fields as a sample's JSON), the margin it adds to its playback delay,
-                        the model, the silence gate's level (null: off), and this server's capacity
+                        "idleSeconds": ..., "workers": {"alive": ..., "count": ...}}: what a page needs to
+                        decode a file of its own (the same fields as a sample's JSON), the margin it adds to
+                        its playback delay, the model, the silence gate's level (null: off), and this
+                        server's capacity
     GET  /healthz       the same, for a container's health check: 503 while no worker is up
     WS   /api/live      one session per connection:
                           client {"type": "start"}         -> {"type": "ready", "labels": [...], "sampleRate": ...}
                           client binary: 16-bit mono PCM at sampleRate, any block size
                                                            -> {"type": "labels", "points": {id: {"from": k, "labels": [...]}}}
-                          client {"type": "end"}           -> the last labels (decoders flushed), then {"type": "done"}
+                          client {"type": "end"}           -> the last labels (decoders flushed), {"type": "done"},
+                                                              then the server closes
+                          no audio for idle seconds        -> {"type": "idle"}, then the server closes (a paused
+                                                              page gives its place back; it starts a new session
+                                                              when it plays again)
                           errors                           -> {"type": "error", "message": ...}, then the server closes
 
 This process only serves files and moves bytes (it loads no model). The decoding runs in worker processes
 (chordtracker.live_workers), each loading the chain once: a session is pinned to the least-loaded worker
 for its lifetime and has its own features, network state and decoders there. A worker runs one block at
 a time, so a worker per CPU uses the machine; a worker that dies ends its sessions with an error and is
-restarted. At most max sessions run at once (over all workers) and each stops after max seconds of
-audio. Only the page's own files and samples are served.
+restarted. At most max sessions run at once (over all workers); each stops after max seconds of audio
+or after idle seconds without any. A session's place is free as soon as its connection closes. Only the page's own files and samples are served.
 
 Settings, each a flag or an environment variable (read at start, so a container takes new values on
 restart, without a rebuild):
@@ -40,6 +45,8 @@ restart, without a rebuild):
     --workers           CHORD_DEMO_WORKERS           the CPUs available, at most 8
     --max-sessions      CHORD_DEMO_MAX_SESSIONS      8
     --max-seconds       CHORD_DEMO_MAX_SECONDS       600: audio per session
+    --idle-seconds      CHORD_DEMO_IDLE_SECONDS      30: a started session that receives no audio for this long
+                                                     is closed (a paused or abandoned page)
     --live-margin       CHORD_DEMO_LIVE_MARGIN       0.15: s the page adds to its playback delay for the network
                                                      and the server (more for a slow or distant host)
     --model             CHORD_DEMO_MODEL             v15: V14 fine-tuned for dim, aug and hdim7 (97 classes,
@@ -62,6 +69,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import tornado.ioloop
 import tornado.web
 import tornado.websocket
 
@@ -141,7 +149,7 @@ def health(workers: Workers, settings) -> dict:
             "maxSeconds": settings.max_seconds, "liveMarginSeconds": settings.live_margin,
             "model": settings.model,
             "silenceDbfs": settings.silence_dbfs if math.isfinite(settings.silence_dbfs) else None,
-            "maxSessions": settings.max_sessions, "workers": {"alive": workers.alive, "count": workers.n}}
+            "maxSessions": settings.max_sessions, "idleSeconds": settings.idle_seconds, "workers": {"alive": workers.alive, "count": workers.n}}
 
 
 class PageFileHandler(tornado.web.StaticFileHandler):
@@ -177,7 +185,7 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
 
     def initialize(self, workers, settings, allowed_origins):
         self.workers, self.settings_, self.allowed_origins = workers, settings, allowed_origins
-        self.sid, self.samples, self.counted = None, 0, False
+        self.sid, self.samples, self.counted, self.idle_timer = None, 0, False, None
 
     def check_origin(self, origin):
         """The server's own page (tornado's same-origin check), or a page from an allowed origin."""
@@ -201,11 +209,13 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
                 return self.fail("The decoder is starting; try again in a moment.")
             self.sid, self.counted = sid, True
             LiveHandler.sessions += 1
+            self.wait_for_audio()
             info = self.workers.info
             self.send({"type": "ready", "labels": info["labels"], "sampleRate": info["sampleRate"]})
         elif kind == "end":
             if self.sid is None:
                 return self.fail("No session.")
+            self.stop_waiting()                                # the flush and "done" follow
             self.workers.end(self.sid)
         else:
             self.fail(f"Unknown message {kind!r}.")
@@ -217,6 +227,23 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
         if self.samples > self.settings_.max_seconds * self.workers.info["sampleRate"]:
             return self.fail(f"The demo decodes at most {self.settings_.max_seconds / 60:.0f} min per session.")
         self.workers.audio(self.sid, data)
+        if self.idle_timer is not None:                        # not after "end"
+            self.wait_for_audio()
+
+    def wait_for_audio(self):
+        """(Re)start the idle timer: no audio for idle seconds closes the session."""
+        self.stop_waiting()
+        self.idle_timer = tornado.ioloop.IOLoop.current().call_later(self.settings_.idle_seconds, self.on_idle)
+
+    def stop_waiting(self):
+        if self.idle_timer is not None:
+            tornado.ioloop.IOLoop.current().remove_timeout(self.idle_timer)
+            self.idle_timer = None
+
+    def on_idle(self):
+        self.idle_timer = None
+        self.send({"type": "idle"})
+        self.close()
 
     def on_worker(self, kind: str, payload):
         """A message from the session's worker: new labels, the end of the session, or an error."""
@@ -224,6 +251,7 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
             self.send({"type": "labels", "points": payload})
         elif kind == "done":
             self.send({"type": "done"})
+            self.close()
         elif kind == "error":
             self.fail(payload)
 
@@ -238,6 +266,7 @@ class LiveHandler(tornado.websocket.WebSocketHandler):
         self.close()
 
     def on_close(self):
+        self.stop_waiting()
         if self.sid is not None:
             self.workers.close(self.sid)
         if self.counted:
@@ -267,6 +296,7 @@ def parse_args(argv=None, env=os.environ) -> argparse.Namespace:
                         default=int(env.get("CHORD_DEMO_WORKERS", min(available_cpus(), DEFAULT_WORKERS_CAP))))
     parser.add_argument("--max-sessions", type=int, default=int(env.get("CHORD_DEMO_MAX_SESSIONS", 8)))
     parser.add_argument("--max-seconds", type=float, default=float(env.get("CHORD_DEMO_MAX_SECONDS", 600.0)))
+    parser.add_argument("--idle-seconds", type=float, default=float(env.get("CHORD_DEMO_IDLE_SECONDS", 30.0)))
     parser.add_argument("--live-margin", type=float, default=float(env.get("CHORD_DEMO_LIVE_MARGIN", 0.15)))
     parser.add_argument("--model", choices=MODELS, default=env.get("CHORD_DEMO_MODEL", DEFAULT_MODEL))
     parser.add_argument("--silence-dbfs", type=float,
@@ -274,6 +304,8 @@ def parse_args(argv=None, env=os.environ) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.workers < 1 or args.max_sessions < 1:
         parser.error("--workers and --max-sessions must be at least 1")
+    if not args.idle_seconds > 0:
+        parser.error("--idle-seconds must be positive")
     if args.model not in MODELS:
         parser.error(f"CHORD_DEMO_MODEL must be one of {', '.join(MODELS)}")
     if args.silence_dbfs is None:
@@ -287,7 +319,7 @@ async def serve(settings) -> None:
     await workers.start()
     server = make_app(workers, paths.REPO_ROOT / "demo", settings).listen(settings.port, address=settings.host)
     print(f"Demo: http://localhost:{settings.port} (listening on {settings.host}; {settings.workers} decoding "
-          f"workers, at most {settings.max_sessions} sessions, live margin {settings.live_margin:g} s, "
+          f"workers, at most {settings.max_sessions} sessions, idle after {settings.idle_seconds:g} s, live margin {settings.live_margin:g} s, "
           f"model {settings.model}, silence gate "
           f"{'off' if not math.isfinite(settings.silence_dbfs) else f'{settings.silence_dbfs:g} dBFS'})", flush=True)
     stop = asyncio.Event()
