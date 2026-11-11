@@ -316,8 +316,7 @@ function renderReference(s) {
   if (reference.active >= 0) reference.divs[reference.active].classList.remove("active");
   if (i >= 0) reference.divs[i].classList.add("active");
   reference.active = i;
-  reference.nowEl.textContent = i >= 0 ? reference.segs[i].name : "";
-  reference.nowEl.title = i >= 0 ? reference.segs[i].chord : "";
+  showChord(reference.nowEl, i >= 0 ? reference.segs[i] : null);
 }
 
 const SVG = "http://www.w3.org/2000/svg";
@@ -601,6 +600,7 @@ function layout() {
     for (const row of [rows.decoded, rows.framewise]) row.segs.forEach((seg, i) => placeSegment(row.divs[i], seg, d));
     markNarrow(reference);
   }
+  for (const el of [rows.decoded.nowEl, rows.framewise.nowEl, reference.nowEl]) fitChord(el);
   render();
 }
 
@@ -611,8 +611,21 @@ function renderRow(row, revealed) {
   if (row.active >= 0) row.divs[row.active].classList.remove("active");
   if (i >= 0) row.divs[i].classList.add("active");
   row.active = i;
-  row.nowEl.textContent = i >= 0 ? row.segs[i].name : "";
-  row.nowEl.title = i >= 0 ? row.segs[i].chord : "";
+  showChord(row.nowEl, i >= 0 ? row.segs[i] : null);
+}
+
+function showChord(el, seg) {
+  // Fixed box: a long name gets a smaller font instead of a wider or taller box, so the layout never moves.
+  el.textContent = seg ? seg.name : "";
+  el.title = seg ? seg.chord : "";
+  fitChord(el);
+}
+
+function fitChord(el) {
+  el.style.fontSize = "";
+  if (!el.textContent || el.clientWidth === 0 || el.scrollWidth <= el.clientWidth) return;
+  const full = parseFloat(getComputedStyle(el).fontSize);
+  el.style.fontSize = `${Math.floor(full * el.clientWidth / el.scrollWidth * 0.98)}px`;
 }
 
 function render() {
@@ -674,12 +687,12 @@ function clearSample() {
     mask.style.transform = "";
     row.track.replaceChildren(mask);
     Object.assign(row, { segs: [], divs: [], active: undefined });
-    row.nowEl.textContent = "";
+    showChord(row.nowEl, null);
   }
   $("ruler").replaceChildren();
   reference.track.replaceChildren();
   Object.assign(reference, { segs: [], divs: [], active: undefined });
-  reference.nowEl.textContent = "";
+  showChord(reference.nowEl, null);
   $("reference-note").textContent = "";
   $("pipeline-stages").replaceChildren();
   $("pipeline-diagram").replaceChildren();

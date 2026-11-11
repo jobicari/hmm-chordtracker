@@ -135,9 +135,10 @@ select, button, input { font: inherit; }
   gap: 2rem;
   align-items: end;
 }
-.now { display: flex; flex-direction: column; }
+.now { display: flex; flex-direction: column; min-width: 0; }
 .caption { color: var(--muted); font-size: .85rem; }
-.chord-big { font-size: 5rem; line-height: 1.05; font-weight: 650; min-height: 5.3rem; letter-spacing: -.02em; }
+/* Chord names sit in fixed boxes (one line, set height); app.js shrinks the font of a name too long to fit. */
+.chord-big { display: block; font-size: 5rem; height: 5.3rem; line-height: 5.3rem; white-space: nowrap; overflow: hidden; font-weight: 650; letter-spacing: -.02em; }
 .transport { display: flex; flex-direction: column; gap: .7rem; padding-bottom: .3rem; min-width: 0; }
 .buttons { display: flex; align-items: center; gap: .7rem; }
 .buttons button {
@@ -166,7 +167,9 @@ select, button, input { font: inherit; }
   padding-bottom: .35rem;
 }
 .others dt { color: var(--muted); font-size: .85rem; }
-.others dd { margin: 0; font-size: 1.4rem; font-weight: 600; min-width: 3rem; text-align: right; min-height: 1.6rem; }
+.others div > * { min-width: 0; }
+.others dt { flex: none; }
+.others dd { margin: 0; flex: 1; font-size: 1.4rem; font-weight: 600; text-align: right; height: 1.8rem; line-height: 1.8rem; white-space: nowrap; overflow: hidden; }
 
 /* Timelines: one shared ruler and playhead over the rows; scrolls when the recording is long. */
 .scroller { overflow-x: auto; padding-bottom: .5rem; }
