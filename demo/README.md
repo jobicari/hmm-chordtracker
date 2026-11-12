@@ -19,7 +19,9 @@ so it can land on a real chord (reports/v14.md, reports/v15.md). V14's 60-chord 
 (`results/v14/n_seed0`) and V7.2's 24-chord network (`results/v7_2/c2_la2_seed0`, N.C. from a level gate)
 stay available with `--model v14` and `--model v7_2`. The weights of all three are in git.
 
-No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`.
+No framework and no build step: `index.html`, `style.css`, `app.js`, `live.js`, plus the tab icons
+(`favicon.svg`, `apple-touch-icon.png`) and the link preview image (`og-image.png`, 1200 x 630, referenced
+by its absolute URL on chords.jobicari.com).
 
 ```bash
 PYTHONPATH=src python scripts/demo_export.py 00_Funk2-108-Eb_comp 00_Rock3-148-C_comp 00_SS3-98-C_comp

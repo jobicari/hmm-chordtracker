@@ -52,6 +52,7 @@ const QUALITY_NAMES = {               // as chordtracker.play_along.QUALITIES: a
 };
 const view = { sample: null, point: null, wantedPoint: null, timeText: "", width: 0, seeking: false, audioUrl: null,
                primed: false, preroll: null, internalPause: false, mode: "precomputed", server: null, pcm: null,
+               diagramVertical: null,      // the pipeline diagram stacked top to bottom (narrow) or not
                live: null, conn: null,     // conn: the LiveSession connection, kept across seeks
                extra: 0, arrivals: [] };   // extra: s of margin this connection needs on top of the server's
 
@@ -361,50 +362,82 @@ function svg(tag, attrs = {}, text = null) {
   return el;
 }
 
+const DIAGRAM_MIN_WIDE = 880;     // px: below this the wide diagram's 12 px text would shrink under ~9.5 px
+
 function buildDiagram() {
-  // The pipeline as a flow: four shared stages, then two branches (decoder, argmax) to the two rows.
+  // The pipeline as a flow: four shared stages, then two branches (decoder, argmax) to the two rows. Wide:
+  // left to right; narrow (a phone): top to bottom, so it fits the width without scrolling sideways.
   // Every value comes from the sample's metadata and the chosen look-ahead.
   const m = view.sample.metadata, P = m.pipeline, p = view.point;
   const ms = Math.round(m.frameSeconds * 1000);
-  const W = 150, H = 96, MAIN_Y = 105, TOP_Y = 14, BOT_Y = 196;
-  const root = svg("svg", { viewBox: "0 0 1120 306", xmlns: SVG });
+  const H = 96;
+  const vertical = $("pipeline").clientWidth < DIAGRAM_MIN_WIDE;
+  view.diagramVertical = vertical;
+  const root = svg("svg", { viewBox: vertical ? "0 0 340 752" : "0 0 1120 306", xmlns: SVG,
+                            class: vertical ? "vertical" : "wide" });
   const defs = svg("defs");
   const marker = svg("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7,
                                  orient: "auto-start-reverse" });
   marker.appendChild(svg("path", { d: "M0 0 L10 5 L0 10 z", class: "arrow-head" }));
   defs.appendChild(marker);
   root.appendChild(defs);
-  const box = (x, y, w, kind, num, title, lines) => {
+  const box = ([x, y, w], kind, num, title, lines) => {
     root.appendChild(svg("rect", { x, y, width: w, height: H, rx: 10, class: `box ${kind}` }));
     if (num) root.appendChild(svg("text", { x: x + 12, y: y + 22, class: "num" }, num));
     root.appendChild(svg("text", { x: x + (num ? 28 : 12), y: y + 22, class: "title" }, title));
     lines.forEach((line, i) => root.appendChild(svg("text", { x: x + 12, y: y + 46 + i * 17, class: "text" }, line)));
   };
   const arrow = (d) => root.appendChild(svg("path", { d, class: "arrow", "marker-end": "url(#arrow)" }));
-  const xs = [10, 195, 380, 565];
-  box(xs[0], MAIN_Y, W, "", "1", "Audio", [`${P.sampleRate.toLocaleString("en")} Hz, mono`,
+
+  // Boxes as [x, y, width]: the four shared stages, the two branches (top/left: decoder), the two rows.
+  let stagesAt, decoderAt, argmaxAt, decodedAt, framewiseAt;
+  if (vertical) {
+    const W = 160, GAP = 30, L = 5, R = 175;
+    stagesAt = [0, 1, 2, 3].map((i) => [90, 5 + i * (H + GAP), W]);
+    decoderAt = [L, 5 + 4 * (H + GAP) + 10, W];
+    argmaxAt = [R, decoderAt[1], W];
+    decodedAt = [L, decoderAt[1] + H + GAP, W];
+    framewiseAt = [R, decodedAt[1], W];
+  } else {
+    const W = 150, MAIN_Y = 105, TOP_Y = 14, BOT_Y = 196;
+    stagesAt = [10, 195, 380, 565].map((x) => [x, MAIN_Y, W]);
+    decoderAt = [775, TOP_Y, 170];
+    argmaxAt = [775, BOT_Y, 170];
+    decodedAt = [990, TOP_Y, 120];
+    framewiseAt = [990, BOT_Y, 120];
+  }
+  box(stagesAt[0], "", "1", "Audio", [`${P.sampleRate.toLocaleString("en")} Hz, mono`,
     `${m.hopLength.toLocaleString("en")}-sample blocks`, `one per ${ms} ms frame`]);
-  box(xs[1], MAIN_Y, W, "", "2", "Harmonic part", [`STFT ${P.harmonic.nFft}, hop ${P.harmonic.stftHop}`,
+  box(stagesAt[1], "", "2", "Harmonic part", [`STFT ${P.harmonic.nFft}, hop ${P.harmonic.stftHop}`,
     `past ${P.harmonic.medianFrames}-frame median`, "keeps sustained notes"]);
-  box(xs[2], MAIN_Y, W, "", "3", "Log-CQT", [`${P.cqt.binsPerOctave} bins per octave`,
+  box(stagesAt[2], "", "3", "Log-CQT", [`${P.cqt.binsPerOctave} bins per octave`,
     tuningOnset(P) !== null ? `tuning: ${P.cqt.tuningSeconds} s from onset` : `tuning: first ${P.cqt.tuningSeconds} s`,
     `log(1 + ${P.compression.gamma} x)`]);
-  box(xs[3], MAIN_Y, W, "model", "4", "CRNN", [`${P.network.windowFrames} frames, ${P.network.inputLookaheadFrames} ahead`,
+  box(stagesAt[3], "model", "4", "CRNN", [`${P.network.windowFrames} frames, ${P.network.inputLookaheadFrames} ahead`,
     `${P.cqt.networkLowest} to ${P.cqt.networkHighest}`, P.network.noChordClass
     ? `GRU, ${P.network.classes - 1} chords + N` : `causal GRU, ${P.network.classes} chords`]);
-  for (let i = 0; i < 3; i++) arrow(`M${xs[i] + W} ${MAIN_Y + H / 2} H${xs[i + 1] - 3}`);
   const decoderOn = p.pSelf !== null;
-  box(775, TOP_Y, 170, decoderOn ? "decoder" : "decoder off", "5", "HMM + Viterbi", decoderOn
+  box(decoderAt, decoderOn ? "decoder" : "decoder off", "5", "HMM + Viterbi", decoderOn
     ? ["Billboard chord changes", `p_self ${p.pSelf}`, `decides ${p.lagFrames} frames later`]
     : ["not used at this", "look-ahead: the row is", "the network alone"]);
-  box(775, BOT_Y, 170, "", "5'", "Argmax", ["most probable chord", "of each frame", "no smoothing"]);
-  box(990, TOP_Y, 120, "out", "", "Decoded", ["row, shown", `${p.decisionDelaySeconds.toFixed(2)} s later`]);
-  box(990, BOT_Y, 120, "out", "", "Framewise", ["row, shown", `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s later`]);
-  const cx = xs[3] + W, cy = MAIN_Y + H / 2;
-  arrow(`M${cx} ${cy} H${cx + 25} V${TOP_Y + H / 2} H${775 - 3}`);
-  arrow(`M${cx} ${cy} H${cx + 25} V${BOT_Y + H / 2} H${775 - 3}`);
-  arrow(`M945 ${TOP_Y + H / 2} H${990 - 3}`);
-  arrow(`M945 ${BOT_Y + H / 2} H${990 - 3}`);
+  box(argmaxAt, "", "5'", "Argmax", ["most probable chord", "of each frame", "no smoothing"]);
+  box(decodedAt, "out", "", "Decoded", ["row, shown", `${p.decisionDelaySeconds.toFixed(2)} s later`]);
+  box(framewiseAt, "out", "", "Framewise", ["row, shown", `${view.sample.framewiseDecisionDelaySeconds.toFixed(2)} s later`]);
+
+  const midX = ([x, , w]) => x + w / 2, midY = ([, y]) => y + H / 2;
+  if (vertical) {
+    for (let i = 0; i < 3; i++) arrow(`M${midX(stagesAt[i])} ${stagesAt[i][1] + H} V${stagesAt[i + 1][1] - 3}`);
+    const cx = midX(stagesAt[3]), fork = stagesAt[3][1] + H + (decoderAt[1] - stagesAt[3][1] - H) / 2;
+    for (const to of [decoderAt, argmaxAt]) arrow(`M${cx} ${stagesAt[3][1] + H} V${fork} H${midX(to)} V${to[1] - 3}`);
+    arrow(`M${midX(decoderAt)} ${decoderAt[1] + H} V${decodedAt[1] - 3}`);
+    arrow(`M${midX(argmaxAt)} ${argmaxAt[1] + H} V${framewiseAt[1] - 3}`);
+  } else {
+    for (let i = 0; i < 3; i++) arrow(`M${stagesAt[i][0] + stagesAt[i][2]} ${midY(stagesAt[i])} H${stagesAt[i + 1][0] - 3}`);
+    const cx = stagesAt[3][0] + stagesAt[3][2], cy = midY(stagesAt[3]);
+    for (const to of [decoderAt, argmaxAt]) arrow(`M${cx} ${cy} H${cx + 25} V${midY(to)} H${to[0] - 3}`);
+    arrow(`M${decoderAt[0] + decoderAt[2]} ${midY(decoderAt)} H${decodedAt[0] - 3}`);
+    arrow(`M${argmaxAt[0] + argmaxAt[2]} ${midY(argmaxAt)} H${framewiseAt[0] - 3}`);
+  }
   $("pipeline-diagram").replaceChildren(root);
 }
 
@@ -627,7 +660,10 @@ function showMeasured() {
 }
 
 function layout() {
-  // On load and resize: timeline width, and which blocks are too narrow to print their name.
+  // On load and resize: timeline width, which blocks are too narrow to print their name, and the diagram's
+  // direction (wide or stacked).
+  if (view.sample && view.point && $("pipeline").clientWidth > 0
+      && ($("pipeline").clientWidth < DIAGRAM_MIN_WIDE) !== view.diagramVertical) buildDiagram();
   const d = view.sample ? view.sample.duration : 0;
   $("timeline").style.width = `${Math.max(d * PX_PER_SECOND, $("scroller").clientWidth)}px`;
   view.width = rows.decoded.track.getBoundingClientRect().width;
@@ -678,7 +714,7 @@ function render() {
   if (text !== view.timeText) { view.timeText = text; $("time").textContent = text; }
   const shown = Math.min(s + lead(), d);                          // the chords of `lead` s ahead
   for (const row of Object.values(rows)) renderRow(row, revealedUntil(row, shown, heard, d));
-  renderReference(shown);
+  renderReference(s > 0 ? shown : -1);     // before Play the model rows are empty: so is the reference
 
   if (!audio.paused || view.preroll) {
     // Keep the playhead in view when the timeline scrolls: jump only when it leaves the visible part.
