@@ -80,7 +80,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from chordtracker import paths  # noqa: E402
 from chordtracker.live_workers import Workers  # noqa: E402
 
-PAGE_FILES = r"/(|index\.html|style\.css|app\.js|live\.js|samples/[^/]+)"     # not README.md
+PAGE_FILES = (r"/(|index\.html|style\.css|app\.js|live\.js|favicon\.svg|apple-touch-icon\.png|og-image\.png"
+              r"|samples/[^/]+)")     # not README.md
 DEFAULT_WORKERS_CAP = 8
 MODELS = ("v15", "v14", "v7_2")           # demo.MODELS, and demo_export.DEFAULT_SILENCE_DBFS below (not imported:
 DEFAULT_MODEL = "v15"              # this process loads no model code)

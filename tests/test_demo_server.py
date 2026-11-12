@@ -63,6 +63,8 @@ def run(server_module, tmp_path, test, env=None, workers=1, chain=FakeChain):
     """Start the workers and the app on a free port, run the async test against it, stop."""
     (tmp_path / "index.html").write_text("ok")
     (tmp_path / "README.md").write_text("not part of the page")
+    for icon in ("favicon.svg", "apple-touch-icon.png", "og-image.png"):
+        (tmp_path / icon).write_text(icon)
     (tmp_path / "samples").mkdir(exist_ok=True)
     (tmp_path / "samples" / "index.json").write_text('{"samples": []}')
     settings = server_module.parse_args([], env={"CHORD_DEMO_WORKERS": str(workers), **(env or {})})
@@ -120,6 +122,8 @@ def test_health_and_page(server_module, tmp_path):
         assert json.loads((await client.fetch(f"http://{host}/healthz")).body) == health
         assert (await client.fetch(f"http://{host}/")).body == b"ok"
         assert json.loads((await client.fetch(f"http://{host}/samples/index.json")).body) == {"samples": []}
+        for icon in ("favicon.svg", "apple-touch-icon.png", "og-image.png"):     # link previews and tab icons
+            assert (await client.fetch(f"http://{host}/{icon}")).body == icon.encode()
         for path in ("README.md", "samples/../README.md"):
             with pytest.raises(HTTPClientError) as refused:
                 await client.fetch(f"http://{host}/{path}")
