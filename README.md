@@ -1,5 +1,12 @@
 # HMM chord tracker
 
+**Live demo: [chords.jobicari.com](https://chords.jobicari.com)** - play a recording or your own file and
+watch the chords being decided as it plays.
+
+**Headline result:** in real time, deciding each chord 0.65 s after it is played, the system labels
+79.1 % of held-out test audio with the right chord (majmin WCSR, mean of RWC Popular Music 82.0 % and
+GuitarSet 76.2 %; V11, [reports/v11.md](reports/v11.md)).
+
 A controlled comparison for audio chord recognition: does an HMM with Viterbi decoding beat
 independent frame-by-frame classification when the features, chord vocabulary and songs are held
 constant? Built version by version (V0, V1, ...); each version changes one thing and is compared
