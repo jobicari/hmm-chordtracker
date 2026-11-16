@@ -169,7 +169,8 @@ The tuning is estimated as V6's features do, on quarter-tone bins: it wraps at +
 
 ## Data and licence
 
-This project is for research and non-commercial use only, and so are its trained weights.
+The code is released under the MIT License (see LICENSE). The trained weights and the result files are derived from 
+the datasets below, so they are for research and non-commercial use only.
 
 - GuitarSet: CC BY 4.0.
 - RWC Popular Music (RWC-P): CC BY-NC 4.0; audio not included.
